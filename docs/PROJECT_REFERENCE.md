@@ -18,7 +18,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | `apps/web/server` | Node API, access, evidence, monitor, settlement worker, Redis and Supabase routing |
 | `config/mobile-passkeys.json` | Public Android association data retained for already installed preview builds; no mobile app is developed here |
 | `apps/dashboard` and `scripts` | Legacy synthetic-pool reader and wallet trading compatibility used by the running server |
-| `contracts/src`, `contracts/script` | Factored pool, optimistic resolver, test asset and current deployment scripts |
+| `contracts/` (separate pinned checkout) | Factored pool, optimistic resolver, test asset and deployment scripts from `Flurbo-cmm/Flurbo-contracts` |
 | `config/collections.json` | Committed list of pools and their settlement modes |
 | `config/markets` | Batch market specifications |
 | `workflows/cre` | Rule preparation, checks, deployment verification, registry edits |
@@ -26,7 +26,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | `protocol`, `crates/flurbo-core` | Interchange fixtures and Rust reference calculations |
 | `.github/workflows/checks.yml` | Code checks; scheduled settlement workflows are excluded |
 
-The web Dockerfile builds from the repository root. It copies the Rust crate, web app, TypeScript SDK, legacy dashboard, Python scripts and config. Keep these inputs together until their runtime imports are replaced. This is one repository with product packages, not independently deployed component repositories.
+The web Dockerfile builds from the repository root. It copies the Rust crate, web app, TypeScript SDK, legacy dashboard, Python scripts and config. Keep these inputs together until their runtime imports are replaced. The contracts source is a separate private repository pinned to commit `9f2510eebbfe34f06809e3db5ed9d9010a018eae` for Foundry, settlement preparation and local-chain tests. CI checks it out with the read-only `FLURBO_CONTRACTS_READ_TOKEN` secret; Render's web image does not need it. This is the first two-repository split, with web and settlement tooling still coupled in `Flurbo`.
 
 ## Trading and settlement mechanics
 
@@ -97,7 +97,7 @@ Keep `flurbo.singu.online` as the origin during the first repository migration. 
 
 ## Checks and cutover
 
-Run web typecheck, server tests and build; `bun` workflow checks; Foundry tests; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. The mobile job is retired from this company repository. Build the Docker image from the root because the web Dockerfile copies sibling packages.
+Run web typecheck, server tests and build; `bun` workflow checks; Foundry tests against the pinned contracts checkout; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. The mobile job is retired from this company repository. Build the Docker image from the root because the web Dockerfile copies sibling packages.
 
 The personal hackathon repository remains unchanged. This company repository has no Git history from it; that avoids publishing old research, local files or historical secrets. Before a live cutover, review the complete file list and run secret scanning. After the new repo passes checks, connect a separate preview deployment and compare account login, wallet linking, market directory, quotes, buy/sell, evidence, settlement monitor health and redemption. Repoint the live Render service only after that acceptance. Verify the environment names and values directly in Render at cutover, using hidden inputs for secrets.
 

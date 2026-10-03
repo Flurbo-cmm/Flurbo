@@ -109,7 +109,8 @@ test('funding uses announced MetaMask instead of competing injection or Mera; ac
     assert.equal(await page.getByRole('button',{name:'Request test AUSD',exact:true}).isDisabled(),true);
     await page.getByRole('button',{name:'Switch wallet',exact:true}).waitFor();
     receipt={transactionHash:hash,to:TESTNET.faucet,from:owner,status:'0x1'};
-    await page.getByRole('button',{name:'Check status',exact:true}).click();
+    // The page also checks pending receipts automatically; it may confirm before the manual button can be clicked.
+    await page.getByRole('button',{name:'Check status',exact:true}).click({timeout:2000}).catch(()=>{});
     await page.getByText('Test AUSD request confirmed. You can return to the markets.').waitFor();
     assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('flurbo.faucet.pending')).length),0);
     await mkdir(new URL('../../../target/showcase-ui/',import.meta.url),{recursive:true});
