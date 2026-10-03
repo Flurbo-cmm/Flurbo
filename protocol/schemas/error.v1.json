@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flurbo.singu.online/protocol/schemas/error.v1.json",
+  "title": "Runtime API error",
+  "type": "object",
+  "required": [
+    "code",
+    "error",
+    "retryable"
+  ],
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "error": {
+      "type": "string"
+    },
+    "retryable": {
+      "type": "boolean"
+    }
+  }
+}

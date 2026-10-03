@@ -1,0 +1,133 @@
+{
+  "schema": "flurbo.market-batch.v1",
+  "defaults": { "bond": "1", "assertionPeriod": 43200, "challengePeriod": 43200, "votingPeriod": 43200, "settlement": "auto" },
+  "pools": [
+    {
+      "id": "wave2-f1", "title": "F1 Jobs Friday", "label": "Jobs Friday", "closesAt": "2026-10-02T12:00:00Z", "b": "100",
+      "rules": [
+        {
+          "eventId": "us-unemployment-sep",
+          "question": "Will the US unemployment rate for September 2026 be at least 4.2%, as published by the Bureau of Labor Statistics data API (series LNS14000000) and first captured between 12:35 and 16:30 UTC on 2 October 2026?",
+          "source": { "id": "bls-lns14000000", "publisher": "U.S. Bureau of Labor Statistics", "urls": ["https://api.bls.gov/publicAPI/v1/timeseries/data/LNS14000000"], "adapter": "json-api.v1",
+            "reader": { "select": "/Results/series/0/data", "aggregate": "only", "field": "/value", "filter": [{ "path": "/year", "op": "eq", "value": "2026" }, { "path": "/period", "op": "eq", "value": "M09" }],
+              "checks": [{ "path": "/status", "equals": "REQUEST_SUCCEEDED" }, { "path": "/Results/series/0/seriesID", "equals": "LNS14000000" }] } },
+          "observation": { "series": "LNS14000000", "period": "2026-09", "unit": "percent" },
+          "decision": { "type": "number", "operator": "gte", "value": "4.2" },
+          "window": { "opens": "2026-10-02T12:35:00Z", "closes": "2026-10-02T16:30:00Z" }, "expectPending": ["EXTRACTION_AMBIGUOUS_OR_MISSING"]
+        },
+        {
+          "eventId": "us-u6-sep",
+          "question": "Will the US U-6 underutilization rate for September 2026 be at least 7.8%, as published by the Bureau of Labor Statistics data API (series LNS13327709) and first captured between 12:35 and 16:30 UTC on 2 October 2026?",
+          "source": { "id": "bls-lns13327709", "publisher": "U.S. Bureau of Labor Statistics", "urls": ["https://api.bls.gov/publicAPI/v1/timeseries/data/LNS13327709"], "adapter": "json-api.v1",
+            "reader": { "select": "/Results/series/0/data", "aggregate": "only", "field": "/value", "filter": [{ "path": "/year", "op": "eq", "value": "2026" }, { "path": "/period", "op": "eq", "value": "M09" }],
+              "checks": [{ "path": "/status", "equals": "REQUEST_SUCCEEDED" }, { "path": "/Results/series/0/seriesID", "equals": "LNS13327709" }] } },
+          "observation": { "series": "LNS13327709", "period": "2026-09", "unit": "percent" },
+          "decision": { "type": "number", "operator": "gte", "value": "7.8" },
+          "window": { "opens": "2026-10-02T12:35:00Z", "closes": "2026-10-02T16:30:00Z" }, "expectPending": ["EXTRACTION_AMBIGUOUS_OR_MISSING"]
+        },
+        {
+          "eventId": "us-participation-sep",
+          "question": "Will the US labor force participation rate for September 2026 be at least 61.6%, as published by the Bureau of Labor Statistics data API (series LNS11300000) and first captured between 12:35 and 16:30 UTC on 2 October 2026?",
+          "source": { "id": "bls-lns11300000", "publisher": "U.S. Bureau of Labor Statistics", "urls": ["https://api.bls.gov/publicAPI/v1/timeseries/data/LNS11300000"], "adapter": "json-api.v1",
+            "reader": { "select": "/Results/series/0/data", "aggregate": "only", "field": "/value", "filter": [{ "path": "/year", "op": "eq", "value": "2026" }, { "path": "/period", "op": "eq", "value": "M09" }],
+              "checks": [{ "path": "/status", "equals": "REQUEST_SUCCEEDED" }, { "path": "/Results/series/0/seriesID", "equals": "LNS11300000" }] } },
+          "observation": { "series": "LNS11300000", "period": "2026-09", "unit": "percent" },
+          "decision": { "type": "number", "operator": "gte", "value": "61.6" },
+          "window": { "opens": "2026-10-02T12:35:00Z", "closes": "2026-10-02T16:30:00Z" }, "expectPending": ["EXTRACTION_AMBIGUOUS_OR_MISSING"]
+        },
+        {
+          "eventId": "us-hourly-earnings-sep",
+          "question": "Will US average hourly earnings of all private employees for September 2026 be at least 37.85 dollars, as published by the Bureau of Labor Statistics data API (series CES0500000003) and first captured between 12:35 and 16:30 UTC on 2 October 2026?",
+          "source": { "id": "bls-ces0500000003", "publisher": "U.S. Bureau of Labor Statistics", "urls": ["https://api.bls.gov/publicAPI/v1/timeseries/data/CES0500000003"], "adapter": "json-api.v1",
+            "reader": { "select": "/Results/series/0/data", "aggregate": "only", "field": "/value", "filter": [{ "path": "/year", "op": "eq", "value": "2026" }, { "path": "/period", "op": "eq", "value": "M09" }],
+              "checks": [{ "path": "/status", "equals": "REQUEST_SUCCEEDED" }, { "path": "/Results/series/0/seriesID", "equals": "CES0500000003" }] } },
+          "observation": { "series": "CES0500000003", "period": "2026-09", "unit": "USD per hour" },
+          "decision": { "type": "number", "operator": "gte", "value": "37.85" },
+          "window": { "opens": "2026-10-02T12:35:00Z", "closes": "2026-10-02T16:30:00Z" }, "expectPending": ["EXTRACTION_AMBIGUOUS_OR_MISSING"]
+        }
+      ]
+    },
+    {
+      "id": "wave2-f2", "title": "F2 Crypto weekend", "label": "Crypto weekend", "closesAt": "2026-10-03T18:00:00Z", "b": "100",
+      "rules": [
+        {
+          "eventId": "crypto-weekend-mon",
+          "question": "Will the Chainlink MON/USD feed on Monad mainnet report at least 0.0343 USD (latestAnswer) at the first block at or after 00:00 UTC on 4 October 2026, read from the public Monad RPC between 00:05 and 04:05 UTC?",
+          "source": { "id": "chainlink-mon-usd-monad", "publisher": "Chainlink price feed on Monad mainnet", "urls": ["https://rpc.monad.xyz/"], "adapter": "evm-rpc.v1",
+            "reader": { "chainId": 143, "at": "2026-10-04T00:00:00Z", "metric": "call", "call": { "to": "0xBcD78f76005B7515837af6b50c7C52BCf73822fb", "data": "0x50d25bcd", "returns": "int256" }, "scale": 8, "finalitySeconds": 60 } },
+          "observation": { "series": "chainlink-mon-usd-latest-answer", "period": "2026-10-04T00:00:00Z", "unit": "USD" },
+          "decision": { "type": "number", "operator": "gte", "value": "0.0343" },
+          "window": { "opens": "2026-10-04T00:05:00Z", "closes": "2026-10-04T04:05:00Z" }
+        },
+        {
+          "eventId": "crypto-weekend-btc",
+          "question": "Will the Chainlink BTC/USD feed on Monad mainnet report at least 84750 USD (latestAnswer) at the first block at or after 00:00 UTC on 4 October 2026, read from the public Monad RPC between 00:05 and 04:05 UTC?",
+          "source": { "id": "chainlink-btc-usd-monad", "publisher": "Chainlink price feed on Monad mainnet", "urls": ["https://rpc.monad.xyz/"], "adapter": "evm-rpc.v1",
+            "reader": { "chainId": 143, "at": "2026-10-04T00:00:00Z", "metric": "call", "call": { "to": "0xc1d4C3331635184fA4C3c22fb92211B2Ac9E0546", "data": "0x50d25bcd", "returns": "int256" }, "scale": 8, "finalitySeconds": 60 } },
+          "observation": { "series": "chainlink-btc-usd-latest-answer", "period": "2026-10-04T00:00:00Z", "unit": "USD" },
+          "decision": { "type": "number", "operator": "gte", "value": "84750" },
+          "window": { "opens": "2026-10-04T00:05:00Z", "closes": "2026-10-04T04:05:00Z" }
+        },
+        {
+          "eventId": "crypto-weekend-eth",
+          "question": "Will the Chainlink ETH/USD feed on Monad mainnet report at least 2700 USD (latestAnswer) at the first block at or after 00:00 UTC on 4 October 2026, read from the public Monad RPC between 00:05 and 04:05 UTC?",
+          "source": { "id": "chainlink-eth-usd-monad", "publisher": "Chainlink price feed on Monad mainnet", "urls": ["https://rpc.monad.xyz/"], "adapter": "evm-rpc.v1",
+            "reader": { "chainId": 143, "at": "2026-10-04T00:00:00Z", "metric": "call", "call": { "to": "0x1B1414782B859871781bA3E4B0979b9ca57A0A04", "data": "0x50d25bcd", "returns": "int256" }, "scale": 8, "finalitySeconds": 60 } },
+          "observation": { "series": "chainlink-eth-usd-latest-answer", "period": "2026-10-04T00:00:00Z", "unit": "USD" },
+          "decision": { "type": "number", "operator": "gte", "value": "2700" },
+          "window": { "opens": "2026-10-04T00:05:00Z", "closes": "2026-10-04T04:05:00Z" }
+        },
+        {
+          "eventId": "crypto-weekend-sol",
+          "question": "Will the Chainlink SOL/USD feed on Monad mainnet report at least 118 USD (latestAnswer) at the first block at or after 00:00 UTC on 4 October 2026, read from the public Monad RPC between 00:05 and 04:05 UTC?",
+          "source": { "id": "chainlink-sol-usd-monad", "publisher": "Chainlink price feed on Monad mainnet", "urls": ["https://rpc.monad.xyz/"], "adapter": "evm-rpc.v1",
+            "reader": { "chainId": 143, "at": "2026-10-04T00:00:00Z", "metric": "call", "call": { "to": "0x16F8008c3e89f62e5e2b909Ce70999370D38F4F2", "data": "0x50d25bcd", "returns": "int256" }, "scale": 8, "finalitySeconds": 60 } },
+          "observation": { "series": "chainlink-sol-usd-latest-answer", "period": "2026-10-04T00:00:00Z", "unit": "USD" },
+          "decision": { "type": "number", "operator": "gte", "value": "118" },
+          "window": { "opens": "2026-10-04T00:05:00Z", "closes": "2026-10-04T04:05:00Z" }
+        }
+      ]
+    },
+    {
+      "id": "wave2-f3", "title": "F3 Brazil election", "label": "Brazil election", "closesAt": "2026-10-04T19:30:00Z", "b": "250", "assertionPeriod": 172800,
+      "rules": [
+        {
+          "eventId": "lula-first-round-first",
+          "question": "Will Lula (ballot number 13) finish first in the 4 October 2026 first round of Brazil's presidential election, as shown by TSE's fully counted official result file (election 6257) first captured between 5 October 06:00 and 7 October 06:00 UTC?",
+          "source": { "id": "tse-presidente-6257", "publisher": "Tribunal Superior Eleitoral (Brazil)", "urls": ["https://resultados.tse.jus.br/oficial/ele2026/6257/dados-simplificados/br/br-c0001-e006257-r.json"], "adapter": "json-api.v1",
+            "reader": { "select": "/cand", "aggregate": "only", "field": "/seq", "filter": [{ "path": "/n", "op": "eq", "value": "13" }], "checks": [{ "path": "/pst", "equals": "100,00" }] } },
+          "observation": { "series": "tse-presidente-6257-lula-rank", "period": "2026-10-04", "unit": "rank" },
+          "decision": { "type": "category", "operator": "eq", "value": "1" },
+          "window": { "opens": "2026-10-05T06:00:00Z", "closes": "2026-10-07T06:00:00Z" }, "expectPending": ["SOURCE_FETCH_FAILED"]
+        },
+        {
+          "eventId": "brazil-runoff",
+          "question": "Will Brazil's 2026 presidential election go to a runoff, with the first-placed candidate in TSE's fully counted first-round result file (election 6257) holding status 2º turno, first captured between 5 October 06:00 and 7 October 06:00 UTC?",
+          "source": { "id": "tse-presidente-6257", "publisher": "Tribunal Superior Eleitoral (Brazil)", "urls": ["https://resultados.tse.jus.br/oficial/ele2026/6257/dados-simplificados/br/br-c0001-e006257-r.json"], "adapter": "json-api.v1",
+            "reader": { "select": "/cand", "aggregate": "only", "field": "/st", "filter": [{ "path": "/seq", "op": "eq", "value": "1" }], "checks": [{ "path": "/pst", "equals": "100,00" }] } },
+          "observation": { "series": "tse-presidente-6257-leader-status", "period": "2026-10-04", "unit": "status" },
+          "decision": { "type": "category", "operator": "eq", "value": "2º turno" },
+          "window": { "opens": "2026-10-05T06:00:00Z", "closes": "2026-10-07T06:00:00Z" }, "expectPending": ["SOURCE_FETCH_FAILED"]
+        },
+        {
+          "eventId": "flavio-runoff",
+          "question": "Will Flávio Bolsonaro (ballot number 22) qualify for Brazil's 25 October presidential runoff, as shown by TSE's fully counted first-round result file (election 6257) first captured between 5 October 06:00 and 7 October 06:00 UTC?",
+          "source": { "id": "tse-presidente-6257", "publisher": "Tribunal Superior Eleitoral (Brazil)", "urls": ["https://resultados.tse.jus.br/oficial/ele2026/6257/dados-simplificados/br/br-c0001-e006257-r.json"], "adapter": "json-api.v1",
+            "reader": { "select": "/cand", "aggregate": "only", "field": "/st", "filter": [{ "path": "/n", "op": "eq", "value": "22" }], "checks": [{ "path": "/pst", "equals": "100,00" }] } },
+          "observation": { "series": "tse-presidente-6257-flavio-status", "period": "2026-10-04", "unit": "status" },
+          "decision": { "type": "category", "operator": "eq", "value": "2º turno" },
+          "window": { "opens": "2026-10-05T06:00:00Z", "closes": "2026-10-07T06:00:00Z" }, "expectPending": ["SOURCE_FETCH_FAILED"]
+        },
+        {
+          "eventId": "lula-elected-runoff",
+          "question": "Will Lula (ballot number 13) be elected President of Brazil in the 25 October 2026 runoff, as shown by TSE's fully counted runoff result file (election 6258) first captured between 25 October 23:00 and 27 October 12:00 UTC? If no runoff is held, the answer is No, asserted by the operator from the first-round result.",
+          "source": { "id": "tse-presidente-6258", "publisher": "Tribunal Superior Eleitoral (Brazil)", "urls": ["https://resultados.tse.jus.br/oficial/ele2026/6258/dados-simplificados/br/br-c0001-e006258-r.json"], "adapter": "json-api.v1",
+            "reader": { "select": "/cand", "aggregate": "only", "field": "/st", "filter": [{ "path": "/n", "op": "eq", "value": "13" }], "checks": [{ "path": "/pst", "equals": "100,00" }] } },
+          "observation": { "series": "tse-presidente-6258-lula-status", "period": "2026-10-25", "unit": "status" },
+          "decision": { "type": "category", "operator": "eq", "value": "Eleito" },
+          "window": { "opens": "2026-10-25T23:00:00Z", "closes": "2026-10-27T12:00:00Z" }, "expectPending": ["SOURCE_FETCH_FAILED"]
+        }
+      ]
+    }
+  ]
+}

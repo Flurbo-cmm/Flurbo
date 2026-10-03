@@ -1,0 +1,47 @@
+{
+  "creator": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+  "clusterId": "ethereum-client-releases-alpha-1",
+  "title": "Ethereum client releases: October 2026",
+  "closesAt": 1790726400,
+  "reviewerControl": "single-operator",
+  "independentReviewersConfirmed": false,
+  "rulesReviewed": true,
+  "reviewers": [
+    {
+      "name": "Operator test reviewer 1",
+      "address": "0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201"
+    },
+    {
+      "name": "Operator test reviewer 2",
+      "address": "0x41c28b86170b5ec7b261d954e0185fca348b19a4"
+    },
+    {
+      "name": "Operator test reviewer 3",
+      "address": "0x555d165001f60103c9429dbb15bf764caa8ae538"
+    }
+  ],
+  "bondAtoms": "1000000",
+  "assertionPeriod": 86400,
+  "challengePeriod": 86400,
+  "votingPeriod": 86400,
+  "events": [
+    {
+      "id": "geth-1-17-7",
+      "target": {
+        "repository": "ethereum/go-ethereum",
+        "tag": "v1.17.7"
+      },
+      "observationStartsAt": 1790726460,
+      "observationEndsAt": 1791331260
+    },
+    {
+      "id": "reth-2-6-1",
+      "target": {
+        "repository": "paradigmxyz/reth",
+        "tag": "v2.6.1"
+      },
+      "observationStartsAt": 1790726460,
+      "observationEndsAt": 1791331260
+    }
+  ]
+}

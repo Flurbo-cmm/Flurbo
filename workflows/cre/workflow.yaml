@@ -1,0 +1,14 @@
+synthetic:
+  user-workflow:
+    workflow-name: flurbo-synthetic-settlement
+  workflow-artifacts:
+    workflow-path: ./src/main.ts
+    config-path: ./fixtures/config.json
+    secrets-path: ""
+pilot:
+  user-workflow:
+    workflow-name: flurbo-pilot-official-evidence
+  workflow-artifacts:
+    workflow-path: ./src/pilot-main.ts
+    config-path: ../../target/deployments/pilot-cre.json
+    secrets-path: ""

@@ -1,0 +1,20 @@
+{
+  "name": "@flurbo/cre-settlement",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "fixtures": "bun scripts/settlement-fixtures.ts",
+    "fixtures:check": "bun scripts/settlement-fixtures.ts --check"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "1.22.0",
+    "viem": "2.56.8",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

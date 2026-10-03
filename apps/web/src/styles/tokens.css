@@ -1,0 +1,97 @@
+/* Flurbo V2 design tokens. Light only by design: forest, ivory and lime are the brand. */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #f5f4ec;
+  --surface: #fbfaf5;
+  --surface-sunken: #ecebe2;
+  --surface-inverse: #14271d;
+
+  /* Ink */
+  --ink: #14271d;
+  --ink-2: #45524a;
+  --ink-3: #5f6a63;
+  --ink-disabled: #8c958e;
+  --on-inverse: #f5f4ec;
+  --on-inverse-2: #babfb6;
+
+  /* Lines */
+  --rule: rgba(20, 39, 29, 0.12);
+  --rule-strong: rgba(20, 39, 29, 0.24);
+  --control-border: #7f8981;
+  --rule-inverse: rgba(245, 244, 236, 0.18);
+
+  /* Accent and semantics */
+  --lime: #d9f76d;
+  --lime-soft: #eef8c9;
+  --danger: #9a3324;
+  --danger-soft: #f6e3de;
+
+  /* Legacy names kept so operator pages keep rendering */
+  --ivory: var(--bg);
+  --ivory-deep: var(--surface-sunken);
+  --forest: var(--ink);
+  --forest-soft: #24382c;
+  --ink-soft: var(--ink-3);
+  --line: var(--rule);
+  --line-light: var(--rule-inverse);
+
+  /* Type */
+  --sans: "Space Grotesk", "Segoe UI", Arial, sans-serif;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --text-display: clamp(40px, 5.2vw, 56px);
+  --text-h1: clamp(28px, 3.2vw, 36px);
+  --text-h2: 24px;
+  --text-h3: 18px;
+  --text-lead: 18px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-label: 13px;
+  --text-overline: 12px;
+  --text-figure: 28px;
+
+  /* Space (4px base) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px; --s-24: 96px;
+
+  /* Layout */
+  --container: 1200px;
+  --gutter: 16px;
+  --w-prose: 68ch;
+  --w-task: 720px;
+  --w-form: 440px;
+  --header-h: 56px;
+
+  /* Shape */
+  --r-chip: 4px;
+  --r-control: 8px;
+  --r-panel: 12px;
+  --shadow-pop: 0 8px 24px rgba(20, 39, 29, 0.12), 0 1px 2px rgba(20, 39, 29, 0.08);
+
+  /* Controls */
+  --control-sm: 32px;
+  --control-md: 44px;
+  --control-lg: 48px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-press: 90ms;
+  --t-fast: 140ms;
+  --t-base: 200ms;
+  --t-enter: 240ms;
+
+  /* Layers */
+  --z-header: 30;
+  --z-popover: 40;
+  --z-toast: 50;
+  --z-loader: 60;
+  --z-skip: 70;
+}
+
+@media (min-width: 640px) { :root { --gutter: 24px; } }
+@media (min-width: 1024px) { :root { --gutter: 32px; --header-h: 64px; } }
+@media (min-width: 1280px) { :root { --gutter: 40px; } }

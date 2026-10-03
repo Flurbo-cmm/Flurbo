@@ -1,0 +1,2067 @@
+{
+  "schema": "flurbo.protocol-fixture.strategy.v1",
+  "strategy": "joint-edge",
+  "version": "1.0.0",
+  "cases": [
+    {
+      "name": "related events: the joint combination has the edge",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quoteAtoms": "270000",
+        "worstCostAtoms": "271350",
+        "expectedPayoutAtoms": "850000",
+        "edgeAtoms": "578650",
+        "edgeBps": 21324,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "eligible",
+            "edgeAtoms": "578650"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "eligible",
+            "edgeAtoms": "176150"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "independent forecast near the market: abstain",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "250000",
+          "250000",
+          "250000",
+          "250000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "edge_below_threshold"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-21350"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-21350"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-21350"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-21350"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-23850"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "negative relationship: exactly one pays",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "450000",
+          "450000",
+          "50000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 3,
+          "mask": "6"
+        },
+        "quoteAtoms": "520000",
+        "worstCostAtoms": "522600",
+        "expectedPayoutAtoms": "900000",
+        "edgeAtoms": "377400",
+        "edgeBps": 7221,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-22600"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "178650"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "eligible",
+            "edgeAtoms": "178650"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "eligible",
+            "edgeAtoms": "176150"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "eligible",
+            "edgeAtoms": "377400"
+          }
+        ]
+      }
+    },
+    {
+      "name": "three-event pool, forecast over events 0 and 2",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 3,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          2
+        ],
+        "statesPpm": [
+          "100000",
+          "100000",
+          "100000",
+          "700000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 4,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 4,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 5,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 5,
+          "mask": "8"
+        },
+        "quoteAtoms": "270000",
+        "worstCostAtoms": "271350",
+        "expectedPayoutAtoms": "700000",
+        "edgeAtoms": "428650",
+        "edgeBps": 15796,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "277400"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-322600"
+          },
+          {
+            "scope": 4,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "277400"
+          },
+          {
+            "scope": 4,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-322600"
+          },
+          {
+            "scope": 5,
+            "mask": "8",
+            "status": "eligible",
+            "edgeAtoms": "428650"
+          },
+          {
+            "scope": 5,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-171350"
+          },
+          {
+            "scope": 5,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-171350"
+          },
+          {
+            "scope": 5,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-171350"
+          },
+          {
+            "scope": 5,
+            "mask": "14",
+            "status": "eligible",
+            "edgeAtoms": "126150"
+          },
+          {
+            "scope": 5,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-322600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without singles",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": false
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quoteAtoms": "270000",
+        "worstCostAtoms": "271350",
+        "expectedPayoutAtoms": "850000",
+        "edgeAtoms": "578650",
+        "edgeBps": 21324,
+        "evaluations": [
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "eligible",
+            "edgeAtoms": "578650"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "eligible",
+            "edgeAtoms": "176150"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "budget below every worst case",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "100000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "budget_exceeded"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "budget_exceeded",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "budget_exceeded",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "budget_exceeded",
+            "edgeAtoms": "578650"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-221350"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "budget_exceeded",
+            "edgeAtoms": "176150"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "budget_exceeded",
+            "edgeAtoms": "-422600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "quotes expired",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000060,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "quote_expired"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "quote_expired",
+            "edgeAtoms": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "quotes unavailable",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": null,
+          "expiresAt": null
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "quote_unavailable"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "some quotes unavailable",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": null,
+          "expiresAt": null
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": null,
+          "expiresAt": null
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 1,
+          "mask": "2"
+        },
+        "quoteAtoms": "520000",
+        "worstCostAtoms": "522600",
+        "expectedPayoutAtoms": "900000",
+        "edgeAtoms": "377400",
+        "edgeBps": 7221,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "377400"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-422600"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "quote_unavailable",
+            "edgeAtoms": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "not enough fresh evidence",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 0
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "insufficient_evidence"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": []
+      }
+    },
+    {
+      "name": "market closed",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": false,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 500,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "270000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "770000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "520000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "abstain",
+        "reasons": [
+          "market_closed"
+        ],
+        "claim": null,
+        "quoteAtoms": null,
+        "worstCostAtoms": null,
+        "expectedPayoutAtoms": null,
+        "edgeAtoms": null,
+        "edgeBps": null,
+        "evaluations": []
+      }
+    },
+    {
+      "name": "equal edges: the lower claim key wins",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "500000",
+          "0",
+          "0",
+          "500000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "1000000",
+        "slippageBps": 50,
+        "minEdgeBps": 0,
+        "minEdgeAtoms": "0",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "100000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 1,
+          "mask": "1"
+        },
+        "quoteAtoms": "100000",
+        "worstCostAtoms": "100500",
+        "expectedPayoutAtoms": "500000",
+        "edgeAtoms": "399500",
+        "edgeBps": 39751,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-100500"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-100500"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "eligible",
+            "edgeAtoms": "399500"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-100500"
+          }
+        ]
+      }
+    },
+    {
+      "name": "high thresholds",
+      "market": {
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "eventCount": 2,
+        "open": true,
+        "resolved": false,
+        "closesAt": 1790600000,
+        "snapshotBlockHash": "0x7070707070707070707070707070707070707070707070707070707070707070"
+      },
+      "forecast": {
+        "events": [
+          0,
+          1
+        ],
+        "statesPpm": [
+          "50000",
+          "50000",
+          "50000",
+          "850000"
+        ],
+        "freshEvidence": 1
+      },
+      "config": {
+        "quantityAtoms": "2000000",
+        "slippageBps": 100,
+        "minEdgeBps": 9000,
+        "minEdgeAtoms": "10000",
+        "maxCostAtoms": "2000000",
+        "minEvidence": 1,
+        "maxEvidenceAgeDays": 14,
+        "includeSingles": true
+      },
+      "now": 1790000010,
+      "candidates": [
+        {
+          "scope": 1,
+          "mask": "2",
+          "amountAtoms": "1040000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 1,
+          "mask": "1",
+          "amountAtoms": "1040000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "2",
+          "amountAtoms": "1040000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 2,
+          "mask": "1",
+          "amountAtoms": "1040000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "8",
+          "amountAtoms": "540000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "2",
+          "amountAtoms": "540000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "4",
+          "amountAtoms": "540000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "1",
+          "amountAtoms": "540000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "14",
+          "amountAtoms": "1540000",
+          "expiresAt": 1790000060
+        },
+        {
+          "scope": 3,
+          "mask": "6",
+          "amountAtoms": "1040000",
+          "expiresAt": 1790000060
+        }
+      ],
+      "expect": {
+        "outcome": "propose",
+        "reasons": [],
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quoteAtoms": "540000",
+        "worstCostAtoms": "545400",
+        "expectedPayoutAtoms": "1700000",
+        "edgeAtoms": "1154600",
+        "edgeBps": 21169,
+        "evaluations": [
+          {
+            "scope": 1,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "749600"
+          },
+          {
+            "scope": 1,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-850400"
+          },
+          {
+            "scope": 2,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "749600"
+          },
+          {
+            "scope": 2,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-850400"
+          },
+          {
+            "scope": 3,
+            "mask": "8",
+            "status": "eligible",
+            "edgeAtoms": "1154600"
+          },
+          {
+            "scope": 3,
+            "mask": "2",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-445400"
+          },
+          {
+            "scope": 3,
+            "mask": "4",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-445400"
+          },
+          {
+            "scope": 3,
+            "mask": "1",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-445400"
+          },
+          {
+            "scope": 3,
+            "mask": "14",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "344600"
+          },
+          {
+            "scope": 3,
+            "mask": "6",
+            "status": "edge_below_threshold",
+            "edgeAtoms": "-850400"
+          }
+        ]
+      }
+    }
+  ]
+}

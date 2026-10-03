@@ -1,0 +1,12 @@
+.evidence-review { overflow-wrap: anywhere; }
+.evidence-review .portfolio-wallet { display: block; margin-bottom: 24px; }
+.evidence-review .portfolio-wallet > * + * { margin-top: 16px; }
+.evidence-review label { display: block; }
+.evidence-review select {
+  display: block; width: 100%; max-width: 100%; margin-top: 8px;
+  padding: 12px; font: inherit; color: inherit; background: transparent;
+  border: 1px solid #cdd1c5; border-radius: 10px;
+}
+.evidence-review .evidence-ai-toggle { display: flex; align-items: center; gap: 10px; }
+.evidence-review .evidence-ai-toggle input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: #172f22; }
+.evidence-review pre { max-width: 100%; }

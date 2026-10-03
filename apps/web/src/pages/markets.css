@@ -1,0 +1,63 @@
+/* Markets: an information terminal a first-time visitor can still read. */
+.markets-page { display: grid; gap: var(--s-4); align-content: start; }
+.markets-page .page-header { margin-bottom: var(--s-2); }
+.market-heading { display: grid; gap: var(--s-2); margin-bottom: var(--s-4); }
+
+.market-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.market-search { position: relative; flex: 1 1 280px; max-width: 380px; }
+.market-search svg { position: absolute; left: 12px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; }
+.market-search input { padding-left: 38px !important; }
+.directory-filters, .directory-sort { flex: 0 0 auto; }
+@media (max-width: 767px) { .directory-filters, .directory-sort { width: 100%; display: grid; } }
+
+.directory-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2) var(--s-4); padding-top: var(--s-2); color: var(--ink-3); font-size: 14px; }
+.market-quote-note { max-width: 80ch; color: var(--ink-2); font-size: 14px; }
+.market-error { justify-self: start; }
+
+.market-list { display: grid; border-top: 1px solid var(--rule-strong); }
+.market-list-head, .market-card { display: grid; grid-template-columns: minmax(0, 1fr) 132px 150px 104px 104px; gap: var(--s-4); align-items: center; }
+.market-list-head { padding: 10px 0; border-bottom: 1px solid var(--rule); color: var(--ink-3); font-size: var(--text-overline); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.market-list-head .num { text-align: center; }
+.market-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--s-4); padding: var(--s-5) 0 var(--s-2); border-bottom: 1px solid var(--rule); color: var(--ink-3); font-size: 13px; }
+.market-group-head strong { color: var(--ink); font-size: 14px; }
+.market-card { min-height: 72px; padding: var(--s-3) 0; border-bottom: 1px solid var(--rule); transition: background-color var(--t-fast) var(--ease-out); }
+.market-card:hover { background: linear-gradient(90deg, transparent, rgba(20, 39, 29, 0.025) 12%, rgba(20, 39, 29, 0.025) 88%, transparent); }
+.market-question { min-width: 0; display: grid; gap: 2px; }
+.market-card h2 { font-size: 16px; font-weight: 600; line-height: 1.35; letter-spacing: -0.005em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.market-card h2 a { border-radius: 2px; }
+.market-card h2 a:hover { text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+.directory-context { color: var(--ink-3); font-size: 13px; }
+.directory-deadline { display: grid; gap: 1px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.directory-deadline small { color: var(--ink-3); font-size: 12px; }
+.market-choices { display: contents; }
+.market-choices a {
+  display: grid; justify-items: center; align-content: center; gap: 0; min-height: 44px; padding: 4px var(--s-2);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface);
+  transition: border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+.market-choices a:hover { border-color: var(--ink); }
+.market-choices a span { color: var(--ink-3); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.market-choices a strong { font-size: 15px; font-weight: 600; }
+.market-choices .choice-yes span::before { content: ""; }
+.directory-result { grid-column: 4 / span 2; color: var(--ink-3); font-size: 13px; }
+.market-pending { display: grid; gap: var(--s-2); max-width: 280px; padding-top: var(--s-2); }
+.market-foot { padding-top: var(--s-6); }
+
+.market-list-skeleton { border-top: 1px solid var(--rule-strong); }
+.market-row-skeleton { display: grid; grid-template-columns: minmax(0, 1fr) 150px 104px 104px; gap: var(--s-4); align-items: center; min-height: 72px; border-bottom: 1px solid var(--rule); }
+
+@media (max-width: 1023px) {
+  .market-list-head { display: none; }
+  .market-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-2) var(--s-3); padding: var(--s-4) 0; }
+  .market-question { grid-column: 1 / -1; }
+  .market-status { grid-column: 1; }
+  .directory-deadline { grid-column: 2; justify-self: end; text-align: right; }
+  .market-choices a { grid-template-columns: auto auto; justify-content: space-between; justify-items: start; padding: 0 var(--s-3); }
+  .directory-result { grid-column: 1 / -1; }
+  .market-row-skeleton { grid-template-columns: 1fr 1fr; }
+  .market-row-skeleton > :first-child { grid-column: 1 / -1; }
+}
+
+/* Shared with operator pages that still use these names. */
+.market-badge { font-size: 12px; }
+.ticket-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" role="img" aria-labelledby="title desc">
+  <title id="title">Flurbo</title>
+  <desc id="desc">Flurbo Copula Contour logo in forest green on a transparent background.</desc>
+  <g transform="translate(18 18) scale(1.9)" fill="none" stroke="#14271d" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="4.5" d="M11 19C18 7 39 5 51 14c10 8 7 29-4 38-11 10-31 4-39-9-6-10-3-18 3-24Z"/>
+    <path stroke-width="4.5" d="M20 19c8-6 22-4 27 5 5 9-2 20-12 23-10 3-20-3-21-13-1-6 1-11 6-15Z"/>
+    <path stroke-width="5.5" d="M27 27c6-4 14 0 14 7-1 6-9 9-14 5-5-4-5-9 0-12Z"/>
+  </g>
+  <circle cx="98" cy="146" r="4" fill="#d9f76d"/>
+  <text x="170" y="111" fill="#14271d" font-family="Space Grotesk, Arial, sans-serif" font-size="102" font-weight="560" letter-spacing="-6.2">flurbo</text>
+</svg>

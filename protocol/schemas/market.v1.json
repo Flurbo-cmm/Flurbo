@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flurbo.singu.online/protocol/schemas/market.v1.json",
+  "title": "flurbo.agent-market.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "namespace",
+    "deployment",
+    "title",
+    "closesAt",
+    "open",
+    "resolved",
+    "resolution",
+    "snapshot",
+    "events",
+    "oneShareBuyAtoms"
+  ],
+  "properties": {
+    "schema": {
+      "const": "flurbo.agent-market.v1"
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "deployment": {
+      "$ref": "deployment.v1.json"
+    },
+    "title": {
+      "type": "string"
+    },
+    "closesAt": {
+      "type": "integer"
+    },
+    "open": {
+      "type": "boolean"
+    },
+    "resolved": {
+      "type": "boolean"
+    },
+    "resolution": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "yesMask",
+            "voidMask"
+          ],
+          "properties": {
+            "yesMask": {
+              "type": "integer"
+            },
+            "voidMask": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "required": [
+        "blockNumber",
+        "blockHash",
+        "timestamp"
+      ],
+      "properties": {
+        "blockNumber": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,77})$"
+        },
+        "blockHash": {
+          "type": "string",
+          "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "timestamp": {
+          "type": "integer"
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "id",
+          "question",
+          "yesRule",
+          "noRule",
+          "observationEndsAt",
+          "source"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "yesRule": {
+            "type": "string"
+          },
+          "noRule": {
+            "type": "string"
+          },
+          "observationStartsAt": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "observationEndsAt": {
+            "type": "integer"
+          },
+          "source": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "publisher": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "referenceUrl": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "settlement": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The exact sources settlement reads for this question. Null for practice questions or when no machine-checked source is committed.",
+            "properties": {
+              "method": {
+                "type": "string"
+              },
+              "request": {
+                "enum": [
+                  "GET",
+                  "JSON-RPC"
+                ]
+              },
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "oneShareBuyAtoms": {
+      "type": "array",
+      "description": "One-share buy costs at the snapshot. A finite purchase cost, not a probability. Null when closed.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "integer"
+          },
+          "yes": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,77})$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,77})$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

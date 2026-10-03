@@ -1,0 +1,13 @@
+import { parseAbiParameters, type Hex } from 'viem';
+export const DETERMINISTIC_MODE: 'deterministic-source-v1';
+export const PILOT_CASH: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc';
+export const eventDraftAbi: ReturnType<typeof parseAbiParameters<'string domain, uint256 chainId, string clusterId, string title, uint64 closesAt, (string id, string question, string yesRule, string noRule, uint64 observationStartsAt, uint64 observationEndsAt, (string publisher, string referenceUrl, string recordId, string selectionRule, string finalityRule, string revisionRule) source)[] events, bool hasExceptionPolicy, string exceptionPolicy, string disputeModel, bool hasDisputePolicy, string disputePolicy'>>;
+export const resolverConfigAbi: ReturnType<typeof parseAbiParameters<'(address collateral, bytes32 draftHash, uint64 closesAt, bytes32[] eventHashes, uint64[] observationEnds, address[] reviewers, uint128 bond, uint32 assertionPeriod, uint32 challengePeriod, uint32 votingPeriod) config'>>;
+export function settlementEvent(rule: unknown): any;
+export const SNAPSHOT_SETTLE_SECONDS: number;
+export function assertSettlementRuleAuthoring(rule: unknown): any;
+export function encodeEventDraft(draft: any): Hex;
+export function validateSettlementPublication(publication: unknown): any[];
+export function settlementBindings(publication: unknown): {draftHash: Hex; eventHashes: Hex[]; config: any; resolverConfig: Hex; configHash: Hex};
+export function pilotRulesHash(config: any, resolver: string, creator: string, policy?: {version: 'account-holders-v1'; authority: string}): Hex;
+export function validateSettlementManifest(manifest: unknown): any[];

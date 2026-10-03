@@ -1,0 +1,20 @@
+# Example only. Not deployed. Review before any activation.
+# Copy to wrangler.toml, then:
+#   wrangler secret put FLURBO_ALARM_GITHUB_TOKEN
+#   wrangler secret put FLURBO_ALARM_HEALTHCHECK_URL   (a dedicated Healthchecks check, period 1 min, grace 15 min)
+# Token: fine-grained, this repository only, Actions read and write (Metadata read is implicit).
+# GitHub cannot limit it to one workflow. It can dispatch, cancel and re-run any workflow in the
+# repository, enable or disable workflows, and delete run logs, artifacts and caches. It cannot read
+# secrets or change code. Use a short expiry and a dedicated token.
+name = "flurbo-settlement-alarm"
+main = "cloudflare-worker.mjs"
+compatibility_date = "2026-09-01"
+
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+# Report-only until this is "true".
+FLURBO_ALARM_DISPATCH = "false"
+# Generate from verified manifests with alarmPoolsFromManifests; must match the worker allowlist.
+FLURBO_ALARM_CONFIG_JSON = '{"repository":"Singularityy0/Flurbo","monitorWorkflow":"settlement-monitor.yml","workerWorkflow":"resolution-worker.yml","signer":"0x632a158d5eccc10f864ab94cec99511e1cc514f3","pools":[]}'

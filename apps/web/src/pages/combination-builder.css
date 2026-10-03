@@ -1,0 +1,48 @@
+/* Claim composer: questions, answers, rule, the outcomes that pay, then the quote. */
+.combination-builder { border: 1px solid var(--rule-strong); border-radius: var(--r-panel); overflow: hidden; background: var(--surface); }
+.combination-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); width: 100%; min-height: 52px; padding: var(--s-3) var(--s-4); text-align: left; font-weight: 600; transition: background-color var(--t-fast); }
+.combination-toggle:hover { background: rgba(20, 39, 29, 0.04); }
+.combination-toggle-meta { color: var(--ink-3); font-size: 13px; font-weight: 500; }
+.combination-body { display: grid; gap: var(--s-4); padding: 0 var(--s-4) var(--s-4); animation: disclose var(--t-base) var(--ease-out); }
+.combination-legs { display: grid; gap: var(--s-2); }
+.combination-leg { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); padding: var(--s-3); border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--bg); transition: border-color var(--t-fast), background-color var(--t-fast); }
+.combination-leg.selected { border-color: var(--ink); background: var(--surface); }
+.combination-leg > label { line-height: 1.45; font-size: 14px; }
+.combination-leg.unavailable { background: var(--surface); }
+.combination-leg.unavailable > label { color: var(--ink-3); cursor: not-allowed; }
+.combination-leg small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 12px; }
+.combination-answer .segmented button { min-height: 32px; padding: 0 var(--s-3); font-size: 13px; }
+.combination-rules { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.combination-rules legend { margin-bottom: var(--s-2); font-size: 14px; font-weight: 600; }
+.combination-rules label { display: flex; align-items: flex-start; gap: var(--s-2); min-height: 72px; padding: var(--s-3); border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--bg); cursor: pointer; transition: border-color var(--t-fast), background-color var(--t-fast); }
+.combination-rules label:hover { border-color: var(--ink-2); }
+.combination-rules label.selected { border-color: var(--ink); background: var(--lime-soft); }
+.combination-rules input { margin-top: 2px; }
+.combination-rules strong { display: block; font-size: 14px; }
+.combination-rules small { display: block; margin-top: 2px; color: var(--ink-2); font-size: 12px; line-height: 1.45; }
+.combination-scenarios > :not(summary) { margin-top: var(--s-2); }
+.combination-scenarios p { color: var(--ink-2); font-size: 13px; }
+.combination-table { overflow-x: auto; }
+.combination-table table { width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.combination-table caption { caption-side: top; text-align: left; padding-bottom: var(--s-2); color: var(--ink-3); font-size: 12px; }
+.combination-table th { min-width: 110px; max-width: 220px; padding: 6px var(--s-3) 6px 0; border-bottom: 1px solid var(--rule-strong); text-align: left; font-size: 12px; font-weight: 600; color: var(--ink-2); white-space: normal; vertical-align: bottom; }
+.combination-table td { padding: 7px var(--s-3) 7px 0; border-bottom: 1px solid var(--rule); }
+.combination-table tr.wins td { background: var(--lime-soft); font-weight: 600; }
+.combination-table tr.wins td:first-child { box-shadow: inset 3px 0 0 var(--ink); padding-left: 8px; }
+.combination-table td:last-child { white-space: nowrap; }
+.combination-table td svg { display: inline; width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; }
+.combination-scenarios ol { color: var(--ink-3); font-size: 12px; padding-left: var(--s-5); }
+.combination-summary { display: grid; gap: var(--s-2); padding: var(--s-4); border-top: 1px solid var(--rule); background: var(--surface-sunken); font-size: 14px; }
+.combination-summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.combination-summary li { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-4); line-height: 1.4; }
+.combination-summary b { flex: 0 0 auto; }
+.claim-comparison { display: grid; gap: var(--s-3); padding-top: var(--s-2); justify-items: start; }
+.claim-comparison-values { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); justify-self: stretch; }
+.claim-comparison-values > div { display: grid; gap: 2px; padding: var(--s-3); border-radius: var(--r-control); background: var(--surface-sunken); }
+.claim-comparison-values span { color: var(--ink-3); font-size: 12px; }
+.claim-comparison-values strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) {
+  .combination-rules { grid-template-columns: 1fr; }
+  .combination-leg { grid-template-columns: 1fr; }
+  .combination-answer { justify-self: start; }
+}

@@ -1,0 +1,10 @@
+import {preparePilot,disputePolicy} from '../src/pilot-config';
+const [prefix,authority]=process.argv.slice(2);
+if(!prefix||!/^[-a-z0-9]+$/.test(prefix)||!/^0x[0-9a-f]{40}$/i.test(authority||'')||process.argv.length!==4)throw Error('Use a reviewed prepared-file prefix and the public dedicated eligibility signer address');
+const root=new URL('../../../',import.meta.url);
+const prior=await Bun.file(new URL(`target/deployments/${prefix}-prepared.json`,root)).json();
+const publication={...prior.publication,challengePolicy:{version:'account-holders-v1' as const,authority:authority.toLowerCase()}};
+publication.draft={...publication.draft,disputePolicy:disputePolicy(publication)};
+const prepared=preparePilot(publication,Math.floor(Date.now()/1000));
+await Bun.write(new URL('target/deployments/account-pilot-prepared.json',root),JSON.stringify(prepared,null,2)+'\n');
+console.log(JSON.stringify({status:'prepared_not_deployed',file:'target/deployments/account-pilot-prepared.json',authority:publication.challengePolicy.authority,closesAt:publication.draft.closesAt,notice:'Review the new holder-only policies before deployment. No transaction sent.'}));

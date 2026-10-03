@@ -1,0 +1,132 @@
+{
+  "schema": "flurbo.pilot-manifest.v1",
+  "status": "verified_pilot_snapshot",
+  "chainId": 10143,
+  "pool": "0xf632cbf09aaa8c22821e38c930695463781c5284",
+  "resolver": "0x3cf04748eecc9a55adada6b700752541fbbf9489",
+  "rulesHash": "0xd99ca21051f01f657089c2e8124b4ff004f2d911791c759a52be7fa4249a6a6c",
+  "draftHash": "0x367dafacda6562ea1e4fc7ee0c4e96676a45e62cc71a06d03120a52f42afb5d3",
+  "publication": {
+    "schema": "flurbo.pilot-publication.v1",
+    "mode": "rehearsal",
+    "creator": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+    "draft": {
+      "schema": "flurbo.event-draft.v1",
+      "status": "draft",
+      "chainId": 10143,
+      "clusterId": "public-rehearsal-1790275849",
+      "title": "Public rehearsal: scripted settlement checks",
+      "closesAt": 1790362249,
+      "events": [
+        {
+          "id": "rehearsal-0",
+          "question": "Will the night market open?",
+          "yesRule": "YES only when the committed scripted fixture specifies YES. This is not a real-world event.",
+          "noRule": "NO only when the committed scripted fixture specifies NO. Missing fixture evidence must not become NO.",
+          "observationStartsAt": 1790362309,
+          "observationEndsAt": 1790362369,
+          "source": {
+            "publisher": "Flurbo test operator",
+            "referenceUrl": "https://flurbo.singu.online/rehearsal-rules",
+            "recordId": "flurbo-rehearsal.v1:0",
+            "selectionRule": "Scripted fixture A is YES. Exercise an unchallenged assertion.",
+            "finalityRule": "Public testnet rehearsal only. Contract assertion, challenge and voting deadlines apply. No external oracle or CRE report authenticates this fixture.",
+            "revisionRule": "These scripted records are immutable. Do not replace a fixture result or apply it to any real-event pool."
+          }
+        },
+        {
+          "id": "rehearsal-1",
+          "question": "Will the concert sell out?",
+          "yesRule": "YES only when the committed scripted fixture specifies YES. This is not a real-world event.",
+          "noRule": "NO only when the committed scripted fixture specifies NO. Missing fixture evidence must not become NO.",
+          "observationStartsAt": 1790362309,
+          "observationEndsAt": 1790362369,
+          "source": {
+            "publisher": "Flurbo test operator",
+            "referenceUrl": "https://flurbo.singu.online/rehearsal-rules",
+            "recordId": "flurbo-rehearsal.v1:1",
+            "selectionRule": "Scripted fixture B is NO. Intentionally assert YES, challenge with NO, then have two reviewers vote NO.",
+            "finalityRule": "Public testnet rehearsal only. Contract assertion, challenge and voting deadlines apply. No external oracle or CRE report authenticates this fixture.",
+            "revisionRule": "These scripted records are immutable. Do not replace a fixture result or apply it to any real-event pool."
+          }
+        },
+        {
+          "id": "rehearsal-2",
+          "question": "Will it rain on Saturday?",
+          "yesRule": "YES only when the committed scripted fixture specifies YES. This is not a real-world event.",
+          "noRule": "NO only when the committed scripted fixture specifies NO. Missing fixture evidence must not become NO.",
+          "observationStartsAt": 1790362309,
+          "observationEndsAt": 1790362369,
+          "source": {
+            "publisher": "Flurbo test operator",
+            "referenceUrl": "https://flurbo.singu.online/rehearsal-rules",
+            "recordId": "flurbo-rehearsal.v1:2",
+            "selectionRule": "Scripted fixture C has no result. Submit no assertion; finalize VOID after the assertion deadline.",
+            "finalityRule": "Public testnet rehearsal only. Contract assertion, challenge and voting deadlines apply. No external oracle or CRE report authenticates this fixture.",
+            "revisionRule": "These scripted records are immutable. Do not replace a fixture result or apply it to any real-event pool."
+          }
+        },
+        {
+          "id": "rehearsal-3",
+          "question": "Will the new cafe open?",
+          "yesRule": "YES only when the committed scripted fixture specifies YES. This is not a real-world event.",
+          "noRule": "NO only when the committed scripted fixture specifies NO. Missing fixture evidence must not become NO.",
+          "observationStartsAt": 1790362309,
+          "observationEndsAt": 1790362369,
+          "source": {
+            "publisher": "Flurbo test operator",
+            "referenceUrl": "https://flurbo.singu.online/rehearsal-rules",
+            "recordId": "flurbo-rehearsal.v1:3",
+            "selectionRule": "Scripted fixture D is YES. Exercise an unchallenged assertion.",
+            "finalityRule": "Public testnet rehearsal only. Contract assertion, challenge and voting deadlines apply. No external oracle or CRE report authenticates this fixture.",
+            "revisionRule": "These scripted records are immutable. Do not replace a fixture result or apply it to any real-event pool."
+          }
+        }
+      ],
+      "exceptionPolicy": "Valid event outcomes stay fixed. Each void event receives equal YES and NO weight, independently of other void events. Each claim pays its average truth-table payout across compatible states, rounded down to test AUSD atoms on each redemption. This is not a refund of purchase cost. Missing evidence, unresolved ambiguity and reviewer nonresponse produce VOID under the fixed deadlines. No creator override or reviewer replacement is permitted.",
+      "disputeModel": "reviewer-panel",
+      "disputePolicy": "Operator-run testnet alpha. All reviewer wallets are controlled by the creator (0xf1fea08ebba92ed342acc5639db312c3694bc391). These wallets are not independent reviewers. The operator can determine disputed outcomes through the voting quorum. Named testnet reviewer panel: Operator test reviewer 1 (0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201), Operator test reviewer 2 (0x41c28b86170b5ec7b261d954e0185fca348b19a4), Operator test reviewer 3 (0x555d165001f60103c9429dbb15bf764caa8ae538). Quorum 2 of 3 matching votes. One test AUSD has 1000000 atoms. Assertion and dispute bond: 1000000 atoms each. Assertion window: 3600 seconds after observation end. Challenge window: 3600 seconds after assertion. Vote window: 3600 seconds after dispute. Reviewers cannot assert or dispute from their registered addresses. One vote per reviewer per event. Unchallenged assertions return their bond. A panel decision matching a party pays both bonds to that party. Third outcomes and voting timeouts return each party's own bond. Missing assertions and voting timeouts finalize VOID. Anyone may finalize elapsed deadlines and deliver all final results. Test bonds provide no economic security; panel members are explicitly trusted."
+    },
+    "reviewers": [
+      {
+        "name": "Operator test reviewer 1",
+        "address": "0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201"
+      },
+      {
+        "name": "Operator test reviewer 2",
+        "address": "0x41c28b86170b5ec7b261d954e0185fca348b19a4"
+      },
+      {
+        "name": "Operator test reviewer 3",
+        "address": "0x555d165001f60103c9429dbb15bf764caa8ae538"
+      }
+    ],
+    "reviewerControl": "single-operator",
+    "independentReviewersConfirmed": false,
+    "rulesReviewed": true,
+    "bondAtoms": "1000000",
+    "assertionPeriod": 3600,
+    "challengePeriod": 3600,
+    "votingPeriod": 3600
+  },
+  "configHash": "0x48d9e798f680d66fd4de7715f6309f8ca937c709e6dde40f1abafd67de995def",
+  "verifiedBlock": "65369593",
+  "verifiedBlockHash": "0x3daa88ea1461870338228e7c7ec26327bbe9019a0c46d4f6538581247bcc70c4",
+  "verifiedTimestamp": 1790275973,
+  "codeHashes": {
+    "0xf632cbf09aaa8c22821e38c930695463781c5284": "0x37a1bf01e969e2b05c27d27dbb418e80ccce060da3f1e804f32fa9afaec5d7dc",
+    "0x3cf04748eecc9a55adada6b700752541fbbf9489": "0xea339cced43153c816b9e95ac9004af4bc3110e9364c3b6f013da041ef7cb255",
+    "0x2c9760d77cf63c541fb6202e3a6fd866d3ac94f0": "0x1c745983843d2cad54683709f89172094076beb19d9608f7f627a8c1fcf6e838",
+    "0x80f0eeb0fc549d48f19bb0157497b3f573740351": "0x0e2f6d672773ecc28a83ee9a5b483555d5d216edf425833878e20ced31a76673",
+    "0x3f87ba811c436c29164e066e4cf19f6a9a5a9405": "0x3a8cc5470ee2702670392b4c3d12c67255f324e9fb50d566cb2d5a9fb692a241",
+    "0x3f94b2a409b9ee339fe9e4fda60f03deb54809a7": "0x9331fb44aa7a4e8fbfd01553c4f6ad91e10e7ee2bffbcce895e0defe3fe89ef4",
+    "0xdb3d6f718244b08b46c22080531e40093dab89b1": "0x69feff1ff7607b886c41e91e37d99dd38c6a3fdb058918a48d0121f0b4210513"
+  },
+  "receipts": [
+    "0x80f0eeb0fc549d48f19bb0157497b3f573740351",
+    "0x3f87ba811c436c29164e066e4cf19f6a9a5a9405",
+    "0x3f94b2a409b9ee339fe9e4fda60f03deb54809a7",
+    "0xdb3d6f718244b08b46c22080531e40093dab89b1"
+  ],
+  "notice": "Compiled code and reviewed configuration verified at one snapshot. Named panel trust, test assets only. Kuru pairs and authenticated CRE delivery are not established by this manifest."
+}

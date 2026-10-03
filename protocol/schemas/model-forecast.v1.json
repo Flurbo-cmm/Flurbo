@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flurbo.singu.online/protocol/schemas/model-forecast.v1.json",
+  "title": "flurbo.agent-model-forecast.v1",
+  "description": "Model output. See specs/research.md for the validation order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "abstain"
+  ],
+  "properties": {
+    "schema": {
+      "const": "flurbo.agent-model-forecast.v1"
+    },
+    "abstain": {
+      "type": "boolean"
+    },
+    "abstainReason": {
+      "enum": [
+        null,
+        "insufficient_evidence",
+        "contradictory_evidence",
+        "stale_evidence",
+        "ambiguous_rules",
+        "other"
+      ]
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "statesPpm": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 1000000
+      }
+    },
+    "evidenceIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 300
+      }
+    },
+    "uncertainty": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 600
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 1200
+    }
+  }
+}

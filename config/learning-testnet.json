@@ -1,0 +1,50 @@
+{
+  "deployment_kind": "synthetic_funded_learning_v1",
+  "chain_id": 10143,
+  "rules": "Flurbo synthetic learning v1: eight binary test fixtures; event i is bit i; immutable deployer resolves once after close; no cancellation; no real-world outcome source; authorized funded bias updates change prices, not payouts.",
+  "rules_hash": "0x89ccd66da707a465b629659659ed31c9e084f3a87e295bcbfa3033039dccc362",
+  "closes_at": 1790854577,
+  "event_count": 8,
+  "liquidity_atoms": 10000000,
+  "initial_funding_atoms": 55451775,
+  "max_bias_movement_atoms": 2000000,
+  "epoch_funding_limit_atoms": 10000000,
+  "epoch_seconds": 3600,
+  "min_update_interval_seconds": 60,
+  "operator": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+  "resolver": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+  "updater": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+  "pool": "0x094ed5f95188c222a61c27cae24b068120a52dd4",
+  "pricing_engine": "0xf17c7be61229073fd105fd792b619c27c744648c",
+  "base_token_factory": "0x7167796fb56fe3c188fc47356811a1df0631ec26",
+  "cash": "0xa9012a055bd4e0edff8ce09f960291c09d5322dc",
+  "status": "verified_learning_snapshot",
+  "manifest_version": 1,
+  "environment": "public_testnet",
+  "verified_block": 65285695,
+  "verified_block_hash": "0xccf7996932aabb18b2dced14917661e161d92ea513854c89ee6cd166e1649777",
+  "verified_timestamp": 1790249880,
+  "runtime_evidence": {
+    "pool": {
+      "runtime_sha256": "af9f4b324e6ed56d556ce81f328d10bfb9f8070061b7f826cecff2daf89138dc",
+      "normalized_runtime_sha256": "a065a0fc66d52b00a8a1dc64190a890f18af7714650b11e3cc4c9d7ac02854c7",
+      "immutable_groups_checked": 15
+    },
+    "pricing_engine": {
+      "runtime_sha256": "a4425462804ee8bc4309d8c8cce97bb01e14ba937ec7b377a972ba76e822a6cc",
+      "normalized_runtime_sha256": "a4425462804ee8bc4309d8c8cce97bb01e14ba937ec7b377a972ba76e822a6cc",
+      "immutable_groups_checked": 0
+    },
+    "base_token_factory": {
+      "runtime_sha256": "746af089b7a63373edf73bfa8e3d0d277b097eb82e7b9714f63d3b90f4f2d418",
+      "normalized_runtime_sha256": "746af089b7a63373edf73bfa8e3d0d277b097eb82e7b9714f63d3b90f4f2d418",
+      "immutable_groups_checked": 0
+    }
+  },
+  "cash_proxy_sha256": "afd51ba8e6000688ef64b1ad2e4163560c422d12a1a0a788464a59e99f2454bd",
+  "balances": {
+    "pool_collateral_atoms": 55451775,
+    "operator_collateral_atoms": 9861735773
+  },
+  "verification_scope": "Fresh deployment acceptance at one block; compiled runtime and all immutable getters checked. Not an audit, explorer verification or future readiness guarantee."
+}

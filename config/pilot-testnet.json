@@ -1,0 +1,95 @@
+{
+  "schema": "flurbo.pilot-manifest.v1",
+  "status": "verified_pilot_snapshot",
+  "chainId": 10143,
+  "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+  "resolver": "0xe72386686b03d7e04554505ea0ef00ffa04ec73e",
+  "rulesHash": "0xb21a23727e0b268ff99369c371a2abc1d633ae65035615d9b2ca72852342a156",
+  "draftHash": "0x29af401ef70736c4e56f6eee478448aff7ce1477b50671838574f9a9254fa250",
+  "publication": {
+    "schema": "flurbo.pilot-publication.v1",
+    "creator": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+    "draft": {
+      "schema": "flurbo.event-draft.v1",
+      "status": "draft",
+      "chainId": 10143,
+      "clusterId": "ethereum-client-releases-alpha-1",
+      "title": "Ethereum client releases: October 2026",
+      "closesAt": 1790726400,
+      "events": [
+        {
+          "id": "geth-1-17-7",
+          "question": "Will ethereum/go-ethereum publish stable release v1.17.7 during the specified observation window?",
+          "yesRule": "YES requires the exact tagged release to be public, not a draft or prerelease, with published_at in [observationStartsAt, observationEndsAt).",
+          "noRule": "NO requires reviewed evidence that no qualifying publication occurred throughout the full window. A missing API response is not proof of NO.",
+          "observationStartsAt": 1790726460,
+          "observationEndsAt": 1791331260,
+          "source": {
+            "publisher": "ethereum",
+            "referenceUrl": "https://github.com/ethereum/go-ethereum/releases",
+            "recordId": "ethereum/go-ethereum@v1.17.7",
+            "selectionRule": "github-stable-release-publication.v1: match exact repository, tag, release ID and canonical API/HTML URLs.",
+            "finalityRule": "A retrieved release is candidate evidence only. Finalization requires the selected dispute oracle and completed challenge process.",
+            "revisionRule": "Release edits, deletion or conflicting snapshots require review under the committed exception policy; never silently replace previously recorded evidence."
+          }
+        },
+        {
+          "id": "reth-2-6-1",
+          "question": "Will paradigmxyz/reth publish stable release v2.6.1 during the specified observation window?",
+          "yesRule": "YES requires the exact tagged release to be public, not a draft or prerelease, with published_at in [observationStartsAt, observationEndsAt).",
+          "noRule": "NO requires reviewed evidence that no qualifying publication occurred throughout the full window. A missing API response is not proof of NO.",
+          "observationStartsAt": 1790726460,
+          "observationEndsAt": 1791331260,
+          "source": {
+            "publisher": "paradigmxyz",
+            "referenceUrl": "https://github.com/paradigmxyz/reth/releases",
+            "recordId": "paradigmxyz/reth@v2.6.1",
+            "selectionRule": "github-stable-release-publication.v1: match exact repository, tag, release ID and canonical API/HTML URLs.",
+            "finalityRule": "A retrieved release is candidate evidence only. Finalization requires the selected dispute oracle and completed challenge process.",
+            "revisionRule": "Release edits, deletion or conflicting snapshots require review under the committed exception policy; never silently replace previously recorded evidence."
+          }
+        }
+      ],
+      "exceptionPolicy": "Valid event outcomes stay fixed. Each void event receives equal YES and NO weight, independently of other void events. Each claim pays its average truth-table payout across compatible states, rounded down to test AUSD atoms on each redemption. This is not a refund of purchase cost. Missing evidence, unresolved ambiguity and reviewer nonresponse produce VOID under the fixed deadlines. No creator override or reviewer replacement is permitted.",
+      "disputeModel": "reviewer-panel",
+      "disputePolicy": "Operator-run testnet alpha. All reviewer wallets are controlled by the creator (0xf1fea08ebba92ed342acc5639db312c3694bc391). These wallets are not independent reviewers. The operator can determine disputed outcomes through the voting quorum. Named testnet reviewer panel: Operator test reviewer 1 (0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201), Operator test reviewer 2 (0x41c28b86170b5ec7b261d954e0185fca348b19a4), Operator test reviewer 3 (0x555d165001f60103c9429dbb15bf764caa8ae538). Quorum 2 of 3 matching votes. One test AUSD has 1000000 atoms. Assertion and dispute bond: 1000000 atoms each. Assertion window: 86400 seconds after observation end. Challenge window: 86400 seconds after assertion. Vote window: 86400 seconds after dispute. Reviewers cannot assert or dispute from their registered addresses. One vote per reviewer per event. Unchallenged assertions return their bond. A panel decision matching a party pays both bonds to that party. Third outcomes and voting timeouts return each party's own bond. Missing assertions and voting timeouts finalize VOID. Anyone may finalize elapsed deadlines and deliver all final results. Test bonds provide no economic security; panel members are explicitly trusted."
+    },
+    "reviewers": [
+      {
+        "name": "Operator test reviewer 1",
+        "address": "0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201"
+      },
+      {
+        "name": "Operator test reviewer 2",
+        "address": "0x41c28b86170b5ec7b261d954e0185fca348b19a4"
+      },
+      {
+        "name": "Operator test reviewer 3",
+        "address": "0x555d165001f60103c9429dbb15bf764caa8ae538"
+      }
+    ],
+    "reviewerControl": "single-operator",
+    "independentReviewersConfirmed": false,
+    "rulesReviewed": true,
+    "bondAtoms": "1000000",
+    "assertionPeriod": 86400,
+    "challengePeriod": 86400,
+    "votingPeriod": 86400
+  },
+  "configHash": "0x5b2db8b62a1c98d28d6839862869854591893ef97d7cec90c4f86b73aea38f30",
+  "verifiedBlock": "65353564",
+  "verifiedBlockHash": "0x606c80565eb96955ca01df821354444cc5d01585d0250ee9c5d52e4902e561f9",
+  "verifiedTimestamp": 1790270984,
+  "codeHashes": {
+    "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02": "0x23bf6bc4d84500855afcc3c3a81b9afae2987a83f11c75a1c127834b506bde26",
+    "0xe72386686b03d7e04554505ea0ef00ffa04ec73e": "0xef2211046424a350ed22d8613edf80d1424cb6728d702a9e4529b2b0a1d6afe0",
+    "0xa751643d450962b8af7d411e0c2aea2105596162": "0x1c745983843d2cad54683709f89172094076beb19d9608f7f627a8c1fcf6e838",
+    "0x4453aa8dffd8689ede6305353cb8a0589ffc2168": "0x583f1f692ff20202412f1872a19c2aa2615e4bdc1bc17778d5aa314154c78b6c",
+    "0x998a1d813f3ff39b69bb8cbf73bab53cb46da8dd": "0xf36812366c3a11155a6f5cdb534f7d2d185b61c16c1f0d234ad0cc89169122aa"
+  },
+  "receipts": [
+    "0x4453aa8dffd8689ede6305353cb8a0589ffc2168",
+    "0x998a1d813f3ff39b69bb8cbf73bab53cb46da8dd"
+  ],
+  "notice": "Compiled code and reviewed configuration verified at one snapshot. Named panel trust, test assets only. Kuru pairs and authenticated CRE delivery are not established by this manifest."
+}

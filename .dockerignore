@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/dist
+target
+tmp
+resources
+.superdesign
+**/.env*
+**/*.local
+**/__pycache__
+**/.venv
+packages/sdk-rust/target
+packages/sdk-cpp/build

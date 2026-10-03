@@ -1,0 +1,79 @@
+/* Consumer layout: one clear action, compact working pages, readable details. */
+[hidden]{display:none!important}
+.nav-loading{font-size:13px;color:var(--ink-soft);min-width:150px}
+.markets-page .market-heading{margin:28px 0 26px}
+.markets-page .market-heading h1,.markets-page .agents-profile h1,.access-page header h1{font-size:clamp(34px,4vw,48px);line-height:1.15;letter-spacing:-.045em}
+.markets-page .market-heading p{max-width:680px;font-size:16px}
+.market-detail .detail-heading{margin:28px 0}
+.market-detail .detail-heading h1{font-size:clamp(28px,3vw,42px);max-width:800px;line-height:1.2}
+.market-detail .detail-panel{padding:24px}
+.market-detail .market-caption,.agents-page .agents-fine,.portfolio-view .portfolio-footnote{font-size:13px;line-height:1.65;color:#526157}
+.market-card h2{font-size:22px}
+.market-card .directory-context{margin-bottom:12px}
+.directory-empty .button{margin-top:20px}
+.consumer-ticket .ticket-wallet{padding:12px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;margin:12px 0 20px}
+.consumer-ticket .pilot-fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.consumer-ticket .ticket-review{padding:20px;background:#edf1e4;border-radius:14px;margin-top:22px}
+.consumer-ticket .ticket-outcomes{flex-basis:100%;display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0}
+.ticket-outcomes dd{font-size:15px!important;margin-bottom:0!important}
+.consumer-ticket .pilot-actions .button{width:100%}
+.consumer-ticket .ticket-status{font-size:14px;line-height:1.6}
+.combination-summary{margin-top:16px}
+.combination-table th{min-width:120px;max-width:230px;white-space:normal}
+.evidence-disclosure{padding:14px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.evidence-disclosure dl{font-variant-numeric:tabular-nums}
+.closed-ticket h2{margin-top:20px!important}
+.access-page{max-width:900px;margin:auto;padding:32px 32px 56px;grid-template-columns:minmax(0,1fr);gap:24px;min-height:0}
+.access-page header{margin:12px 0 8px}
+.access-page .access-card{padding:24px}
+.access-page .access-identity{margin:20px 0;padding:16px;gap:8px}
+.access-placeholder{border:1px dashed var(--line);border-radius:12px;padding:18px;margin-top:20px}
+.access-placeholder p{margin:8px 0 0}
+.access-identity code{overflow-wrap:anywhere}
+.onboarding-steps{display:flex;gap:16px;list-style:none;padding:0;margin:0 0 24px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);counter-reset:onboarding}
+.onboarding-steps li:before{counter-increment:onboarding;content:counter(onboarding) '. ';font-weight:600}
+.auth-page .auth-grid{min-height:0;padding-top:30px;align-items:start}
+.auth-page .auth-aside{min-height:0;padding-top:24px}
+.auth-page .auth-aside h1{font-size:clamp(36px,4vw,54px)}
+.auth-page .auth-aside-copy{margin-top:36px}
+.auth-page .auth-aside-mark{display:none}
+.auth-page .auth-panel{padding:28px}
+.auth-page .unavailable-icon{margin-top:24px}
+.funding-ready{padding:12px 16px;border-radius:10px;background:#e7eddb}
+.funding-card .funding-balances{margin:20px 0}
+.portfolio-account-identity{padding:14px 18px!important;margin-bottom:22px!important}
+.portfolio-account-identity p{font-size:13px;overflow-wrap:anywhere}
+.portfolio-summary-grid article{min-height:0!important;padding:20px!important}
+.portfolio-summary-grid strong{font-size:32px!important}
+.portfolio-summary-grid small{font-size:12px!important}
+.portfolio-view .portfolio-tabs{margin-top:26px}
+.portfolio-view .portfolio-history-notice{font-size:13px;line-height:1.6}
+.agents-page .agents-heading p{max-width:760px}
+.agents-page .agents-card{padding:22px}
+.agents-page .agents-profile h1{margin:12px 0}
+.agents-page .agents-choice label:has(input:disabled){opacity:.65;cursor:not-allowed}
+.agent-navigation{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 8px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.agent-navigation button{font:inherit;padding:10px 16px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer;color:var(--forest)}
+.agent-navigation button[aria-pressed=true]{background:var(--forest);color:var(--ivory)}
+.agent-setup-steps{padding-left:24px;line-height:1.8;font-size:14px}
+.agent-setup-steps li{padding:4px 0}
+.agents-code{max-height:420px;overflow:auto}
+.thesis-page .thesis-heading{padding:26px 0 22px;max-width:760px}
+.thesis-page .thesis-heading>.eyebrow{margin-top:20px}
+.thesis-page .thesis-heading h1{font-size:clamp(34px,4vw,48px)}
+.thesis-page .thesis-panel{padding:24px}
+.thesis-page .thesis-forecasts label>small{font-size:12px}
+.docs-page .docs-hero{padding-top:36px;padding-bottom:30px}
+.docs-page .docs-hero h1{font-size:clamp(36px,4vw,50px)}
+.docs-quickstart{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 30px}
+.docs-quickstart a{display:grid;gap:8px;border:1px solid var(--line);border-radius:14px;padding:18px;color:var(--forest);text-decoration:none}
+.docs-quickstart small{line-height:1.5;color:var(--ink-soft)}
+.markets-page select,.markets-page input,.access-page button{min-height:44px}
+.markets-page input[type=checkbox],.markets-page input[type=radio]{min-height:0}
+.markets-page :is(button,a,input,select,textarea,summary):focus-visible,.access-page :is(button,a,summary):focus-visible{outline:3px solid #71874c;outline-offset:3px}
+@media(max-width:650px){
+ .access-page{padding:24px 20px}.markets-page .market-heading{margin:22px 0}.market-detail .detail-panel,.thesis-page .thesis-panel{padding:18px}
+ .consumer-ticket .ticket-outcomes{grid-template-columns:1fr}.docs-quickstart{grid-template-columns:1fr}.agent-navigation{gap:6px}
+ .portfolio-summary-grid strong{font-size:26px!important}.portfolio-summary-grid article{padding:16px!important}
+ .auth-page .auth-aside-copy{margin-top:18px}.auth-page .auth-panel{padding:22px}.onboarding-steps{gap:10px}
+}

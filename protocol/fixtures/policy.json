@@ -1,0 +1,4069 @@
+{
+  "schema": "flurbo.protocol-fixture.policy.v1",
+  "cases": [
+    {
+      "name": "passes every limit",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "market not in the allowlist",
+      "input": {
+        "policy": {
+          "markets": [
+            "practice-1111111111111111111111111111111111111111"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "MARKET_NOT_ALLOWED"
+      ]
+    },
+    {
+      "name": "market closed",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": false,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "MARKET_CLOSED"
+      ]
+    },
+    {
+      "name": "at the close time counts as closed",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790726400,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1790726395,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "MARKET_CLOSED"
+      ]
+    },
+    {
+      "name": "too close to the close",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790725800,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1790725790,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "TOO_CLOSE_TO_CLOSE"
+      ]
+    },
+    {
+      "name": "exactly the minimum time before close is allowed",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790725500,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1790725490,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "sell disabled by default",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "sell",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "490000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "ACTION_DISABLED"
+      ]
+    },
+    {
+      "name": "sell enabled, holdings sufficient, spend limits do not apply",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "1",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "1"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": true,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "sell",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "490000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "sell more than held",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": true,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "sell",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000001",
+          "limitAtoms": "490000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "HOLDINGS_INSUFFICIENT"
+      ]
+    },
+    {
+      "name": "quantity above the policy",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "6000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "QUANTITY_LIMIT"
+      ]
+    },
+    {
+      "name": "quantity above the service limit",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "200000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "1000000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "100000001",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "SERVICE_LIMIT"
+      ]
+    },
+    {
+      "name": "trade cost above the policy, also over the hourly window",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "3000001",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "TRADE_COST_LIMIT",
+        "WINDOW_SPEND_LIMIT"
+      ]
+    },
+    {
+      "name": "slippage above the policy",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 100,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "SLIPPAGE_LIMIT"
+      ]
+    },
+    {
+      "name": "slippage not offered by the service",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 25,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "SERVICE_LIMIT"
+      ]
+    },
+    {
+      "name": "quote older than allowed",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999969,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "QUOTE_STALE"
+      ]
+    },
+    {
+      "name": "quote exactly at the maximum age",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999970,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "total spend one atom over",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "2309999",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "TOTAL_SPEND_LIMIT"
+      ]
+    },
+    {
+      "name": "total spend exactly at the limit",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "2310000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "window includes an entry planned exactly at its start",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "2309999"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789996400
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "WINDOW_SPEND_LIMIT"
+      ]
+    },
+    {
+      "name": "a second, longer window also applies",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              },
+              {
+                "seconds": 86400,
+                "atoms": "2309999"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "WINDOW_SPEND_LIMIT"
+      ]
+    },
+    {
+      "name": "a mismatch counts its limit",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "3209999",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "mismatch",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "TOTAL_SPEND_LIMIT"
+      ]
+    },
+    {
+      "name": "position one atom over",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "1999999",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "POSITION_LIMIT"
+      ]
+    },
+    {
+      "name": "worst-case loss one atom over",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "2309999",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "WORST_CASE_LOSS_LIMIT"
+      ]
+    },
+    {
+      "name": "an offsetting claim lowers the worst case: at the limit",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "1310000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "5"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "an offsetting claim lowers the worst case: one atom over",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "1309999",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "5"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "WORST_CASE_LOSS_LIMIT"
+      ]
+    },
+    {
+      "name": "fee exactly at the maximum",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "200000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "fee one wei over",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "200000000001"
+        }
+      },
+      "expect": [
+        "GAS_FEE_LIMIT"
+      ]
+    },
+    {
+      "name": "reserve exactly kept",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "125000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "reserve one wei short",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "124999999999999999",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "GAS_RESERVE"
+      ]
+    },
+    {
+      "name": "pending entries at the maximum",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 1,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "PENDING_LIMIT"
+      ]
+    },
+    {
+      "name": "redeem disabled by default",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": false,
+          "resolved": true
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "redeem",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "0",
+          "slippageBps": 0,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "ACTION_DISABLED"
+      ]
+    },
+    {
+      "name": "redeem before resolution",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": true
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "redeem",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "0",
+          "slippageBps": 0,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "MARKET_NOT_RESOLVED"
+      ]
+    },
+    {
+      "name": "redeem after resolution",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": true
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": false,
+          "resolved": true
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "redeem",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "0",
+          "slippageBps": 0,
+          "quoteBlockTimestamp": 0,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": []
+    },
+    {
+      "name": "several violations in the specified order",
+      "input": {
+        "policy": {
+          "markets": [
+            "practice-1111111111111111111111111111111111111111"
+          ],
+          "maxQuantityAtoms": "1",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 1,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 100,
+          "quoteBlockTimestamp": 1,
+          "gasLimit": "250000",
+          "maxFeePerGas": "100000000000"
+        }
+      },
+      "expect": [
+        "MARKET_NOT_ALLOWED",
+        "QUANTITY_LIMIT",
+        "SLIPPAGE_LIMIT",
+        "QUOTE_STALE",
+        "PENDING_LIMIT"
+      ]
+    }
+  ],
+  "effective": [
+    {
+      "name": "Flurbo limits tighten local limits; windows combine",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "10000000",
+          "windows": [
+            {
+              "seconds": 3600,
+              "atoms": "4000000"
+            }
+          ]
+        }
+      },
+      "flurbo": {
+        "version": 3,
+        "paused": false,
+        "liveEnabled": true,
+        "limits": {
+          "maxTradeCostAtoms": "2000000",
+          "windows": [
+            {
+              "seconds": 86400,
+              "atoms": "5000000"
+            }
+          ]
+        }
+      },
+      "readAt": 1789999970,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "2000000",
+        "windows": [
+          {
+            "seconds": 3600,
+            "atoms": "4000000"
+          },
+          {
+            "seconds": 86400,
+            "atoms": "5000000"
+          }
+        ],
+        "liveAllowed": true,
+        "reason": null
+      }
+    },
+    {
+      "name": "a looser Flurbo limit never loosens the local one",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "10000000",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 1,
+        "paused": false,
+        "liveEnabled": true,
+        "limits": {
+          "maxTradeCostAtoms": "9000000",
+          "windows": []
+        }
+      },
+      "readAt": 1790000000,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": true,
+        "reason": null
+      }
+    },
+    {
+      "name": "local paper mode",
+      "local": {
+        "mode": "paper",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 1,
+        "paused": true,
+        "liveEnabled": false,
+        "limits": {
+          "maxTradeCostAtoms": null,
+          "windows": []
+        }
+      },
+      "readAt": 1790000000,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": false,
+        "reason": "local_paper_mode"
+      }
+    },
+    {
+      "name": "live not enabled on Flurbo",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 1,
+        "paused": true,
+        "liveEnabled": false,
+        "limits": {
+          "maxTradeCostAtoms": null,
+          "windows": []
+        }
+      },
+      "readAt": 1790000000,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": false,
+        "reason": "live_disabled"
+      }
+    },
+    {
+      "name": "paused",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 2,
+        "paused": true,
+        "liveEnabled": true,
+        "limits": {
+          "maxTradeCostAtoms": null,
+          "windows": []
+        }
+      },
+      "readAt": 1790000000,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": false,
+        "reason": "paused"
+      }
+    },
+    {
+      "name": "policy read too long ago",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 2,
+        "paused": false,
+        "liveEnabled": true,
+        "limits": {
+          "maxTradeCostAtoms": null,
+          "windows": []
+        }
+      },
+      "readAt": 1789999879,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": false,
+        "reason": "policy_stale"
+      }
+    },
+    {
+      "name": "policy read exactly at the maximum age",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": {
+        "version": 2,
+        "paused": false,
+        "liveEnabled": true,
+        "limits": {
+          "maxTradeCostAtoms": null,
+          "windows": []
+        }
+      },
+      "readAt": 1789999880,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": true,
+        "reason": null
+      }
+    },
+    {
+      "name": "never read",
+      "local": {
+        "mode": "live",
+        "maxTradeCostAtoms": "3000000",
+        "spend": {
+          "totalAtoms": "1",
+          "windows": []
+        }
+      },
+      "flurbo": null,
+      "readAt": null,
+      "now": 1790000000,
+      "policyMaxAgeSeconds": 120,
+      "expect": {
+        "maxTradeCostAtoms": "3000000",
+        "windows": [],
+        "liveAllowed": false,
+        "reason": "policy_stale"
+      }
+    }
+  ]
+}

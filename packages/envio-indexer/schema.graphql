@@ -1,0 +1,40 @@
+type Pool {
+  id: ID!
+  tradeCount: Int!
+  volumeAtoms: BigInt!
+  redeemedAtoms: BigInt!
+}
+
+type TraderPosition {
+  id: ID!
+  pool: String!
+  trader: String!
+  totalCostAtoms: BigInt!
+  totalProceedsAtoms: BigInt!
+  totalRedeemedAtoms: BigInt!
+  netCashflowAtoms: BigInt!
+  tradeCount: Int!
+}
+
+type Trade {
+  id: ID!
+  pool: String!
+  trader: String!
+  side: String!
+  scope: Int!
+  mask: BigInt!
+  quantityAtoms: BigInt!
+  amountAtoms: BigInt!
+  blockNumber: Int!
+  timestamp: Int!
+}
+
+type ResolutionEvent {
+  id: ID!
+  resolver: String!
+  eventIndex: Int
+  phase: String!
+  outcome: Int
+  blockNumber: Int!
+  timestamp: Int!
+}

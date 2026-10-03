@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flurbo-sdk"
+version = "0.2.0b0"
+description = "Flurbo agent SDK and runtime for Python: protocol-conformant claims, policies, signing, journaled execution and recovery. Monad testnet only; not published."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "UNLICENSED" }
+dependencies = ["eth-account>=0.14,<0.15"]
+
+[project.scripts]
+flurbo-agent-py = "flurbo_sdk.runtime.cli:entry"
+
+[tool.setuptools.packages.find]
+include = ["flurbo_sdk*"]

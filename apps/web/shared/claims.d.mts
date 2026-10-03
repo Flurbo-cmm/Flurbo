@@ -1,0 +1,10 @@
+export type ClaimRule = 'AND' | 'OR' | 'EXACTLY_ONE' | 'AT_LEAST_TWO';
+export type ClaimLeg = {event:number;yes:boolean};
+export const CLAIM_SCHEMA: 'flurbo.claim.v1';
+export const CLAIM_RULES: readonly ClaimRule[];
+export function ruleMatches(rule:ClaimRule,matches:boolean[]):boolean;
+export function claimEvents(scope:number):number[];
+export function validateClaim(scope:number,mask:string,events:number):number[];
+export function encodeClaim(input:{events:number;legs:ClaimLeg[];rule:ClaimRule}):{schema:typeof CLAIM_SCHEMA;scope:number;mask:string};
+export function claimScenarios(scope:number,mask:string,events:number):{state:number;answers:ClaimLeg[];wins:boolean}[];
+export function decodeClaim(scope:number,mask:number|string,events?:number):{rule:ClaimRule;legs:ClaimLeg[]}|null;

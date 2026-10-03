@@ -1,0 +1,30 @@
+{
+  "name": "@flurbo/sdk",
+  "version": "0.2.0-beta.0",
+  "private": true,
+  "description": "Flurbo agent SDK and reference runtime: protocol-conformant market reads, claims, research interfaces, strategy, policy, signing, journaled execution and recovery. Monad testnet only.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./browser": "./src/transport-browser.ts",
+    "./node": "./src/node/index.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.json && node ../../apps/web/node_modules/typescript/bin/tsc -p tsconfig.node.json",
+    "example": "node examples/offline-autonomous-pipeline.ts",
+    "demo": "node tools/acceptance-demo.ts"
+  },
+  "dependencies": {
+    "viem": "2.56.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.6"
+  },
+  "bin": {
+    "flurbo-agent": "./bin/flurbo-agent.ts"
+  }
+}

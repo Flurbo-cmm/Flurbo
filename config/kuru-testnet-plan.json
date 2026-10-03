@@ -1,0 +1,18 @@
+{
+  "purpose": "Unbroadcast testnet draft for a canonical Flurbo receipt / AUSD pair",
+  "source_revision": "2060bb2736080c175d80d568bfdb6226bb5abd04",
+  "chain_id": 10143,
+  "market_type": 0,
+  "base_decimals": 6,
+  "quote_decimals": 6,
+  "size_precision": 1000000,
+  "price_precision": 1000000,
+  "tick_size": 100,
+  "size_step": 10000,
+  "min_size": 10000,
+  "max_size": 100000000,
+  "taker_fee_bps": 30,
+  "maker_fee_bps": 10,
+  "amm_spread_bps": 100,
+  "reference_market": "0xa241896A7Dbe8a550D2E5fF7A914bB1989ceD2D9"
+}

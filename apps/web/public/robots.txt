@@ -1,0 +1,12 @@
+# Public pages: /, /docs, /login, /signup and /technical_litepaper.pdf.
+# Signed-in application pages are not useful to crawlers.
+User-agent: *
+Allow: /
+Disallow: /markets
+Disallow: /portfolio
+Disallow: /history
+Disallow: /agents
+Disallow: /access
+Disallow: /fund
+Disallow: /account
+Disallow: /api/

@@ -1,0 +1,35 @@
+[profile.default]
+src = "contracts/src"
+test = "contracts/test"
+out = "target/foundry/out"
+cache_path = "target/foundry/cache"
+test_failures_file = "target/foundry/test-cache/test-failures"
+libs = []
+remappings = ["@prb/math/=contracts/node_modules/@prb/math/", "@openzeppelin/contracts/=contracts/node_modules/@openzeppelin/contracts/"]
+solc = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+
+[profile.default.fuzz]
+failure_persist_dir = "target/foundry/test-cache/fuzz"
+runs = 256
+seed = "0x666c7572626f"
+
+# Opt-in integration tests; ordinary `forge test` remains offline.
+[profile.kuru_fork]
+test = "contracts/fork"
+fork_block_number = 64729226
+fs_permissions = [{ access = "read", path = "./config" }]
+
+# Deployment remains opt-in; manifests start unverified until checked against RPC state.
+[profile.demo]
+script = "contracts/script"
+broadcast = "target/broadcast"
+fs_permissions = [{ access = "read", path = "./config" }, { access = "read-write", path = "./target/deployments" }]
+
+# Opt-in retrospective source-to-EVM rehearsal. No fork, RPC or broadcast.
+[profile.settlement_replay]
+test = "contracts/replay"
+ffi = false
+fs_permissions = [{ access = "read", path = "./target/settlement-replay" }]

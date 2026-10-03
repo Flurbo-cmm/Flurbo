@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ec">
+  <title>Flurbo · Local dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.mjs"></script>
+</head>
+<body data-standalone-dashboard>
+  <a class="skip" href="#main">Skip to dashboard</a>
+  <header class="topbar wrap">
+    <a class="wordmark" href="/" aria-label="Flurbo home">flurbo<span>.</span></a>
+    <nav aria-label="Dashboard"><a href="#compose">Compose</a><a href="#account">Account</a><a href="#network">Network</a></nav>
+    <span class="badge">LOCAL DASHBOARD</span>
+  </header>
+  <main class="wrap" id="main">
+    <section class="hero" aria-labelledby="headline">
+      <div><p class="eyebrow">PREDICTIONS, CONNECTED</p><h1 id="headline">One pool.<br>More possibilities.</h1><p class="intro">Bring outcomes together.<br>Get a price from one shared on-chain pool.</p></div>
+      <div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><span class="art-dot"></span><span class="art-label">A + B + YOUR VIEW</span></div>
+    </section>
+    <div class="statusbar"><div><span class="status-dot" id="status-dot"></span><strong id="connection">Connecting to local data…</strong><span id="block-label" class="muted"></span></div><button id="refresh" class="button small secondary">Refresh data ↻</button></div>
+    <p id="notice" class="notice" role="status">Loading the verified deployment. No wallet is connected.</p>
+    <section class="stats" aria-label="Shared pool health">
+      <article><p class="eyebrow">POOL COLLATERAL</p><p class="stat" id="collateral">Unavailable</p><span class="muted">AUSD held by the shared pool</span></article>
+      <article><p class="eyebrow">MAXIMUM LIABILITY</p><p class="stat" id="liability">Unavailable</p><span class="muted">AUSD needed for outstanding payouts</span></article>
+      <article><p class="eyebrow">COLLATERAL COVERAGE</p><p class="stat" id="coverage">Unavailable</p><span class="muted" id="surplus">Coverage surplus is not profit</span></article>
+      <article><p class="eyebrow">MARKET LIFECYCLE</p><p class="stat" id="phase">Unavailable</p><span class="muted" id="close">Reading immutable close time</span></article>
+    </section>
+    <div class="workspace">
+      <section class="card composer" id="compose" aria-labelledby="compose-title">
+        <div class="section-heading"><div><p class="eyebrow">01 / YOUR PREDICTION</p><h2 id="compose-title">Put your view together.</h2></div><span class="pill">8 synthetic events</span></div>
+        <p class="muted">Choose up to three events. Each winning unit pays 1 AUSD at settlement.</p>
+        <fieldset class="events-field"><legend>Choose events</legend><div id="events" class="event-grid"></div></fieldset>
+        <div id="legs" class="legs"></div>
+        <label for="mode">Payout rule</label><select id="mode"><option value="all">All selected outcomes happen (AND)</option><option value="any">Any selected outcome happens (OR)</option><option value="custom">Custom Boolean payout</option></select>
+        <div id="truth-area" hidden><p class="muted">Check the joint outcomes that pay 1 AUSD. Unchecked outcomes pay 0. YES/NO here refers to each event's actual result.</p><div id="truth-table" class="truth-table"></div></div>
+        <div class="claim-preview"><span class="eyebrow">YOUR CLAIM</span><p id="claim-label">H YES</p><span id="claim-detail" class="muted">One shared pool. No separate liquidity required.</span></div>
+        <div class="form-row"><div><label for="side">Quote direction</label><select id="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></div><div><label for="quantity">Claim units</label><input id="quantity" inputmode="decimal" value="1" maxlength="48" autocomplete="off" aria-describedby="quantity-help"></div></div>
+        <p id="quantity-help" class="caption">Up to 6 decimal places. Sell quotes do not check your holdings.</p>
+        <p id="compose-error" class="error" role="status"></p>
+        <button id="quote-button" class="button primary wide" disabled>Get pool quote <span aria-hidden="true">↗</span></button>
+        <p class="caption">Boolean claims only in this preview. Tradable conditionals are a separate upcoming milestone.</p>
+      </section>
+      <div class="right-column">
+        <section class="card quote-card" aria-labelledby="quote-title"><p class="eyebrow">02 / ON-CHAIN PRICE</p><h2 id="quote-title">A price for your view.</h2><p class="muted">Computed by the pool's cost function.</p><div id="quote-result" aria-live="polite"><p class="quote-empty">Build a claim, then request a quote.</p></div><div class="quote-footer">Review the quote below to approve AUSD or trade through your connected wallet. Local test assets only.</div></section>
+        <section class="card trading" aria-labelledby="trade-title">
+          <p class="eyebrow">WALLET & EXECUTION</p><h2 id="trade-title">Make your move.</h2>
+          <p class="caption">Every approval, trade and redemption requires a separate confirmation in your wallet. Automatic setup only funds local test balances.</p>
+          <label for="wallet-provider">MetaMask wallet</label><select id="wallet-provider" disabled><option value="" disabled selected>MetaMask not detected</option></select>
+          <button id="setup-wallet" class="button primary wide" disabled>Set up local wallet ↗</button>
+          <p id="setup-status" class="caption" role="status">Choose a dedicated test account in MetaMask. Setup requests the local network and tops up to 10 test AUSD and 10 MON; it never creates or exports a private key.</p>
+          <div class="wallet-actions"><button id="connect-wallet" class="button secondary" disabled>Connect wallet</button><button id="disconnect-wallet" class="button quiet" disabled>Disconnect</button></div>
+          <p id="signer-status" class="caption" role="status">Looking for MetaMask…</p>
+          <details class="wallet-help"><summary>Local network setup</summary><p>Use a dedicated test account with local AUSD and MON. Set the wallet RPC to <code>http://127.0.0.1:18545</code>, chain ID <code>10143</code>, currency <code>MON</code>. Public Monad testnet uses the same ID; the block-hash check must match this fork.</p><p>Mera is for account access. A linked MetaMask wallet signs trades.</p></details>
+          <label for="slippage">Slippage limit</label><select id="slippage"><option value="0">0%</option><option value="50" selected>0.5%</option><option value="100">1%</option><option value="300">3%</option><option value="500">5%</option></select>
+          <p id="execution-help" class="caption">Connect your test wallet, then get a pool quote.</p>
+          <button id="review-trade" class="button primary wide" disabled>Get a quote to review</button>
+          <h3>H YES receipts</h3>
+          <p class="caption">Wrap internal H YES units into ERC-20 receipts for the Kuru base market, or unwrap wallet receipts to sell or redeem through the pool. Conversion is 1:1 and costs gas. Kuru deposits and orders are a separate step.</p>
+          <p id="conversion-status" class="caption" role="status">Connect your wallet to view convertible H YES balances.</p>
+          <label for="conversion-quantity">H YES units to convert</label><input id="conversion-quantity" inputmode="decimal" value="1" autocomplete="off">
+          <div class="wallet-actions"><button id="review-wrap" class="button secondary" disabled>Review wrap</button><button id="review-unwrap" class="button secondary" disabled>Review unwrap</button></div>
+          <h3>Settlement &amp; redemption</h3>
+          <p id="settlement-status" class="caption" role="status">Waiting for settlement data…</p>
+          <p class="caption">Uses the claim and quantity in Your prediction. Winning internal units pay 1 AUSD each. Clearing losing units pays zero and still costs gas. Wrapped receipts must be unwrapped separately.</p>
+          <button id="review-redeem" class="button secondary wide" disabled>Review redemption</button>
+          <h3>Withdraw available AUSD</h3>
+          <p class="caption">Send AUSD from your selected trading wallet to MetaMask or another address on this Monad network. First sell or redeem any positions you want to turn into AUSD. This is a token transfer, not a bridge or bank withdrawal.</p>
+          <p id="withdrawal-status" class="caption" role="status">Connect the wallet holding your AUSD.</p>
+          <label for="recipient-wallet">Receiving MetaMask wallet (optional)</label><select id="recipient-wallet"><option value="">Choose a wallet or paste an address below</option></select>
+          <button id="use-recipient-wallet" class="button secondary" disabled>Use receiving wallet address</button>
+          <label for="withdrawal-address">Receiving address on the same Monad network</label><input id="withdrawal-address" placeholder="0x..." maxlength="42" autocomplete="off" spellcheck="false">
+          <label for="withdrawal-quantity">AUSD to send</label><input id="withdrawal-quantity" inputmode="decimal" placeholder="0.00" autocomplete="off">
+          <button id="review-withdraw" class="button secondary wide" disabled>Review withdrawal</button>
+          <div id="review-details" class="review-details" hidden></div>
+          <button id="confirm-trade" class="button primary wide" hidden disabled>Confirm in wallet</button>
+          <button id="cancel-review" class="button quiet" hidden>Cancel review</button>
+          <p id="execution-status" class="caption" role="status"></p>
+          <p id="execution-hash" class="caption hash"></p>
+          <div id="replacement-area" hidden><label for="replacement-hash">Wallet transaction / replacement hash</label><input id="replacement-hash" placeholder="0x…" maxlength="66" autocomplete="off" spellcheck="false"></div>
+          <button id="check-execution" class="button secondary" hidden>Check submitted transaction</button>
+          <button id="clear-tracking" class="button quiet" hidden>Clear tracking after wallet check</button>
+        </section>
+        <section class="card book" aria-labelledby="book-title"><div class="section-heading"><h2 id="book-title">The base market</h2><span class="pill">KURU</span></div><p class="muted">Event H · YES receipt / AUSD</p><div class="book-prices"><div><span class="eyebrow">BEST BID</span><strong id="bid">Unavailable</strong></div><div><span class="eyebrow">BEST ASK</span><strong id="ask">Unavailable</strong></div></div><p class="caption">Indicative top of book. Depth, fees and gas are needed for an executable route. This local book uses synthetic operator liquidity.</p><p id="receipt-backing" class="backing">Receipt backing: checking…</p></section>
+      </div>
+    </div>
+    <section class="card account" id="account" aria-labelledby="account-title"><div class="section-heading"><div><p class="eyebrow">03 / YOUR ACCOUNT</p><h2 id="account-title">Inspect a wallet.</h2></div><span class="pill">READ ONLY</span></div><p class="muted">Paste a public address to view balances. This does not connect or authenticate a wallet.</p><form id="wallet-form" class="input-action"><div class="grow"><label for="wallet">Public wallet address</label><input id="wallet" placeholder="0x…" autocomplete="off" spellcheck="false" maxlength="42"></div><button class="button secondary" type="submit">View balances</button><button class="button quiet" id="wallet-clear" type="button">Clear</button></form><p id="wallet-message" class="caption" role="status">No wallet selected.</p><div id="wallet-result"></div></section>
+    <section class="card" aria-labelledby="tx-title"><div class="section-heading"><div><p class="eyebrow">04 / TRANSACTION CHECK</p><h2 id="tx-title">Follow a transaction.</h2></div></div><form id="tx-form" class="input-action"><div class="grow"><label for="tx-hash">Transaction hash</label><input id="tx-hash" placeholder="0x…" autocomplete="off" spellcheck="false" maxlength="66"></div><button id="tx-button" class="button secondary">Check status</button></form><p id="tx-result" class="caption" role="status">Read a transaction from the selected chain. Confirmation count does not imply finality.</p></section>
+    <section class="network" id="network"><div><p class="eyebrow">NETWORK & SETTLEMENT</p><h2 id="network-name">Waiting for deployment</h2><p id="rules" class="muted">Loading the synthetic settlement rules…</p><p id="resolution" class="muted"></p></div><details><summary>Contract addresses & snapshot</summary><dl id="contracts"></dl></details></section>
+    <footer><span class="wordmark small-mark">flurbo<span>.</span></span><p>Local test surface · Synthetic events · AUSD collateral<br>The Expo/Mera mobile experience and remaining partner flows are still in development.</p><a href="#main">Back to top ↑</a></footer>
+  </main>
+  <noscript>This dashboard needs JavaScript to read the local API.</noscript>
+</body>
+</html>

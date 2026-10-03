@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flurbo.singu.online/protocol/schemas/decision.v1.json",
+  "title": "flurbo.agent-runtime-decision.v1",
+  "description": "A research decision reported by the runtime. Flurbo stores and displays it as self-reported.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "decisionId",
+    "namespace",
+    "createdAt",
+    "outcome",
+    "reasons",
+    "provenance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "flurbo.agent-runtime-decision.v1"
+    },
+    "decisionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "namespace": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "integer"
+    },
+    "outcome": {
+      "enum": [
+        "trade",
+        "paper",
+        "abstain",
+        "rejected_by_policy"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_]{1,48}$"
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "model",
+            "fixture",
+            "custom"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 64
+        }
+      }
+    },
+    "forecast": {
+      "description": "flurbo.agent-forecast.v1 (packages/sdk/src/forecast.ts)",
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "candidate": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "violations": {
+      "type": [
+        "array",
+        "null"
+      ]
+    },
+    "execution": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 600
+    }
+  }
+}

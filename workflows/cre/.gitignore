@@ -1,0 +1,6 @@
+node_modules/
+.env*
+dist/
+*.wasm
+*.log
+.cre_build_tmp.*

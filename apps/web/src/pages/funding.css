@@ -1,0 +1,19 @@
+/* Fund: a real two-step sequence with one primary action. */
+.funding-page { display: grid; gap: var(--s-2); align-content: start; }
+.funding-card { display: grid; gap: var(--s-6); }
+.funding-wallet { display: grid; gap: var(--s-3); }
+.funding-address { color: var(--ink-2); }
+.funding-balances { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s-3); margin: var(--s-2) 0; }
+.funding-balances > div { display: grid; gap: 2px; padding: var(--s-3) var(--s-4); border-radius: var(--r-control); background: var(--surface-sunken); }
+.funding-balances dt { color: var(--ink-3); font-size: 13px; }
+.funding-balances dd { margin: 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.funding-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-4); }
+.funding-steps { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--rule); }
+.funding-steps > li { display: grid; gap: var(--s-3); padding: var(--s-6) 0; border-bottom: 1px solid var(--rule); }
+.funding-steps p { color: var(--ink-2); }
+.funding-step-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.funding-step-head h2 { display: flex; align-items: center; gap: var(--s-3); font-size: 20px; }
+.funding-step-index { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+.funding-steps .done .funding-step-index { background: var(--ink); color: var(--bg); }
+.funding-ready { color: var(--ink) !important; font-weight: 500; }
+.workspace-funding { padding: var(--s-4) 0; }

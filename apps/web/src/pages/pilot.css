@@ -1,0 +1,48 @@
+/* Trade ticket, challenge and payout forms. Transaction values are shown exactly. */
+.consumer-ticket { display: grid; gap: var(--s-4); }
+.ticket-head { display: grid; gap: 4px; }
+.ticket-head h2 { font-size: 18px; }
+.consumer-ticket .ticket-wallet, .pilot-form .ticket-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.ticket-wallet > div { display: grid; gap: 2px; }
+.ticket-wallet strong { font-size: 14px; font-weight: 600; }
+.ticket-wallet strong.mono { font-family: var(--mono); }
+.ticket-wallet small { color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ticket-note { padding: var(--s-2) var(--s-3); border-radius: var(--r-control); background: var(--lime-soft); font-size: 13px; }
+.ticket-controls { display: grid; gap: var(--s-4); }
+.segmented-field { display: grid; gap: 6px; min-width: 0; }
+.quantity-stepper { display: grid; grid-template-columns: var(--control-md) minmax(0, 1fr) var(--control-md); gap: var(--s-2); }
+.quantity-stepper input { text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ticket-status { font-size: 14px; color: var(--ink-2); min-height: 1lh; }
+.ticket-status:empty { display: none; }
+.ticket-quote-state { display: grid; gap: 6px; }
+.ticket-quote-state p:empty { display: none; }
+.ticket-refresh { justify-self: start; font-size: 14px; }
+.ticket-review { display: grid; gap: var(--s-3); padding: var(--s-5); border: 1px solid var(--ink); border-radius: var(--r-panel); background: var(--bg); animation: disclose var(--t-base) var(--ease-out); }
+.ticket-review h3 { font-size: 16px; }
+.ticket-review p { color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
+.review-claim { color: var(--ink) !important; font-weight: 500; }
+.review-figures { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); margin: 0; }
+.review-figures > div { display: grid; gap: 2px; padding: var(--s-3); border-radius: var(--r-control); background: var(--surface-sunken); }
+.review-figures .review-cost { grid-column: 1 / -1; background: var(--lime-soft); }
+.review-figures dt { color: var(--ink-2); font-size: 12px; }
+.review-figures dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.review-figures .review-cost dd { font-size: 20px; }
+.ticket-done { border-color: var(--rule-strong); }
+.ticket-pending { border-color: var(--rule-strong); }
+.ticket-position { font-size: 14px; }
+.closed-ticket { display: grid; gap: var(--s-3); justify-items: start; }
+.closed-ticket h2 { font-size: 18px; }
+
+.pilot-view .portfolio-wallet { display: block; }
+.pilot-view .portfolio-wallet > * + * { margin-top: 1rem; }
+.pilot-events { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+.pilot-events h3 { font-size: 1.1rem; line-height: 1.4; }
+.pilot-form { display: grid; gap: var(--s-3); }
+.pilot-form label { display: grid; gap: 6px; font-weight: 500; }
+.pilot-form fieldset { display: grid; gap: var(--s-3); margin: 0; padding: 0; border: 0; min-width: 0; }
+.pilot-form legend { margin-bottom: var(--s-2); font-weight: 600; }
+.pilot-fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
+.pilot-actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.pilot-rules p, .pilot-form p { overflow-wrap: anywhere; }
+.public-challenge h2 { font-size: 18px; }
+@media (max-width: 600px) { .pilot-fields { grid-template-columns: 1fr; } .pilot-actions .btn, .pilot-actions .button { width: 100%; } }

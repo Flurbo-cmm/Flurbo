@@ -1,0 +1,482 @@
+[
+  {
+    "name": "resolver",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "name": "collateral",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "name": "baseTokenFactory",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "name": "settlementRulesHash",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "bytes32"
+      }
+    ]
+  },
+  {
+    "name": "closesAt",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint64"
+      }
+    ]
+  },
+  {
+    "name": "eventCount",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "name": "collateralDecimals",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint8"
+      }
+    ]
+  },
+  {
+    "name": "eliminationOrder",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint8[]"
+      }
+    ]
+  },
+  {
+    "name": "factors",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "tuple[]",
+        "components": [
+          {
+            "type": "uint32",
+            "name": "scope"
+          },
+          {
+            "type": "uint128[]",
+            "name": "values"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "liquidity",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "requiredFunding",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "requiredCollateral",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "funded",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "name": "resolved",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "name": "resolvedState",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint32"
+      }
+    ]
+  },
+  {
+    "name": "voidMask",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint32"
+      }
+    ]
+  },
+  {
+    "name": "baseTokens",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "name": "holdings",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "type": "address"
+      },
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "payoutFraction",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "name": "quoteBuy",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint128"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "quoteSell",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint128"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "buy",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint128"
+      },
+      {
+        "type": "uint128"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "sell",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint128"
+      },
+      {
+        "type": "uint128"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "redeem",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "uint32"
+      },
+      {
+        "type": "uint256"
+      },
+      {
+        "type": "uint128"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint128"
+      }
+    ]
+  },
+  {
+    "name": "wrapBase",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "uint8"
+      },
+      {
+        "type": "bool"
+      },
+      {
+        "type": "uint128"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "unwrapBase",
+    "type": "function",
+    "stateMutability": "nonpayable",
+    "inputs": [
+      {
+        "type": "uint8"
+      },
+      {
+        "type": "bool"
+      },
+      {
+        "type": "uint128"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "name": "Traded",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "trader",
+        "indexed": true
+      },
+      {
+        "type": "uint32",
+        "name": "scope",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "mask",
+        "indexed": true
+      },
+      {
+        "type": "bool",
+        "name": "isBuy"
+      },
+      {
+        "type": "uint128",
+        "name": "quantity"
+      },
+      {
+        "type": "uint128",
+        "name": "collateralAmount"
+      }
+    ]
+  },
+  {
+    "name": "Redeemed",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "owner",
+        "indexed": true
+      },
+      {
+        "type": "uint32",
+        "name": "scope",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "mask",
+        "indexed": true
+      },
+      {
+        "type": "uint128",
+        "name": "quantity"
+      },
+      {
+        "type": "uint128",
+        "name": "collateralAmount"
+      }
+    ]
+  },
+  {
+    "name": "Resolved",
+    "type": "event",
+    "inputs": [
+      {
+        "type": "uint32",
+        "name": "yesMask",
+        "indexed": true
+      },
+      {
+        "type": "uint32",
+        "name": "voidMask",
+        "indexed": true
+      },
+      {
+        "type": "bytes32",
+        "name": "rulesHash",
+        "indexed": true
+      }
+    ]
+  }
+]

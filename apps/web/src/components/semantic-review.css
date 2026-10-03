@@ -1,0 +1,26 @@
+/* Outcome compatibility: a quiet note when checked, a danger panel with a typed acknowledgment on conflict. */
+.semantic-note { display: flex; align-items: flex-start; gap: var(--s-2); margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.semantic-note svg { width: 16px; height: 16px; margin-top: 1px; color: var(--ink-3); }
+.semantic-note-unverified svg { color: var(--ink-2); }
+
+.semantic-conflict { display: grid; gap: var(--s-3); padding: var(--s-4); border: 1px solid var(--danger); border-radius: var(--r-panel); background: var(--danger-soft); animation: disclose var(--t-base) var(--ease-out); }
+.semantic-conflict-head { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--danger); }
+.semantic-conflict-head svg { width: 20px; height: 20px; margin-top: 1px; }
+.semantic-conflict h3 { margin: 0; color: var(--danger); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.semantic-conflict p { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
+.semantic-conflict .semantic-quote { font-variant-numeric: tabular-nums; font-weight: 500; }
+.semantic-conflict .semantic-void { color: var(--ink-2); font-size: 13px; }
+
+.semantic-ack { display: grid; gap: var(--s-2); padding-top: var(--s-3); border-top: 1px solid rgba(154, 51, 36, 0.24); }
+.semantic-ack-field { display: grid; gap: var(--s-2); font-size: 14px; font-weight: 600; color: var(--ink); }
+.semantic-ack-field input { width: 100%; background: var(--surface); }
+.semantic-ack-state { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.semantic-conflict .semantic-ack-state { color: var(--ink-2); font-size: 13px; }
+.semantic-conflict .semantic-ack-state.is-match { color: var(--ink); font-weight: 500; }
+.semantic-ack-state svg { width: 16px; height: 16px; }
+
+/* Submission failures in the trade ticket read as errors, not as status text. */
+.ticket-status.ticket-status-error { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-3) var(--s-4); border-radius: var(--r-control); background: var(--danger-soft); color: var(--danger); font-weight: 500; }
+.ticket-status.ticket-status-error svg { width: 16px; height: 16px; margin-top: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .semantic-conflict { animation: none; } }

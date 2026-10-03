@@ -1,0 +1,10 @@
+{
+  "mode": "synthetic-only",
+  "chainId": 10143,
+  "pool": "0x1111111111111111111111111111111111111111",
+  "closesAt": 1700000000,
+  "events": [
+    { "id": "synthetic-a", "source": "fixture:a:v1" },
+    { "id": "synthetic-b", "source": "fixture:b:v1" }
+  ]
+}

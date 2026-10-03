@@ -1,0 +1,7 @@
+.workspace { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.workspace .wide { display: block; width: 100%; margin: 12px 0; }
+#review-details dd { margin: 4px 0 20px; overflow-wrap: anywhere; }
+#review-details dt { font-weight: 600; }
+#technical { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+#owner, #transaction { overflow-wrap: anywhere; }
+@media (max-width: 760px) { .workspace { grid-template-columns: 1fr; } }

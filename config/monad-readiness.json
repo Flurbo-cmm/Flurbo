@@ -1,0 +1,36 @@
+{
+  "purpose": "Read-only integration reconnaissance; not deployment authorization or an ABI compatibility guarantee",
+  "sources_checked": "2026-09-21",
+  "sources": {
+    "networks": "https://docs.monad.xyz/developer-essentials/changelog",
+    "ausd": "https://docs.agora.finance/developer/contract-deployments",
+    "kuru": "https://docs.kuru.io/contracts/Contract-addresses"
+  },
+  "networks": {
+    "testnet": {
+      "chain_id": 10143,
+      "public_rpc": "https://testnet-rpc.monad.xyz",
+      "alchemy_env": "FLURBO_ALCHEMY_TESTNET_RPC_URL",
+      "alchemy_host": "monad-testnet.g.alchemy.com",
+      "ausd_decimals": 6,
+      "contracts": {
+        "ausd": "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC",
+        "ausd_faucet": "0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C",
+        "kuru_router": "0x7EFbE105Ca7415dE98F96622173458ac1c054630",
+        "kuru_margin": "0xd029C2D98ff85D8F64799017fE00a59B1159CE02"
+      }
+    },
+    "mainnet": {
+      "chain_id": 143,
+      "public_rpc": "https://rpc.monad.xyz",
+      "alchemy_env": "FLURBO_ALCHEMY_MAINNET_RPC_URL",
+      "alchemy_host": "monad-mainnet.g.alchemy.com",
+      "ausd_decimals": 6,
+      "contracts": {
+        "ausd": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+        "kuru_router": "0xd651346d7c789536ebf06dc72aE3C8502cd695CC",
+        "kuru_margin": "0x2A68ba1833cDf93fa9Da1EEbd7F46242aD8E90c5"
+      }
+    }
+  }
+}

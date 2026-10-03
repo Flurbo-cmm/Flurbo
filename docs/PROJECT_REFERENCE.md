@@ -1,0 +1,112 @@
+# Flurbo project reference
+
+Snapshot: 3 October 2026. This company copy starts from the local personal-repository `main` commit `8443469` and removes standalone Kuru screens and experiments. It has not been pushed or connected to Render. The live Render environment and GitHub remote were not independently queried for this document. Treat values described as "reported" as a handoff record, then verify them in the service dashboards before cutover.
+
+## Product and boundaries
+
+Flurbo is an invite-only prediction market on Monad testnet (chain 10143) using test AUSD. A market pool has 2 to 4 related binary questions and one trading close. Members buy or sell single answers and Boolean combinations in the same funded pool. Mera passkeys provide the Flurbo login. A linked MetaMask wallet signs trades. Member-run agents use their own wallets and agent tokens. The server does not sign agent trades.
+
+The company product consists of the web client and API, mobile client, Solidity pools and resolver, market preparation workflow, shared protocol fixtures, the agent SDKs, and the Rust pricing reference. Reality.eth and Kleros are future settlement integrations; neither is part of this baseline. The MetaMask Agent Wallet plugin is outside this repository. Kuru order-book screens, endpoints, fork tests, and deployment experiments are excluded. The older synthetic-pool dashboard reader still consumes Kuru contract fields from its deployed manifest, so its internal compatibility code remains until that legacy pool is retired or extracted. This does not affect the newer real-event pools.
+
+Do not use real money or represent the current reviewer panel as independent arbitration. All live assets described here are test assets.
+
+## Repository map
+
+| Path | Role |
+| --- | --- |
+| `apps/web/src` | React and Vite site, passkey login, market and wallet views |
+| `apps/web/server` | Node API, access, evidence, monitor, settlement worker, Redis and Supabase routing |
+| `apps/mobile` | Expo client with the same Mera account and MetaMask trading wallet model |
+| `apps/dashboard` and `scripts` | Legacy synthetic-pool reader and wallet trading compatibility used by the running server |
+| `contracts/src`, `contracts/script` | Factored pool, optimistic resolver, test asset and current deployment scripts |
+| `config/collections.json` | Committed list of pools and their settlement modes |
+| `config/markets` | Batch market specifications |
+| `workflows/cre` | Rule preparation, checks, deployment verification, registry edits |
+| `packages/sdk*` | TypeScript, Python, Rust and C++ member agents |
+| `protocol`, `crates/flurbo-core` | Interchange fixtures and Rust reference calculations |
+| `.github/workflows/checks.yml` | Code checks; scheduled settlement workflows are excluded |
+
+The web Dockerfile builds from the repository root. It copies the Rust crate, web app, TypeScript SDK, legacy dashboard, privacy lab, Python scripts and config. Keep these inputs together until their runtime imports are replaced. This is a cleaned single repository with product packages, not independently deployed component repositories.
+
+## Trading and settlement mechanics
+
+Each pool has one LMSR cost function over the joint answer space. If `q_x` is liability in answer state `x` and `b` is depth, `C(q) = b ln(sum_x exp(q_x/b))`. The deployer funds at least `b * n * ln(2)` test AUSD for `n` questions. That is the upper bound on the maker's starting subsidy. The on-chain factored engine avoids full enumeration when quoting: claim tables cover up to 3 questions, variable elimination has induced width at most 2, and every trade checks collateral coverage. The pilot settlement and VOID payout code still enumerates all `2^n` answer states, which is why deployed pools are limited to 4 questions.
+
+A claim is a scope bitmap plus a truth-table mask. It can express YES, NO, AND, OR and other supported Boolean claims. A VOID question gives equal weight to YES and NO in payouts; it is not a refund. A pool pays only after all its questions are final. This makes long-running question clusters slower to pay than short ones. Early redemption and more questions per pool require new contracts.
+
+The current `PilotResolver` is optimistic and operator governed:
+
+1. A source reading is captured inside its rule's observation window. The first complete valid capture is retained. Missing data is never interpreted as No.
+2. Once the window closes, an asserter posts an answer, public evidence and a 1 test AUSD bond.
+3. A different eligible wallet can dispute during the challenge period with the same bond and its evidence.
+4. If disputed, three operator-controlled reviewers vote; two matching votes decide. Without quorum, the question becomes VOID.
+5. An unchallenged assertion finalizes after its challenge period. If there is no assertion by the deadline, the question becomes VOID.
+6. Once all questions are final, the results are delivered to the pool and holders may redeem. Bonds are credited for later `withdrawBond()` calls.
+
+Four general readers exist: `json-api.v1`, `stat-table.v1`, `html-text.v1`, and `evm-rpc.v1`. Rules commit URLs, reader settings, timing and decision thresholds on-chain through a rules hash. The current policy uses official first-line public sources. Login-gated data, PDFs, images, JavaScript-only pages and subjective outcomes have no automatic reader in this baseline. Sports and entertainment were excluded by the old market policy; opening those categories is future product work, not an existing capability.
+
+## Pool registry and listing workflow
+
+`config/collections.json` is the site, monitor and worker's pool list when `FLURBO_COLLECTIONS_SOURCE=registry`. An entry can be `auto`, `finish-only`, or `off`; its `status` controls whether it is listed. The registry stores public manifests only. It rechecks each pool's code, resolver binding and rules hash on chain before use. Automatic pools with bonds above 10 test AUSD are rejected.
+
+The operator writes a batch file in `config/markets`, runs `bun workflows/cre/scripts/batch.ts prepare --spec <file>`, then `check --ids <ids>`. The check validates rule readiness, deadlines, funding and duplicate deployments. `DeployPilotBatch` simulates before broadcast; an authorized operator then deploys with the encrypted Foundry keystore. Run `verify --ids <ids>`, then `register --ids <ids>`. The resulting registry change is reviewed in Git and deployed with the site. Listing a pool does not require a Render variable edit in registry mode.
+
+The current local `main` registry has `pilotSettlement: "finish-only"`. A 2 October handoff calls an uncommitted change to `auto`; do not present that switch as deployed without checking the live registry. The same handoff reports Jobs Friday, Crypto weekend and Brazil election as automatic, with older showcase pools at finish-only. Current chain state and deadlines must be checked before acting on any historical schedule.
+
+## Runtime, hosting and data
+
+The reported live origin is `https://flurbo.singu.online` on one free Render Docker web service (`render.yaml` names `flurbo-testnet`). That service serves the site and API and, with `FLURBO_SETTLEMENT_BOT=true`, runs the monitor and worker in the same process. The monitor and worker normally run every 10 minutes, then every 2 minutes near deadlines. A single settlement signer has one pending transaction at a time; signed bytes are journaled in Redis before broadcast so a restart can resume without replacing a transaction. The worker handles up to 12 transactions per cycle and isolates a failed pool from other pools.
+
+The handoff reports cron-job.org sending `/healthz` every 10 minutes to keep the free Render service awake, and Healthchecks.io watching the bot. Verify those accounts and schedules before moving deployments. The old GitHub Actions monitor and worker used environment-bundle assumptions and are excluded from this company copy. Render is the sole scheduler in this baseline.
+
+Upstash Redis holds sessions, agent state, wallet links, settlement journals, evidence, alerts and starter-fund records. Supabase holds access applications and, when `FLURBO_SUPABASE_KV=true`, rebuildable price history, indexes and metrics. The same Supabase project and service key are used for the KV route; migration `004_kv_store.sql` establishes that table. The handoff reports both services on free plans. Render free hours, Upstash commands, Supabase storage, QuickNode credits and Resend email limits need dashboard checks before scaling. The code currently has one-instance in-memory request limits unless `FLURBO_SHARED_LIMITS=true`.
+
+The source on local `main` also contains an Alchemy signed activity webhook and Envio cash-movement proxy. `FLURBO_ALCHEMY_WEBHOOK_SIGNING_KEY` authenticates webhook deliveries; `FLURBO_ENVIO_GRAPHQL_URL` points the proxy at its indexer. They were added after the 1 October handbook and are included in this baseline. Whether their corresponding live services are configured needs a dashboard check.
+
+## Research carried forward, with status
+
+The original combinatorial market maker brief supplies the product reason: related questions should share one funded probability model so traders can express knowledge about how events move together. Its proposed 10-question, fully enumerated pool and performance claims are not the deployed implementation. The current code uses bounded-width factored pricing and a 4-question pilot cap. Full enumeration, transient-storage gas savings, and automatic depth scaling from that brief should be treated as research proposals, not shipped features.
+
+The dispute integration note proposes keeping Flurbo's Monad market contracts and using Reality.eth for questions that need a human answer, with Kleros as an appeal path. That is a useful target for broader market types. Its proposed Gnosis-to-Monad bot relay alone would still require trusting the bot's report on Monad. A production design must specify how the final oracle answer is authenticated on Monad, how mismatched question wording and VOID map to Flurbo outcomes, and who pays cross-chain gas, bonds and appeals. Seer contracts are optional. Existing mechanical readers should remain the fast path for objective, public facts. This design is not implemented in the baseline.
+
+The Substreams note proposes a Rust event indexer into Postgres for price charts and portfolio views. Indexing can improve those views, but it cannot create an on-chain trader registry or compute a live executable exit quote by itself. The local `main` already contains an Envio indexer and proxy, so any Substreams work should first compare actual lag, cost and data completeness against that path. The note's claims about exclusive Monad support and necessary scale are unverified here.
+
+The market landscape research favors short objective markets, reviewed reader templates, proof-backed access to sources behind logins, and later liquidity options such as fees or vaults. These are product proposals. The present production baseline remains invite-only, uses official public mechanical sources, and has fixed creator-funded depth. Research HTML and personal notes stay outside the company repository; this section records the decisions needed to interpret them.
+
+## Environment inventory
+
+Keep actual secret values in Render or another secret manager, never in Git. The following is an inventory of names from the code and handoff, not a copy of the current Render dashboard. `render.yaml` itself declares only the origin, network and Upstash placeholders. Before a cutover, compare this list with Render's current environment and record any missing names securely.
+
+| Group | Names and known non-secret values |
+| --- | --- |
+| Core | `FLURBO_NETWORK=public_testnet`, `FLURBO_ORIGIN=https://flurbo.singu.online`, `PORT` set by Render, `RENDER_GIT_COMMIT`, `FLURBO_ALCHEMY_TESTNET_RPC_URL` secret RPC URL, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
+| Database | `FLURBO_SUPABASE_KV=true` reported, `FLURBO_APPLICATIONS_SUPABASE_URL`, `FLURBO_APPLICATIONS_SUPABASE_SECRET`, `FLURBO_SHARED_LIMITS` unset for one instance |
+| Access and mail | `FLURBO_APPLICATIONS_ENABLED`, `FLURBO_APPLICATIONS_CODE_SECRET`, `FLURBO_APPLICATIONS_RESEND_KEY`, `FLURBO_APPLICATIONS_EMAIL_FROM`, `FLURBO_APPLICATIONS_EMAIL_DAILY_LIMIT`, `FLURBO_TESTNET_APPROVED_ACCOUNTS`, `FLURBO_TESTING_OPERATOR_ACCOUNT`, `FLURBO_NOTIFY_ENABLED`, `FLURBO_NOTIFY_DAILY_LIMIT` |
+| Wallet funding | `FLURBO_STARTER_PRIVATE_KEY`, `FLURBO_STARTER_MON`, `FLURBO_STARTER_DAILY_LIMIT`, `FLURBO_TEST_AUSD_FAUCET`, `FLURBO_ALERT_STARTER_MON`, `FLURBO_ALERT_DISPENSER_AUSD`, `FLURBO_ALERT_EMAIL` |
+| Settlement | `FLURBO_SETTLEMENT_BOT=true`, `FLURBO_COLLECTIONS_SOURCE=registry`, `FLURBO_MONITOR_ENABLED=true`, `FLURBO_RESOLUTION_ENABLED=true`, `FLURBO_RESOLUTION_PROPOSALS=true`, `FLURBO_RESOLUTION_EXECUTE=true` reported, `FLURBO_RESOLUTION_SIGNER_ADDRESS`, `FLURBO_RESOLUTION_PRIVATE_KEY`, `FLURBO_RESOLUTION_EVIDENCE_ORIGIN=https://flurbo.singu.online`, `FLURBO_RESOLUTION_HOLD` optional |
+| Monitoring | `FLURBO_MONITOR_RESEND_KEY`, `FLURBO_MONITOR_EMAIL_FROM`, `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_HEALTHCHECK_URL`, `FLURBO_METRICS_DIGEST`, `FLURBO_METRICS_DIGEST_UTC`, `FLURBO_METRICS_SCAN_STEPS`, `FLURBO_METRICS_EXCLUDE` |
+| Optional and integrations | `FLURBO_ENVIO_GRAPHQL_URL`, `FLURBO_ALCHEMY_WEBHOOK_SIGNING_KEY`, `FLURBO_EVIDENCE_GEMINI_KEY`, `FLURBO_EVIDENCE_MODEL`, `FLURBO_EVIDENCE_FREE_TIER_CONFIRMED`, `FLURBO_EVIDENCE_OPERATOR`, `FLURBO_SEMANTIC_MODE` (off), `FLURBO_SEMANTIC_RULES_JSON`, `FLURBO_AGENT_RESERVED_WALLETS`, `FLURBO_ANDROID_CERT_SHA256` |
+
+The old registry-bundle variables remain a rollback only: `FLURBO_PRACTICE_COLLECTIONS_JSON`, `FLURBO_PRACTICE_ACTIVE_POOL`, `FLURBO_RESOLUTION_POOL`, `FLURBO_RESOLUTION_RULES_HASH`, `FLURBO_RESOLUTION_MANIFEST_JSON`, `FLURBO_RESOLUTION_FINISH_ALLOWLIST`, `FLURBO_RESOLUTION_COLLECTIONS_JSON`, `FLURBO_RESOLUTION_SOURCE_MODE`. Registry mode ignores them. Do not delete live values until the new deployment is verified.
+
+## Wallet and origin continuity
+
+Mera is the account login, MetaMask is the member's trading wallet. The site checks that a trading wallet is linked to the account; the contracts themselves remain permissionless. The settlement signer is a separate wallet and must never trade. The old lost-key signer must never be funded. Member agent private keys stay on members' machines. A test AUSD dispenser and starter MON wallet fund invited members, with daily limits and alerts.
+
+Keep `flurbo.singu.online` as the origin during the first repository migration. Passkey relying-party configuration, Android association, session cookies, evidence URLs and external monitoring depend on that host. A domain move is a separate verified migration. Do not replace the Render service or signing key while existing assertions are pending.
+
+## Checks and cutover
+
+Run web typecheck, server tests and build; mobile typecheck and tests; `bun` workflow checks; Foundry tests; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. Build the Docker image from the root because the web Dockerfile copies sibling packages.
+
+The personal hackathon repository remains unchanged. This company copy has no Git history from it; that avoids publishing old research, local files or historical secrets. Before first push, review the complete file list and run secret scanning. After the new repo passes checks, connect a separate preview deployment and compare account login, wallet linking, market directory, quotes, buy/sell, evidence, settlement monitor health and redemption. Repoint the live Render service only after that acceptance. Verify the environment names and values directly in Render at cutover, using hidden inputs for secrets.
+
+## Known gaps at this snapshot
+
+- The current dispute panel is operator controlled, with a 1 test AUSD bond. Economic independence needs Reality.eth and/or Kleros integration and new contract wiring.
+- The bot does not finalize assertions posted by other wallets and does not withdraw its own bond credits.
+- An official source behind a login or an unreadable page needs a new public-verification mechanism or manual assertion. No sports reader exists.
+- Long pools pay after their last question. Early redemption and more than 4 questions per pool need contract changes.
+- Rate limits and free-tier usage were reported in handoff notes, not measured during this migration.
+- The legacy synthetic reader still has Kuru-specific compatibility fields. Extract or retire it in a separate change once the real-event path is verified.
+- The mobile app refuses to restore a pending order-book transaction after those controls are removed. Check and clear any such transaction in the old mobile preview before releasing this copy to the same devices.

@@ -1,0 +1,848 @@
+{
+  "schema": "flurbo.protocol-fixture.recovery.v1",
+  "transitions": [
+    {
+      "name": "planned is abandoned and released",
+      "entry": {
+        "status": "planned",
+        "action": "buy",
+        "nonce": null,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "abandoned",
+        "action": "release"
+      }
+    },
+    {
+      "name": "signed with a successful receipt is verified",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": true,
+        "receiptStatus": 1,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "broadcast",
+        "action": "verify"
+      }
+    },
+    {
+      "name": "signed with a failed receipt is reverted",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": true,
+        "receiptStatus": 0,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "reverted",
+        "action": "release"
+      }
+    },
+    {
+      "name": "signed and known to the network waits for a receipt",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": true,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "broadcast",
+        "action": "poll"
+      }
+    },
+    {
+      "name": "signed, unknown, nonce used elsewhere is replaced",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "replaced",
+        "action": "release"
+      }
+    },
+    {
+      "name": "signed, unknown, nonce free, before the deadline: same bytes again",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "signed",
+        "action": "rebroadcast"
+      }
+    },
+    {
+      "name": "signed, unknown, nonce free, exactly at the deadline: same bytes again",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000300,
+      "expect": {
+        "status": "signed",
+        "action": "rebroadcast"
+      }
+    },
+    {
+      "name": "signed, unknown, nonce free, after the deadline: expired",
+      "entry": {
+        "status": "signed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000301,
+      "expect": {
+        "status": "expired",
+        "action": "release"
+      }
+    },
+    {
+      "name": "signed approval (no deadline), unknown, nonce free: same bytes again",
+      "entry": {
+        "status": "signed",
+        "action": "approve",
+        "nonce": 7,
+        "deadline": null
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790010000,
+      "expect": {
+        "status": "signed",
+        "action": "rebroadcast"
+      }
+    },
+    {
+      "name": "broadcast with a successful receipt is verified",
+      "entry": {
+        "status": "broadcast",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": true,
+        "receiptStatus": 1,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "broadcast",
+        "action": "verify"
+      }
+    },
+    {
+      "name": "broadcast, still pending",
+      "entry": {
+        "status": "broadcast",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": true,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000400,
+      "expect": {
+        "status": "broadcast",
+        "action": "poll"
+      }
+    },
+    {
+      "name": "broadcast, vanished, nonce used elsewhere",
+      "entry": {
+        "status": "broadcast",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 9
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "replaced",
+        "action": "release"
+      }
+    },
+    {
+      "name": "broadcast, vanished, nonce free, before the deadline",
+      "entry": {
+        "status": "broadcast",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "broadcast",
+        "action": "rebroadcast"
+      }
+    },
+    {
+      "name": "broadcast, vanished, nonce free, after the deadline",
+      "entry": {
+        "status": "broadcast",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 7
+      },
+      "now": 1790000301,
+      "expect": {
+        "status": "expired",
+        "action": "release"
+      }
+    },
+    {
+      "name": "confirmed is final",
+      "entry": {
+        "status": "confirmed",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "confirmed",
+        "action": "none"
+      }
+    },
+    {
+      "name": "reverted is final",
+      "entry": {
+        "status": "reverted",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "reverted",
+        "action": "none"
+      }
+    },
+    {
+      "name": "mismatch is final",
+      "entry": {
+        "status": "mismatch",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "mismatch",
+        "action": "none"
+      }
+    },
+    {
+      "name": "replaced is final",
+      "entry": {
+        "status": "replaced",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "replaced",
+        "action": "none"
+      }
+    },
+    {
+      "name": "expired is final",
+      "entry": {
+        "status": "expired",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "expired",
+        "action": "none"
+      }
+    },
+    {
+      "name": "abandoned is final",
+      "entry": {
+        "status": "abandoned",
+        "action": "buy",
+        "nonce": 7,
+        "deadline": 1790000300
+      },
+      "chain": {
+        "txFound": false,
+        "receiptStatus": null,
+        "nonceLatest": 8
+      },
+      "now": 1790000000,
+      "expect": {
+        "status": "abandoned",
+        "action": "none"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "name": "buy with the expected event",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "confirmed",
+        "collateralAtoms": "498765"
+      }
+    },
+    {
+      "name": "buy paying exactly the limit",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000007c830"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "confirmed",
+        "collateralAtoms": "510000"
+      }
+    },
+    {
+      "name": "buy paying above the limit",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000007c831"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "buy by another trader",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x0000000000000000000000001111111111111111111111111111111111111111",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "buy of another claim",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000004"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "buy of another quantity",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f423f0000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "a sell event for a buy",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "the event from another contract",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x1111111111111111111111111111111111111111",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000079c4d"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "no events",
+      "intent": {
+        "action": "buy",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": []
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "sell at or above the minimum",
+      "intent": {
+        "action": "sell",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "490000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000077a10"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "confirmed",
+        "collateralAtoms": "490000"
+      }
+    },
+    {
+      "name": "sell below the minimum",
+      "intent": {
+        "action": "sell",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "490000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000077a0f"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "redemption",
+      "intent": {
+        "action": "redeem",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "0"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0x3e24bbc5ae535f3f571a815b8ba9fc70c94ad494d812f0210c3da99fad2173ae",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000003",
+              "0x0000000000000000000000000000000000000000000000000000000000000008"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000007a120"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "confirmed",
+        "collateralAtoms": "500000"
+      }
+    },
+    {
+      "name": "redemption of another claim",
+      "intent": {
+        "action": "redeem",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": {
+          "scope": 3,
+          "mask": "8"
+        },
+        "quantityAtoms": "1000000",
+        "limitAtoms": "0"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": [
+          {
+            "address": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+            "topics": [
+              "0x3e24bbc5ae535f3f571a815b8ba9fc70c94ad494d812f0210c3da99fad2173ae",
+              "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+              "0x0000000000000000000000000000000000000000000000000000000000000001",
+              "0x0000000000000000000000000000000000000000000000000000000000000002"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000000000000f4240000000000000000000000000000000000000000000000000000000000007a120"
+          }
+        ]
+      },
+      "allowanceAfterAtoms": null,
+      "expect": {
+        "status": "mismatch"
+      }
+    },
+    {
+      "name": "approval read back",
+      "intent": {
+        "action": "approve",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": null,
+        "quantityAtoms": "0",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": []
+      },
+      "allowanceAfterAtoms": "510000",
+      "expect": {
+        "status": "confirmed",
+        "collateralAtoms": null
+      }
+    },
+    {
+      "name": "approval not reflected in the allowance",
+      "intent": {
+        "action": "approve",
+        "wallet": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+        "claim": null,
+        "quantityAtoms": "0",
+        "limitAtoms": "510000"
+      },
+      "receipt": {
+        "status": 1,
+        "logs": []
+      },
+      "allowanceAfterAtoms": "509999",
+      "expect": {
+        "status": "mismatch"
+      }
+    }
+  ]
+}

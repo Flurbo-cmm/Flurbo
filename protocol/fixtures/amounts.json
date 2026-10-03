@@ -1,0 +1,389 @@
+{
+  "schema": "flurbo.protocol-fixture.amounts.v1",
+  "parse": [
+    {
+      "text": "0",
+      "valid": true,
+      "atoms": "0"
+    },
+    {
+      "text": "1",
+      "valid": true,
+      "atoms": "1"
+    },
+    {
+      "text": "100000000",
+      "valid": true,
+      "atoms": "100000000"
+    },
+    {
+      "text": "340282366920938463463374607431768211455",
+      "valid": true,
+      "atoms": "340282366920938463463374607431768211455"
+    },
+    {
+      "text": "340282366920938463463374607431768211456",
+      "valid": false
+    },
+    {
+      "text": "01",
+      "valid": false
+    },
+    {
+      "text": "-1",
+      "valid": false
+    },
+    {
+      "text": "1.5",
+      "valid": false
+    },
+    {
+      "text": "1e6",
+      "valid": false
+    },
+    {
+      "text": "",
+      "valid": false
+    },
+    {
+      "text": " 1",
+      "valid": false
+    },
+    {
+      "text": "0x10",
+      "valid": false
+    },
+    {
+      "text": "١",
+      "valid": false
+    }
+  ],
+  "limits": [
+    {
+      "quoteAtoms": "0",
+      "slippageBps": 10,
+      "buyLimitAtoms": "0",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "0",
+      "slippageBps": 50,
+      "buyLimitAtoms": "0",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "0",
+      "slippageBps": 100,
+      "buyLimitAtoms": "0",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "1",
+      "slippageBps": 10,
+      "buyLimitAtoms": "2",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "1",
+      "slippageBps": 50,
+      "buyLimitAtoms": "2",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "1",
+      "slippageBps": 100,
+      "buyLimitAtoms": "2",
+      "sellMinimumAtoms": "0"
+    },
+    {
+      "quoteAtoms": "9999",
+      "slippageBps": 10,
+      "buyLimitAtoms": "10009",
+      "sellMinimumAtoms": "9989"
+    },
+    {
+      "quoteAtoms": "9999",
+      "slippageBps": 50,
+      "buyLimitAtoms": "10049",
+      "sellMinimumAtoms": "9949"
+    },
+    {
+      "quoteAtoms": "9999",
+      "slippageBps": 100,
+      "buyLimitAtoms": "10099",
+      "sellMinimumAtoms": "9899"
+    },
+    {
+      "quoteAtoms": "10000",
+      "slippageBps": 10,
+      "buyLimitAtoms": "10010",
+      "sellMinimumAtoms": "9990"
+    },
+    {
+      "quoteAtoms": "10000",
+      "slippageBps": 50,
+      "buyLimitAtoms": "10050",
+      "sellMinimumAtoms": "9950"
+    },
+    {
+      "quoteAtoms": "10000",
+      "slippageBps": 100,
+      "buyLimitAtoms": "10100",
+      "sellMinimumAtoms": "9900"
+    },
+    {
+      "quoteAtoms": "498765",
+      "slippageBps": 10,
+      "buyLimitAtoms": "499264",
+      "sellMinimumAtoms": "498266"
+    },
+    {
+      "quoteAtoms": "498765",
+      "slippageBps": 50,
+      "buyLimitAtoms": "501259",
+      "sellMinimumAtoms": "496271"
+    },
+    {
+      "quoteAtoms": "498765",
+      "slippageBps": 100,
+      "buyLimitAtoms": "503753",
+      "sellMinimumAtoms": "493777"
+    },
+    {
+      "quoteAtoms": "999999",
+      "slippageBps": 10,
+      "buyLimitAtoms": "1000999",
+      "sellMinimumAtoms": "998999"
+    },
+    {
+      "quoteAtoms": "999999",
+      "slippageBps": 50,
+      "buyLimitAtoms": "1004999",
+      "sellMinimumAtoms": "994999"
+    },
+    {
+      "quoteAtoms": "999999",
+      "slippageBps": 100,
+      "buyLimitAtoms": "1009999",
+      "sellMinimumAtoms": "989999"
+    },
+    {
+      "quoteAtoms": "100000000",
+      "slippageBps": 10,
+      "buyLimitAtoms": "100100000",
+      "sellMinimumAtoms": "99900000"
+    },
+    {
+      "quoteAtoms": "100000000",
+      "slippageBps": 50,
+      "buyLimitAtoms": "100500000",
+      "sellMinimumAtoms": "99500000"
+    },
+    {
+      "quoteAtoms": "100000000",
+      "slippageBps": 100,
+      "buyLimitAtoms": "101000000",
+      "sellMinimumAtoms": "99000000"
+    }
+  ],
+  "edges": [
+    {
+      "quantityAtoms": "1000000",
+      "claimPpm": "600000",
+      "quoteAtoms": "498765",
+      "slippageBps": 50,
+      "worstCostAtoms": "501259",
+      "expectedPayoutAtoms": "600000",
+      "edgeAtoms": "98741",
+      "edgeBps": "1969"
+    },
+    {
+      "quantityAtoms": "1000000",
+      "claimPpm": "450000",
+      "quoteAtoms": "498765",
+      "slippageBps": 50,
+      "worstCostAtoms": "501259",
+      "expectedPayoutAtoms": "450000",
+      "edgeAtoms": "-51259",
+      "edgeBps": "-1022"
+    },
+    {
+      "quantityAtoms": "2500000",
+      "claimPpm": "333333",
+      "quoteAtoms": "700000",
+      "slippageBps": 10,
+      "worstCostAtoms": "700700",
+      "expectedPayoutAtoms": "833332",
+      "edgeAtoms": "132632",
+      "edgeBps": "1892"
+    },
+    {
+      "quantityAtoms": "100000000",
+      "claimPpm": "1000000",
+      "quoteAtoms": "99000000",
+      "slippageBps": 100,
+      "worstCostAtoms": "99990000",
+      "expectedPayoutAtoms": "100000000",
+      "edgeAtoms": "10000",
+      "edgeBps": "1"
+    },
+    {
+      "quantityAtoms": "10000",
+      "claimPpm": "1",
+      "quoteAtoms": "1",
+      "slippageBps": 10,
+      "worstCostAtoms": "2",
+      "expectedPayoutAtoms": "0",
+      "edgeAtoms": "-2",
+      "edgeBps": "-10000"
+    },
+    {
+      "quantityAtoms": "1000000",
+      "claimPpm": "0",
+      "quoteAtoms": "1",
+      "slippageBps": 100,
+      "worstCostAtoms": "2",
+      "expectedPayoutAtoms": "0",
+      "edgeAtoms": "-2",
+      "edgeBps": "-10000"
+    }
+  ],
+  "percent": [
+    {
+      "text": "62.5",
+      "ppm": "625000"
+    },
+    {
+      "text": "0",
+      "ppm": "0"
+    },
+    {
+      "text": "100",
+      "ppm": "1000000"
+    },
+    {
+      "text": "33.3333",
+      "ppm": "333333"
+    },
+    {
+      "text": "0.0001",
+      "ppm": "1"
+    },
+    {
+      "text": "100.0001",
+      "ppm": null
+    },
+    {
+      "text": "12.34567",
+      "ppm": null
+    },
+    {
+      "text": "-1",
+      "ppm": null
+    },
+    {
+      "text": "1e2",
+      "ppm": null
+    },
+    {
+      "text": ".5",
+      "ppm": null
+    },
+    {
+      "text": "5.",
+      "ppm": null
+    },
+    {
+      "text": "050",
+      "ppm": null
+    }
+  ],
+  "frechet": [
+    {
+      "pA": "600000",
+      "pB": "550000",
+      "pBoth": "150000",
+      "lowPpm": "150000",
+      "highPpm": "550000",
+      "valid": true,
+      "statesPpm": [
+        "0",
+        "450000",
+        "400000",
+        "150000"
+      ]
+    },
+    {
+      "pA": "600000",
+      "pB": "550000",
+      "pBoth": "149999",
+      "lowPpm": "150000",
+      "highPpm": "550000",
+      "valid": false
+    },
+    {
+      "pA": "600000",
+      "pB": "550000",
+      "pBoth": "550000",
+      "lowPpm": "150000",
+      "highPpm": "550000",
+      "valid": true,
+      "statesPpm": [
+        "400000",
+        "50000",
+        "0",
+        "550000"
+      ]
+    },
+    {
+      "pA": "600000",
+      "pB": "550000",
+      "pBoth": "550001",
+      "lowPpm": "150000",
+      "highPpm": "550000",
+      "valid": false
+    },
+    {
+      "pA": "200000",
+      "pB": "300000",
+      "pBoth": "0",
+      "lowPpm": "0",
+      "highPpm": "200000",
+      "valid": true,
+      "statesPpm": [
+        "500000",
+        "200000",
+        "300000",
+        "0"
+      ]
+    },
+    {
+      "pA": "1000000",
+      "pB": "1000000",
+      "pBoth": "1000000",
+      "lowPpm": "1000000",
+      "highPpm": "1000000",
+      "valid": true,
+      "statesPpm": [
+        "0",
+        "0",
+        "0",
+        "1000000"
+      ]
+    },
+    {
+      "pA": "0",
+      "pB": "0",
+      "pBoth": "0",
+      "lowPpm": "0",
+      "highPpm": "0",
+      "valid": true,
+      "statesPpm": [
+        "1000000",
+        "0",
+        "0",
+        "0"
+      ]
+    }
+  ]
+}

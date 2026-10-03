@@ -1,0 +1,81 @@
+/* Market page: the question, then the action beside the information that decides it. */
+.market-detail { gap: var(--s-5); }
+.detail-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.detail-heading { display: grid; gap: var(--s-3); justify-items: start; padding-bottom: var(--s-5); border-bottom: 1px solid var(--rule); }
+.detail-heading h1 { max-width: 30ch; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.detail-heading .lead { font-size: 16px; max-width: 72ch; }
+.detail-meta { display: flex; flex-wrap: wrap; gap: var(--s-4) var(--s-10); margin-top: var(--s-2); }
+.detail-meta > div { display: grid; gap: 4px; align-content: start; }
+.detail-meta dt { color: var(--ink-3); font-size: 13px; }
+.detail-meta dd { display: grid; gap: 1px; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.detail-meta dd small { color: var(--ink-3); font-size: 12px; font-weight: 400; }
+.detail-meta .status { padding-left: 0; }
+.detail-meta .status-attention, .detail-meta .status-challenge { padding-left: 6px; }
+
+.detail-columns { display: grid; gap: var(--s-5); align-items: start; }
+.detail-primary, .detail-sidebar { display: grid; gap: var(--s-5); min-width: 0; align-content: start; }
+@media (min-width: 1024px) {
+  .detail-columns { grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); grid-template-areas: "primary sidebar"; gap: var(--s-8); }
+  .detail-primary { grid-area: primary; }
+  .detail-sidebar { grid-area: sidebar; }
+  .detail-sidebar.is-sticky { position: sticky; top: calc(var(--header-h) + var(--s-4)); }
+}
+.detail-skeleton { display: grid; gap: var(--s-4); }
+.detail-skeleton .detail-columns { margin-top: var(--s-4); }
+
+.detail-panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-panel); padding: var(--s-5); display: grid; gap: var(--s-3); align-content: start; min-width: 0; }
+@media (min-width: 640px) { .detail-panel { padding: var(--s-6); } }
+.detail-panel > h2, .detail-panel .panel-head h2 { font-size: 18px; }
+.detail-panel p { color: var(--ink-2); }
+.detail-panel > summary { margin: -4px 0; }
+.detail-panel .panel-head { margin-bottom: 0; }
+.detail-trade { padding-top: var(--s-5); }
+.detail-quotes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.detail-quotes > div { display: grid; gap: 2px; padding: var(--s-3); border-radius: var(--r-control); background: var(--surface-sunken); }
+.detail-quotes span { color: var(--ink-3); font-size: 13px; }
+.detail-quotes strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.detail-quotes .market-caption { grid-column: 1 / -1; }
+.position-rows { display: grid; gap: var(--s-2); }
+.position-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
+.position-rows dt { font-weight: 600; }
+.position-rows dd { display: grid; justify-items: end; gap: 2px; }
+.position-rows dd small { color: var(--ink-3); font-size: 13px; }
+.detail-thesis .btn { justify-self: start; }
+.detail-connect > summary { font-size: 16px; }
+.detail-settlement .stepper { margin: var(--s-2) 0; }
+.detail-challenge { display: grid; gap: var(--s-3); padding-top: var(--s-4); border-top: 1px solid var(--rule); justify-items: start; }
+.detail-challenge .evidence-disclosure { justify-self: stretch; }
+.detail-panel h3 { font-size: 15px; margin-top: var(--s-3); }
+
+/* Price history: Yes solid, No dashed, latest point marked. Differs by shape, not only color. */
+.price-history .detail-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.price-history .detail-section-heading h2 { font-size: 18px; }
+.price-ranges { display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px; border-radius: var(--r-control); background: var(--surface-sunken); }
+.price-ranges button { min-height: 32px; padding: 0 var(--s-3); border-radius: 6px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.price-ranges button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.price-legend { display: flex; gap: var(--s-5); color: var(--ink-2); font-size: 13px; }
+.price-legend span { display: inline-flex; align-items: center; gap: var(--s-2); }
+.price-legend span::before { content: ""; width: 22px; height: 0; border-top: 2px solid var(--ink); }
+.price-legend .price-no::before { border-top-style: dashed; }
+.price-history svg { width: 100%; height: auto; overflow: visible; }
+.price-history svg text { fill: var(--ink-3); font-family: var(--sans); font-size: 12px; font-variant-numeric: tabular-nums; }
+.price-history svg .price-yes { color: var(--ink); }
+.price-history svg .price-no { color: var(--ink-2); }
+.price-history svg .price-no line { stroke-dasharray: 6 4; }
+.price-table { overflow-x: auto; }
+.price-table table { width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+.price-table caption { caption-side: top; text-align: left; padding-bottom: var(--s-2); color: var(--ink-3); }
+.price-table th, .price-table td { padding: 8px var(--s-3) 8px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+.price-table th { color: var(--ink-3); font-weight: 600; font-size: 12px; }
+
+.detail-holdings { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.evidence-disclosure { border-top: 1px solid var(--rule); padding-top: var(--s-2); overflow-wrap: anywhere; }
+.evidence-disclosure dl { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--s-4); font-variant-numeric: tabular-nums; }
+.evidence-disclosure dd { margin: 0; }
+.evidence-disclosure > div { display: grid; gap: var(--s-2); padding-bottom: var(--s-2); }
+.price-history svg .price-latest { fill: var(--lime); stroke: var(--ink); stroke-width: 1.5; }
+/* Exact settlement sources: long addresses wrap inside the panel instead of widening the page. */
+.settlement-source { display: grid; gap: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--rule); }
+.settlement-source h3 { font-size: 15px; margin: 0; }
+.settlement-source ul { margin: 0; padding-left: var(--s-5); display: grid; gap: var(--s-1); }
+.settlement-source code { overflow-wrap: anywhere; word-break: break-all; font-size: 13px; }

@@ -1,0 +1,19 @@
+{
+  "mode": "synthetic-only",
+  "observations": [
+    {
+      "eventId": "synthetic-a",
+      "source": "fixture:a:v1",
+      "final": true,
+      "outcome": true,
+      "finalizedAt": 1700000010
+    },
+    {
+      "eventId": "synthetic-b",
+      "source": "fixture:b:v1",
+      "final": true,
+      "outcome": false,
+      "finalizedAt": 1700000020
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f4ec"><title>Flurbo · Learning lab</title>
+<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/learning.css"><script type="module" src="/learning-app.mjs"></script></head>
+<body><a class="skip" href="#main">Skip to learning lab</a>
+<header class="topbar wrap"><a class="wordmark" href="/">flurbo<span>.</span></a><nav aria-label="Lab"><a href="#review">Review</a><a href="#account">Account</a></nav><span class="badge">LOCAL LEARNING LAB</span></header>
+<main class="wrap" id="main">
+<section class="hero"><div><p class="eyebrow">PREDICTIONS THAT LEARN</p><h1>A new view.<br>One shared pool.</h1><p class="intro">See how a learned price changes your prediction.<br>Review the funding before you confirm.</p></div><div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><span class="art-dot"></span><span class="art-label">A + B + YOUR VIEW</span></div></section>
+<div class="statusbar"><strong id="connection">Connecting to the local lab…</strong><button class="button small secondary" id="refresh">Refresh data ↻</button></div>
+<p class="notice">Synthetic events and mock collateral on a separate local chain. Your existing trading dashboard remains at <a href="http://127.0.0.1:18765/">127.0.0.1:18765</a>. This lab resets when its server stops.</p>
+<p id="message" class="notice" role="status" aria-live="polite">Open in Firefox with MetaMask to test wallet actions.</p>
+<section class="stats" aria-label="Shared pool health"><article><p class="eyebrow">POOL COLLATERAL</p><p class="stat" id="cash">—</p><span class="muted">Mock tokens held by the pool</span></article><article><p class="eyebrow">PRICING RESERVE</p><p class="stat" id="reserve">—</p><span class="muted">Includes funding for future trades</span></article><article><p class="eyebrow">OUTSTANDING PAYOUT</p><p class="stat" id="payout">—</p><span class="muted">Actual customer claims</span></article><article><p class="eyebrow">COVERAGE</p><p class="stat" id="coverage">—</p><span class="muted">Learning never changes your holdings</span></article></section>
+<div class="workspace">
+<section class="card" id="account"><p class="eyebrow">01 / TEST ACCOUNT</p><h2>Try the complete loop.</h2><p class="muted">Set up a dedicated MetaMask test account. Setup supplies mock collateral and gas on this local chain. Each approval, trade and model update needs its own wallet confirmation.</p>
+<button id="setup" class="button primary wide">Set up test account ↗</button><p id="owner" class="caption">No account connected.</p>
+<div class="claim-preview"><span class="eyebrow">YOUR PREDICTION</span><p>A YES AND B YES</p><span class="muted">Pays 1 mock token if both synthetic events finish YES.</span></div>
+<p id="balances" class="notice">Balances appear after setup.</p><p class="muted">Buy one unit, review the learned update, then sell it. The update can move prices; any extra pool funding comes from this test account.</p>
+<button id="buy" class="button secondary wide" disabled>Review buy · 1 unit</button>
+<button id="learn" class="button primary wide" disabled>Review learned price ↗</button>
+<button id="sell" class="button secondary wide" disabled>Review sell · 1 unit</button>
+<p class="caption">Buys and sells use a 0.5% slippage limit. No automatic trading or public-network writes.</p></section>
+<section class="card" id="review"><p class="eyebrow">02 / REVIEW &amp; CONFIRM</p><h2 id="review-title">Your next move.</h2><p id="review-copy" class="muted">Choose an action to get a fresh review from the contract.</p>
+<dl id="review-details"></dl><p id="review-expiry" class="caption"></p>
+<button id="confirm" class="button primary wide" disabled>Confirm in MetaMask ↗</button>
+<details><summary>Model and transaction details</summary><p class="caption" id="model-source"></p><pre id="technical"></pre></details>
+<p id="transaction" class="caption" aria-live="polite"></p></section>
+</div><footer class="footer"><span>Local learning test · mock collateral · no statistical loss guarantees</span></footer>
+</main></body></html>

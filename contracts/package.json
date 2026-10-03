@@ -1,0 +1,8 @@
+{
+  "name": "flurbo-contracts",
+  "private": true,
+  "dependencies": {
+    "@openzeppelin/contracts": "5.4.0",
+    "@prb/math": "4.1.0"
+  }
+}

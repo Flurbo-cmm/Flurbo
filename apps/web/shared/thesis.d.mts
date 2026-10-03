@@ -1,0 +1,12 @@
+import type {ClaimRule,ClaimLeg} from './claims.mjs';
+export const THESIS_DENOMINATOR: bigint;
+export type ThesisCandidate={id:'SINGLE'|'AND'|'OR'|'EXACTLY_ONE';rule:ClaimRule;legs:ClaimLeg[];schema:string;scope:number;mask:string};
+export type ThesisInput={a:number;b:number;yesA:boolean;yesB:boolean;quantity:string};
+export function percentageBps(value:string):number|null;
+export function thesisDistribution(a:number,r:number,s:number):bigint[];
+export function thesisCandidates(events:number,a:number,b:number,yesA?:boolean,yesB?:boolean):ThesisCandidate[];
+export function scenarioWins(claim:{scope:number;mask:string},events:number,a:number,b:number,state:number):boolean;
+export function thesisProbability(distribution:bigint[],claim:{scope:number;mask:string},events:number,a:number,b:number):bigint;
+export function thesisPayout(claim:{scope:number;mask:string},events:number,a:number,b:number,outcomeA:boolean|null,outcomeB:boolean|null,quantity:bigint):bigint;
+export function thesisQuantity(value:string):bigint|null;
+export function validateThesisInput(input:unknown,events:number):ThesisCandidate[];

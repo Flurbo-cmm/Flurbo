@@ -1,0 +1,988 @@
+{
+  "schema": "flurbo.protocol-fixture.semantics.v1",
+  "now": 1790000000,
+  "deployment": {
+    "namespace": "pilot",
+    "chainId": 10143,
+    "pool": "0x1111111111111111111111111111111111111111",
+    "resolver": "0x3333333333333333333333333333333333333333",
+    "codeHashes": {
+      "pool": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "resolver": "0x2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+    "closesAt": 1800000000,
+    "eventCount": 2
+  },
+  "cases": [
+    {
+      "name": "collision with VOID exception",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "status": "collision",
+        "code": "SEMANTIC_COLLISION",
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "0",
+        "maximumVoidPayoutAtoms": "500000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "These answers have no winning ordinary outcome under the configured rules. Existing VOID payouts may differ. Automated purchases are blocked."
+      },
+      "error": "SEMANTIC_COLLISION"
+    },
+    {
+      "name": "OR is possible",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": null
+    },
+    {
+      "name": "unknown combination abstains",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "status": "unknown",
+        "code": "SEMANTICS_UNKNOWN",
+        "coverage": "unknown",
+        "rulesDigest": "2618acac2e31583461ae6a1281316ee923f7a488e75c1d1faeb44d0053d35e8a",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "500000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 3,
+            "admissible": true,
+            "pays": true
+          }
+        ],
+        "predicates": [],
+        "notice": "Semantic relationships are not fully configured for these events. This check does not establish real-world feasibility."
+      },
+      "error": "SEMANTICS_UNKNOWN"
+    },
+    {
+      "name": "single remains available when unknown",
+      "claim": {
+        "scope": 1,
+        "mask": "2",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 1,
+        "mask": "2",
+        "quantityAtoms": "1000000",
+        "status": "unknown",
+        "code": "SEMANTICS_UNKNOWN",
+        "coverage": "unknown",
+        "rulesDigest": "2618acac2e31583461ae6a1281316ee923f7a488e75c1d1faeb44d0053d35e8a",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 3,
+            "admissible": true,
+            "pays": true
+          }
+        ],
+        "predicates": [],
+        "notice": "Semantic relationships are not fully configured for these events. This check does not establish real-world feasibility."
+      },
+      "error": null
+    },
+    {
+      "name": "expired",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1789999940,
+        "expiresAt": 1790000000,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "wrong rules",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "wrong quantity",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "2",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "wrong claim",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "2",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "forged winning mask",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "inconsistent classification",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "missing matrix",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": null,
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "null row",
+      "claim": {
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "enforced",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "14",
+        "quantityAtoms": "1000000",
+        "status": "no_declared_collision",
+        "code": null,
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "1000000",
+        "maximumVoidPayoutAtoms": "1000000",
+        "matrix": [
+          null,
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": true
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "No collision under the configured predicates. This is not a forecast or a profit guarantee."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "disabled proceeds without semantic assurance",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "disabled",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "configRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": null
+    },
+    {
+      "name": "disabled but expired",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "disabled",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "configRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checkedAt": 1789999880,
+        "expiresAt": 1789999940,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "disabled for another pool",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "disabled",
+        "pool": "0x9999999999999999999999999999999999999999",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "configRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "disabled for another quantity",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "disabled",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "2000000",
+        "configRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "disabled without configuration revision",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "disabled",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "missing mode is never treated as disabled",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "configRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "status": "collision",
+        "code": "SEMANTIC_COLLISION",
+        "coverage": "complete",
+        "rulesDigest": "c42093d4e12b9b2f886f88c4b09ebd603e5d698c50df3036e7ee67f861701296",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "ordinaryMinimumPayoutAtoms": "0",
+        "ordinaryMaximumPayoutAtoms": "0",
+        "maximumVoidPayoutAtoms": "500000",
+        "matrix": [
+          {
+            "state": 0,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 1,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 2,
+            "admissible": true,
+            "pays": false
+          },
+          {
+            "state": 3,
+            "admissible": false,
+            "pays": true
+          }
+        ],
+        "predicates": [
+          {
+            "event": 0,
+            "observation": "same:close",
+            "operator": "gte",
+            "value": "300000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          },
+          {
+            "event": 1,
+            "observation": "same:close",
+            "operator": "lt",
+            "value": "250000",
+            "sourceRule": "Same closing ETH USD cents observation."
+          }
+        ],
+        "notice": "These answers have no winning ordinary outcome under the configured rules. Existing VOID payouts may differ. Automated purchases are blocked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "unrecognised mode is unavailable",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "schema": "flurbo.semantic-assessment.v1",
+        "mode": "off",
+        "pool": "0x1111111111111111111111111111111111111111",
+        "rulesHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000",
+        "configRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "checkedAt": 1790000000,
+        "expiresAt": 1790000060,
+        "notice": "Outcome compatibility checks are switched off. This purchase has not been checked."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "error response is never treated as disabled",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": {
+        "code": "SEMANTICS_UNAVAILABLE",
+        "error": "The semantic check is unavailable. Retry before trading."
+      },
+      "error": "SEMANTICS_UNAVAILABLE"
+    },
+    {
+      "name": "null response is unavailable",
+      "claim": {
+        "scope": 3,
+        "mask": "8",
+        "quantityAtoms": "1000000"
+      },
+      "result": null,
+      "error": "SEMANTICS_UNAVAILABLE"
+    }
+  ]
+}

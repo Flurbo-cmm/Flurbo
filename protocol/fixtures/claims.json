@@ -1,0 +1,11516 @@
+{
+  "schema": "flurbo.protocol-fixture.claims.v1",
+  "encode": [
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "7"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "11"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "13"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "14"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 2,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "7"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "11"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "13"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "14"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "7"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "11"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "13"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "14"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "7"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "11"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "13"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "9"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "14"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "6"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "1"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "127"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "104"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "23"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "2"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "191"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "148"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "43"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "4"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "223"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "146"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "77"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "8"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "239"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "97"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "142"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "16"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "247"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "134"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "113"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "32"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "251"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "73"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "178"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "64"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "253"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "41"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "212"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "128"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "254"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "22"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "232"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 1,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 2,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 3,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 3,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 3,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 4,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 4,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 5,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 5,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 5,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 6,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 6,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 6,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 6,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "127"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "104"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "23"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "191"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "148"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "43"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "223"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "146"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "77"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "239"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "97"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "142"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "16"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "247"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "134"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "113"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "32"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "251"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "73"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "178"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "64"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "253"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "41"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "212"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 7,
+      "mask": "128"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 7,
+      "mask": "254"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 7,
+      "mask": "22"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 7,
+      "mask": "232"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 8,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 8,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 8,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 8,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 8,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 8,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 9,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 9,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 9,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 9,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 9,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 9,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 9,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 9,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 9,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 9,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 9,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 9,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 9,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 9,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 9,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 9,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 10,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 10,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 10,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 10,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 10,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 10,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 10,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 10,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 10,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 10,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 10,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 10,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 10,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 10,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 10,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 10,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "127"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "104"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "23"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "191"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "148"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "43"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "223"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "146"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "77"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "239"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "97"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "142"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "16"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "247"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "134"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "113"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "32"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "251"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "73"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "178"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "64"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "253"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "41"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "212"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 11,
+      "mask": "128"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 11,
+      "mask": "254"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 11,
+      "mask": "22"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 11,
+      "mask": "232"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 12,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 12,
+      "mask": "7"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 12,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 12,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 12,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 12,
+      "mask": "11"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 12,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 12,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 12,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 12,
+      "mask": "13"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 12,
+      "mask": "9"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 12,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 12,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 12,
+      "mask": "14"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 12,
+      "mask": "6"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 12,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "127"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "104"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "23"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "191"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "148"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "43"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "223"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "146"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "77"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "239"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "97"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "142"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "16"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "247"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "134"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "113"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "32"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "251"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "73"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "178"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "64"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "253"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "41"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "212"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 13,
+      "mask": "128"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 13,
+      "mask": "254"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 13,
+      "mask": "22"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 13,
+      "mask": "232"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "1"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "127"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "104"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "23"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "2"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "191"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "148"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "43"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "4"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "223"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "146"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "77"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "8"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "239"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "97"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "142"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "16"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "247"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "134"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "113"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "32"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "251"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "73"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "178"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "64"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "253"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "41"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "212"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 14,
+      "mask": "128"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "OR",
+      "scope": 14,
+      "mask": "254"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "EXACTLY_ONE",
+      "scope": 14,
+      "mask": "22"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "scope": 14,
+      "mask": "232"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "scope": 5,
+      "mask": "2",
+      "note": "legs are sorted by event"
+    }
+  ],
+  "invalidEncode": [
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 0,
+          "yes": false
+        }
+      ],
+      "rule": "AND",
+      "note": "duplicate event"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "note": "event outside the pool"
+    },
+    {
+      "events": 4,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ],
+      "rule": "AND",
+      "note": "four legs"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        }
+      ],
+      "rule": "AT_LEAST_TWO",
+      "note": "threshold needs two legs"
+    },
+    {
+      "events": 3,
+      "legs": [],
+      "rule": "OR",
+      "note": "no legs"
+    },
+    {
+      "events": 3,
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        }
+      ],
+      "rule": "XOR",
+      "note": "unknown rule"
+    }
+  ],
+  "validate": [
+    {
+      "scope": 3,
+      "mask": "1",
+      "events": 2,
+      "valid": true
+    },
+    {
+      "scope": 3,
+      "mask": "14",
+      "events": 2,
+      "valid": true
+    },
+    {
+      "scope": 3,
+      "mask": "15",
+      "events": 2,
+      "valid": false,
+      "note": "pays in every state"
+    },
+    {
+      "scope": 3,
+      "mask": "0",
+      "events": 2,
+      "valid": false,
+      "note": "never pays"
+    },
+    {
+      "scope": 1,
+      "mask": "2",
+      "events": 2,
+      "valid": true
+    },
+    {
+      "scope": 1,
+      "mask": "3",
+      "events": 2,
+      "valid": false,
+      "note": "single event, every state"
+    },
+    {
+      "scope": 4,
+      "mask": "1",
+      "events": 2,
+      "valid": false,
+      "note": "scope outside a two-event pool"
+    },
+    {
+      "scope": 7,
+      "mask": "254",
+      "events": 3,
+      "valid": true
+    },
+    {
+      "scope": 7,
+      "mask": "255",
+      "events": 3,
+      "valid": false,
+      "note": "pays in every state"
+    },
+    {
+      "scope": 15,
+      "mask": "1",
+      "events": 4,
+      "valid": false,
+      "note": "four events"
+    },
+    {
+      "scope": 8,
+      "mask": "2",
+      "events": 4,
+      "valid": true
+    },
+    {
+      "scope": 3,
+      "mask": "01",
+      "events": 2,
+      "valid": false,
+      "note": "leading zero"
+    },
+    {
+      "scope": 3,
+      "mask": "1.0",
+      "events": 2,
+      "valid": false,
+      "note": "not an integer"
+    },
+    {
+      "scope": 3,
+      "mask": "-1",
+      "events": 2,
+      "valid": false,
+      "note": "negative"
+    },
+    {
+      "scope": 0,
+      "mask": "1",
+      "events": 2,
+      "valid": false,
+      "note": "empty scope"
+    },
+    {
+      "scope": 3,
+      "mask": "1",
+      "events": 5,
+      "valid": false,
+      "note": "pools have two to four events"
+    }
+  ],
+  "decode": [
+    {
+      "scope": 3,
+      "mask": "1",
+      "events": 2,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "2",
+      "events": 2,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "3",
+      "events": 2,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 3,
+      "mask": "4",
+      "events": 2,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "5",
+      "events": 2,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 3,
+      "mask": "6",
+      "events": 2,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "7",
+      "events": 2,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "8",
+      "events": 2,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "9",
+      "events": 2,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "10",
+      "events": 2,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 3,
+      "mask": "11",
+      "events": 2,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "12",
+      "events": 2,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 3,
+      "mask": "13",
+      "events": 2,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 3,
+      "mask": "14",
+      "events": 2,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "1",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "2",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "3",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 5,
+      "mask": "4",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "5",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 5,
+      "mask": "6",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "7",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "8",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "9",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "10",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 5,
+      "mask": "11",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "12",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 5,
+      "mask": "13",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 5,
+      "mask": "14",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "1",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "2",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "3",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "4",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "5",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "6",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "7",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "8",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "9",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "10",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "11",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "12",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "13",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "14",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "15",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "16",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "17",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "18",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "19",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "20",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "21",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "22",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "23",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "24",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "25",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "26",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "27",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "28",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "29",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "30",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "31",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "32",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "33",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "34",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "35",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "36",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "37",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "38",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "39",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "40",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "41",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "42",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "43",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "44",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "45",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "46",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "47",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "48",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "49",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "50",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "51",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "52",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "53",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "54",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "55",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "56",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "57",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "58",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "59",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "60",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "61",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "62",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "63",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "64",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "65",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "66",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "67",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "68",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "69",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "70",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "71",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "72",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "73",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "74",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "75",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "76",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "77",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "78",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "79",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "80",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "81",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "82",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "83",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "84",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "85",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "86",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "87",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "88",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "89",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "90",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "91",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "92",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "93",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "94",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "95",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "96",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "97",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "98",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "99",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "100",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "101",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "102",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "103",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "104",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "105",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "106",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "107",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "108",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "109",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "110",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "111",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "112",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "113",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "114",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "115",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "116",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "117",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "118",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "119",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "120",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "121",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "122",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "123",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "124",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "125",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "126",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "127",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "128",
+      "events": 3,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "129",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "130",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "131",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "132",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "133",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "134",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "135",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "136",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "137",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "138",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "139",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "140",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "141",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "142",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "143",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "144",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "145",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "146",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "147",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "148",
+      "events": 3,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "149",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "150",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "151",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "152",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "153",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "154",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "155",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "156",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "157",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "158",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "159",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "160",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "161",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "162",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "163",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "164",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "165",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "166",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "167",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "168",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "169",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "170",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "171",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "172",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "173",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "174",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "175",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "176",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "177",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "178",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "179",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "180",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "181",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "182",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "183",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "184",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "185",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "186",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "187",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "188",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "189",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "190",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "191",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "192",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "193",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "194",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "195",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "196",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "197",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "198",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "199",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "200",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "201",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "202",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "203",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "204",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "205",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "206",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "207",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "208",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "209",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "210",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "211",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "212",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "213",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "214",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "215",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "216",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "217",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "218",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "219",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "220",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "221",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "222",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "223",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "224",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "225",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "226",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "227",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "228",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "229",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "230",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "231",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "232",
+      "events": 3,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "233",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "234",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "235",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "236",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "237",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "238",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "239",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "240",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "241",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "242",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "243",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "244",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "245",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "246",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "247",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "248",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "249",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "250",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "251",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "252",
+      "events": 3,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 7,
+      "mask": "253",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 7,
+      "mask": "254",
+      "events": 3,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "1",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "2",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "3",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "4",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "5",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "6",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "7",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "8",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "9",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "10",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "11",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "12",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "13",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "14",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "15",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "16",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "17",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "18",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "19",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "20",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "21",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "22",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "23",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "24",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "25",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "26",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "27",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "28",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "29",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "30",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "31",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "32",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "33",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "34",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "35",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "36",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "37",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "38",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "39",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "40",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "41",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "42",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "43",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "44",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "45",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "46",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "47",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "48",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "49",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "50",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "51",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "52",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "53",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "54",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "55",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "56",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "57",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "58",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "59",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "60",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "61",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "62",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "63",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "64",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "65",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "66",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "67",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "68",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "69",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "70",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "71",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "72",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "73",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "74",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "75",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "76",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "77",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "78",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "79",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "80",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "81",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "82",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "83",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "84",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "85",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "86",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "87",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "88",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "89",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "90",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "91",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "92",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "93",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "94",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "95",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "96",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "97",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "98",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "99",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "100",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "101",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "102",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "103",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "104",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "105",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "106",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "107",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "108",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "109",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "110",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "111",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "112",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "113",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "114",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "115",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "116",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "117",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "118",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "119",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "120",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "121",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "122",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "123",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "124",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "125",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "126",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "127",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "128",
+      "events": 4,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "129",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "130",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "131",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "132",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "133",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "134",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "135",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "136",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "137",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "138",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "139",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "140",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "141",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "142",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "143",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "144",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "145",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "146",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "147",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "148",
+      "events": 4,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "149",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "150",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "151",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "152",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "153",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "154",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "155",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "156",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "157",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "158",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "159",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "160",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "161",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "162",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "163",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "164",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "165",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "166",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "167",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "168",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "169",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "170",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "171",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "172",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "173",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "174",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "175",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "176",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "177",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "178",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "179",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "180",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "181",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "182",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "183",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "184",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "185",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "186",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "187",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "188",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "189",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "190",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "191",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "192",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "193",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "194",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "195",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "196",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "197",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "198",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "199",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "200",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "201",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "202",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "203",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "204",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "205",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "206",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "207",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "208",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "209",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "210",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "211",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "212",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "213",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "214",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "215",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "216",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "217",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "218",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "219",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "220",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "221",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "222",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "223",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "224",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "225",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "226",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "227",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "228",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "229",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "230",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "231",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "232",
+      "events": 4,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "233",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "234",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "235",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "236",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "237",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "238",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "239",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "240",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "241",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "242",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "243",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "244",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "245",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "246",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "247",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "248",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "249",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "250",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "251",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": false
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "252",
+      "events": 4,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 14,
+      "mask": "253",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": false
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 14,
+      "mask": "254",
+      "events": 4,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 1,
+          "yes": true
+        },
+        {
+          "event": 2,
+          "yes": true
+        },
+        {
+          "event": 3,
+          "yes": true
+        }
+      ]
+    }
+  ],
+  "keys": [
+    {
+      "chainId": 10143,
+      "pool": "0x28D5EE02B1EDA6959AC3EE5A4F834237C84DEE02",
+      "scope": 3,
+      "mask": "8",
+      "key": "10143:0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02:3:8"
+    }
+  ],
+  "payouts": [
+    {
+      "scope": 3,
+      "mask": "8",
+      "events": 2,
+      "yesMask": 3,
+      "voidMask": 0,
+      "numerator": "1",
+      "denominator": "1",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "2500000"
+    },
+    {
+      "scope": 3,
+      "mask": "8",
+      "events": 2,
+      "yesMask": 1,
+      "voidMask": 0,
+      "numerator": "0",
+      "denominator": "1",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "0"
+    },
+    {
+      "scope": 3,
+      "mask": "8",
+      "events": 2,
+      "yesMask": 1,
+      "voidMask": 2,
+      "numerator": "1",
+      "denominator": "2",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 3,
+      "mask": "6",
+      "events": 2,
+      "yesMask": 0,
+      "voidMask": 3,
+      "numerator": "2",
+      "denominator": "4",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 7,
+      "mask": "128",
+      "events": 3,
+      "yesMask": 7,
+      "voidMask": 0,
+      "numerator": "1",
+      "denominator": "1",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "2500000"
+    },
+    {
+      "scope": 7,
+      "mask": "254",
+      "events": 3,
+      "yesMask": 0,
+      "voidMask": 1,
+      "numerator": "1",
+      "denominator": "2",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 5,
+      "mask": "10",
+      "events": 3,
+      "yesMask": 1,
+      "voidMask": 4,
+      "numerator": "2",
+      "denominator": "2",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "2500000"
+    },
+    {
+      "scope": 1,
+      "mask": "2",
+      "events": 2,
+      "yesMask": 0,
+      "voidMask": 1,
+      "numerator": "1",
+      "denominator": "2",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 1,
+      "mask": "2",
+      "events": 2,
+      "yesMask": 1,
+      "voidMask": 0,
+      "numerator": "1",
+      "denominator": "1",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "2500000"
+    },
+    {
+      "scope": 14,
+      "mask": "8",
+      "events": 4,
+      "yesMask": 6,
+      "voidMask": 8,
+      "numerator": "1",
+      "denominator": "2",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 7,
+      "mask": "150",
+      "events": 3,
+      "yesMask": 2,
+      "voidMask": 5,
+      "numerator": "2",
+      "denominator": "4",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    }
+  ]
+}

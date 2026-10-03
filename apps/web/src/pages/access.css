@@ -1,0 +1,43 @@
+/* Account and access. One task at a time, stable while background checks run. */
+.access-page { display: grid; gap: var(--s-6); align-content: start; }
+.access-page .page-header { margin-bottom: var(--s-2); }
+.access-card { display: grid; gap: var(--s-4); align-content: start; }
+.access-card > .status { justify-self: start; padding-left: 0; }
+.access-card h2 { font-size: 22px; }
+.access-card p { color: var(--ink-2); }
+.access-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-4); }
+.access-progress { flex: 1 0 100%; max-width: 240px; }
+.access-note { color: var(--ink-3) !important; font-size: 14px; }
+.access-note a { text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+.access-identity { display: grid; gap: var(--s-2); padding: var(--s-4); border-radius: var(--r-control); background: var(--surface-sunken); }
+.access-identity code { overflow-wrap: anywhere; }
+.access-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-4); padding-top: var(--s-2); }
+
+.application-form { display: grid; gap: var(--s-5); }
+.application-form form { display: grid; gap: var(--s-3); padding-top: var(--s-5); border-top: 1px solid var(--rule); }
+.application-form form h2, .application-form [role="status"] > h2, .application-form > div > h2 { font-size: 20px; }
+.application-form label:not(.check-row) { font-weight: 500; }
+.application-consent { font-size: 14px !important; line-height: 1.5; color: var(--ink-2); }
+.application-consent a { text-decoration: underline; text-underline-offset: 3px; }
+.application-form > [role="status"], .application-form > div:not(.access-actions):not(.application-loading) { display: grid; gap: var(--s-2); padding-top: var(--s-5); border-top: 1px solid var(--rule); }
+.application-steps { padding: var(--s-1) 0; }
+.application-withdraw > :not(summary) { display: grid; gap: var(--s-3); justify-items: start; }
+.application-withdraw > p { color: var(--ink-2); }
+.application-loading { display: grid; gap: var(--s-3); padding: var(--s-4) 0; }
+
+.application-review { padding: var(--s-5) var(--s-6); border: 1px solid var(--rule); border-radius: var(--r-panel); background: var(--surface); }
+.application-review > :not(summary) { margin-top: var(--s-3); }
+.application-review-list { display: grid; }
+.application-review-list article { display: grid; gap: var(--s-3); padding: var(--s-4) 0; border-bottom: 1px solid var(--rule); }
+.application-review-list article > div:first-child { display: grid; gap: 2px; }
+.application-review-list code { font-size: 12px; overflow-wrap: anywhere; }
+.application-review-list span { color: var(--ink-3); font-size: 13px; }
+.application-decision { display: grid; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-control); background: var(--lime-soft); }
+
+.trading-wallets .wallet-status { font-weight: 500; color: var(--ink) !important; }
+.wallet-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.wallet-rows li { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 48px; border-bottom: 1px solid var(--rule); }
+
+.notice-settings fieldset { display: grid; gap: var(--s-3); margin: 0; padding: 0; border: 0; }
+.notice-settings .check-row span { display: grid; gap: 2px; }
+.notice-settings .check-row small { color: var(--ink-3); font-size: 13px; }

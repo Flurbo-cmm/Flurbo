@@ -1,0 +1,21 @@
+{
+  "name": "@flurbo/envio-indexer",
+  "version": "0.1.0",
+  "description": "Envio HyperIndex for Flurbo prediction markets on Monad testnet",
+  "type": "module",
+  "scripts": {
+    "config": "node scripts/generate-config.mjs",
+    "codegen": "envio codegen",
+    "build": "envio build",
+    "dev": "envio dev",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "envio": "3.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

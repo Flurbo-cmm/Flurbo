@@ -1,0 +1,274 @@
+openapi: 3.1.0
+info:
+  title: Flurbo agent runtime API
+  version: "1"
+  description: >
+    Headless API for agent runtimes that run on the operator's own infrastructure. Monad testnet beta with
+    test assets. Credentials read data and report runtime activity; they never sign, move funds or grant
+    settlement authority. Numbers follow protocol/specs/numbers.md: amounts are decimal integer strings.
+servers:
+  - url: https://flurbo.singu.online/api/agent-runtime/v1
+security:
+  - agentCredential: []
+components:
+  securitySchemes:
+    agentCredential:
+      type: http
+      scheme: bearer
+      description: "fla1_{credentialId}_{secret}, issued once from the agent page. Never in a query string."
+  parameters:
+    protocol:
+      name: Flurbo-Agent-Protocol
+      in: header
+      required: true
+      schema: { const: "1" }
+    namespace:
+      name: namespace
+      in: path
+      required: true
+      schema: { type: string, pattern: "^(pilot|rehearsal|practice-[0-9a-f]{40})$" }
+  schemas:
+    Atoms: { type: string, pattern: "^(0|[1-9][0-9]{0,77})$" }
+    Hash: { type: string, pattern: "^0x[0-9a-f]{64}$" }
+    Address: { type: string, pattern: "^0x[0-9a-f]{40}$" }
+    Claim:
+      type: object
+      additionalProperties: false
+      required: [scope, mask]
+      properties:
+        scope: { type: integer, minimum: 1, maximum: 15 }
+        mask: { type: string, pattern: "^[1-9][0-9]{0,2}$" }
+    Error:
+      type: object
+      required: [code, error, retryable]
+      properties:
+        code:
+          enum: [UNAUTHENTICATED, CREDENTIAL_EXPIRED, CREDENTIAL_REVOKED, INVITE_REQUIRED, SCOPE_REQUIRED, AGENT_ARCHIVED, BROWSER_NOT_SUPPORTED,
+            RATE_LIMITED, UNSUPPORTED_PROTOCOL, UNSUPPORTED_DEPLOYMENT, INVALID_INPUT, NOT_FOUND, CONFLICT, HASH_CONFLICT, WALLET_REQUIRED,
+            TOO_MANY_PENDING, UNAVAILABLE]
+        error: { type: string, description: Safe to show. Never contains credentials or upstream details. }
+        retryable: { type: boolean }
+    Deployment: { $ref: "../schemas/deployment.v1.json" }
+    Policy:
+      type: object
+      required: [schema, version, paused, liveEnabled, limits, markets, serverTime]
+      properties:
+        schema: { const: flurbo.agent-runtime-policy.v1 }
+        version: { type: integer, minimum: 1 }
+        paused: { type: boolean, description: An instruction to the compliant runtime, not an on-chain freeze. }
+        liveEnabled: { type: boolean }
+        limits:
+          type: object
+          properties:
+            maxTradeCostAtoms: { oneOf: [{ $ref: "#/components/schemas/Atoms" }, { type: "null" }] }
+            windows:
+              type: array
+              maxItems: 3
+              items: { type: object, required: [seconds, atoms], properties: { seconds: { type: integer }, atoms: { $ref: "#/components/schemas/Atoms" } } }
+        markets: { type: array, items: { type: string } }
+        serverTime: { type: integer }
+        acknowledged: { type: boolean, description: Heartbeat responses only. }
+    Intent:
+      type: object
+      additionalProperties: false
+      required: [action, claim, quantityAtoms, limitAtoms, deadline]
+      description: >
+        buy and sell carry the claim, quantity, limit (maxCost or minProceeds) and deadline exactly as signed.
+        redeem carries the claim and quantity, limit "0" and deadline null. approve carries claim null,
+        quantity "0", limit equal to the approved amount and deadline null.
+      properties:
+        action: { enum: [buy, sell, redeem, approve] }
+        claim: { oneOf: [{ $ref: "#/components/schemas/Claim" }, { type: "null" }] }
+        quantityAtoms: { $ref: "#/components/schemas/Atoms" }
+        limitAtoms: { $ref: "#/components/schemas/Atoms" }
+        deadline: { oneOf: [{ type: integer }, { type: "null" }] }
+    Execution:
+      type: object
+      required: [hash, namespace, intent, provenance, reportedAt, status]
+      properties:
+        hash: { $ref: "#/components/schemas/Hash" }
+        namespace: { type: string }
+        intent: { $ref: "#/components/schemas/Intent" }
+        decisionId: { type: [string, "null"] }
+        provenance: { const: sdk-runtime }
+        reportedAt: { type: integer }
+        status:
+          enum: [recorded, pending, confirmed, reverted, mismatch, attributed-elsewhere]
+          description: >
+            recorded and pending are provisional and claim nothing. confirmed and reverted are verified and
+            owned by this agent. mismatch means the chain does not show the reported intent from the agent's
+            wallet. attributed-elsewhere means another flow verified the same transaction first.
+        verification:
+          type: [object, "null"]
+          properties:
+            reason: { enum: [wallet_not_associated, unsupported_call, intent_mismatch, effect_missing, not_this_chain_or_value, invalid_hash, null] }
+            blockNumber: { type: [string, "null"] }
+            blockTimestamp: { type: [integer, "null"] }
+            from: { type: [string, "null"] }
+            collateralAtoms: { oneOf: [{ $ref: "#/components/schemas/Atoms" }, { type: "null" }] }
+            gasUsed: { type: [string, "null"] }
+            effectiveGasPrice: { type: [string, "null"] }
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+paths:
+  /session:
+    get:
+      summary: Who this credential acts for
+      description: Allowed for archived agents.
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema: { const: flurbo.agent-runtime-session.v1 }
+                  protocol: { const: "1" }
+                  agentId: { type: string }
+                  agentName: { type: string }
+                  status: { enum: [active, paused, archived] }
+                  credential: { type: object, properties: { credentialId: { type: string }, scopes: { type: array, items: { type: string } }, expiresAt: { type: integer } } }
+                  wallet: { oneOf: [{ $ref: "#/components/schemas/Address" }, { type: "null" }] }
+                  markets: { type: array, items: { type: string } }
+                  serverTime: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /deployments:
+    get:
+      summary: Deployment records of the markets enabled for this agent (scope markets:read)
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      responses:
+        "200":
+          description: Deployments
+          content: { application/json: { schema: { type: object, properties: { schema: { const: flurbo.agent-deployments.v1 }, deployments: { type: array, items: { $ref: "#/components/schemas/Deployment" } } } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}:
+    get:
+      summary: Questions, rules, deadlines, settlement state and one-share prices (scope markets:read)
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      responses:
+        "200": { description: Market, content: { application/json: { schema: { $ref: "../schemas/market.v1.json" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}/quote:
+    post:
+      summary: Executable quote read from the pool contract at one snapshot block (scope markets:read)
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [side, scope, mask, quantityAtoms]
+              properties:
+                side: { enum: [buy, sell] }
+                scope: { type: integer }
+                mask: { type: string }
+                quantityAtoms: { $ref: "#/components/schemas/Atoms" }
+      responses:
+        "200": { description: "{status: ok, quote} or {status: unavailable, reason, detail}" }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}/validate-trade:
+    post:
+      summary: Outcome compatibility under configured predicates (scope markets:read)
+      description: Returns a claim-bound assessment, not a quote or permission to sign. With mode "disabled" nothing was checked and the purchase proceeds without semantic assurance. With mode "enforced", unknown combinations make updated agents abstain. An error response or any other shape is never "disabled". See specs/semantics.md.
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [scope, mask, quantityAtoms]
+              properties:
+                scope: { type: integer, minimum: 1, maximum: 15 }
+                mask: { type: string }
+                quantityAtoms: { $ref: "#/components/schemas/Atoms" }
+      responses:
+        "200": { description: "flurbo.semantic-assessment.v1 with mode and configRevision. Mode disabled carries only the exact bindings and freshness. Mode enforced adds status collision, unknown or no_declared_collision, the matrix and separate ordinary/VOID payout bounds. Expires in 60 seconds." }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}/claim-analytics:
+    post:
+      summary: Model-implied probability of a claim (tenths of a percentage point). Not an executable price.
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Claim" } } } }
+      responses:
+        "200": { description: flurbo.claim-analytics.v1 }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}/pair-analytics:
+    post:
+      summary: Model-implied pair values for two events. Not an executable price.
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [a, b], properties: { a: { type: integer }, b: { type: integer } } } } } }
+      responses:
+        "200": { description: Pair analytics }
+        default: { $ref: "#/components/responses/Error" }
+  /markets/{namespace}/wallet:
+    post:
+      summary: Balances, allowance and holdings of the agent's associated wallet (scope wallet:read)
+      description: Wallet holdings may include activity the agent did not perform; they are not agent performance.
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { $ref: "#/components/parameters/namespace" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [claims], properties: { claims: { type: array, maxItems: 30, items: { $ref: "#/components/schemas/Claim" } } } } } } }
+      responses:
+        "200": { description: flurbo.agent-wallet-state.v1 }
+        default: { $ref: "#/components/responses/Error" }
+  /policy:
+    get:
+      summary: Policy published for this agent (scope runtime:report)
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      responses:
+        "200": { description: Policy, content: { application/json: { schema: { $ref: "#/components/schemas/Policy" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /heartbeat:
+    post:
+      summary: Runtime status; returns the current policy (scope runtime:report)
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "../schemas/heartbeat.v1.json" } } } }
+      responses:
+        "200": { description: Policy with acknowledged flag, content: { application/json: { schema: { $ref: "#/components/schemas/Policy" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /decisions:
+    post:
+      summary: Report a research decision (scope runtime:report). Stored as self-reported.
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "../schemas/decision.v1.json" } } } }
+      responses:
+        "200": { description: Stored decision; repeated decisionId returns the stored one }
+        default: { $ref: "#/components/responses/Error" }
+  /executions:
+    post:
+      summary: Report a broadcast transaction for verification (scope executions:report)
+      description: >
+        Idempotent for the same hash and intent. Allowed for archived agents so sent transactions can still be
+        attributed. Recording claims nothing; only verification does.
+      parameters: [{ $ref: "#/components/parameters/protocol" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [namespace, hash, intent]
+              properties:
+                namespace: { type: string }
+                hash: { $ref: "#/components/schemas/Hash" }
+                intent: { $ref: "#/components/schemas/Intent" }
+                decisionId: { type: [string, "null"], pattern: "^[A-Za-z0-9_-]{1,64}$" }
+                nonce: { type: integer }
+                sdk: { type: object, properties: { language: { type: string }, version: { type: string } } }
+      responses:
+        "200": { description: Execution, content: { application/json: { schema: { $ref: "#/components/schemas/Execution" } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /executions/{hash}:
+    get:
+      summary: Execution status; re-verifies while provisional (scope executions:report)
+      parameters: [{ $ref: "#/components/parameters/protocol" }, { name: hash, in: path, required: true, schema: { $ref: "#/components/schemas/Hash" } }]
+      responses:
+        "200": { description: Execution, content: { application/json: { schema: { $ref: "#/components/schemas/Execution" } } } }
+        default: { $ref: "#/components/responses/Error" }

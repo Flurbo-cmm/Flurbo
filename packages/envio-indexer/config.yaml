@@ -1,0 +1,35 @@
+# Generated from config/collections.json. Run npm run config after registry changes.
+name: flurbo-monad-indexer
+description: Flurbo pool trades and resolution events on Monad testnet
+address_format: lowercase
+contracts:
+  - name: PilotPool
+    events:
+      - event: "Traded(address indexed trader, uint32 indexed scope, uint256 indexed mask, bool isBuy, uint128 quantity, uint128 collateralAmount)"
+      - event: "Redeemed(address indexed owner, uint32 indexed scope, uint256 indexed mask, uint128 quantity, uint128 collateralAmount)"
+  - name: PilotResolver
+    events:
+      - event: "Asserted(uint8 indexed eventIndex, address indexed asserter, uint8 outcome, bytes32 evidenceHash, string evidenceURI, uint64 challengeUntil)"
+      - event: "Disputed(uint8 indexed eventIndex, address indexed disputer, uint8 outcome, bytes32 evidenceHash, string evidenceURI, uint64 voteUntil)"
+      - event: "Finalized(uint8 indexed eventIndex, uint8 outcome, bool timedOut)"
+      - event: "Delivered(address indexed pool, uint32 yesMask, uint32 voidMask)"
+chains:
+  - id: 10143
+    start_block: 0
+    contracts:
+      - name: PilotPool
+        address:
+          - "0x160647d16405f44989c56b83609a171247068dcc"
+          - "0x939bd2bac6a163ed39a62152c759a0c2e7ccef57"
+          - "0xb7b872e9372eaee17d8de9f4c82861f1aa673198"
+          - "0xc4409edbfb9e9d47167b028de22f0b0d6b630077"
+          - "0xd8ed3137446d99372f82573e716b3340d3dba7b3"
+          - "0xf8beba5827bfaaf6ace08a40cd9db740233ca9fe"
+      - name: PilotResolver
+        address:
+          - "0x04f29daa15d01f833d02794d97f9648bff078c17"
+          - "0x1fd002bf38f4e246f55000e64b8405d18aa5e0f6"
+          - "0x23f1ec448d34a3d6964e7f4408f303c692681a40"
+          - "0x2b0e3204b74c1c8e542fc9f747c11204a3c779c1"
+          - "0x37eff955633a76472f77b88629710432bccf1654"
+          - "0xe747a8d1d42317edf6e6a68a05ffaf3b27dd8d56"

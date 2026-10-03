@@ -1,0 +1,155 @@
+name: Checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      # Server tests call the Rust analytics: debug examples directly, release builds through bin/ as in the Dockerfile.
+      - name: Build Rust analytics
+        run: |
+          cargo build --locked -p flurbo-core --examples
+          cargo build --locked --release -p flurbo-core --example parlay_compare --example pair_analytics --example parlay_testnet_model
+          mkdir -p bin
+          cp target/release/examples/parlay_compare bin/flurbo-parlay-compare
+          cp target/release/examples/pair_analytics bin/flurbo-pair-analytics
+          cp target/release/examples/parlay_testnet_model bin/flurbo-learning-model
+      - run: npm ci
+        working-directory: apps/web
+      - run: npm run typecheck
+        working-directory: apps/web
+      - name: Server, semantic validation and request-limit tests (disabled and enforced modes)
+        run: npm test
+        working-directory: apps/web
+      # Run every browser regression sequentially so excluded suites cannot drift.
+      - name: Full browser regression suite
+        working-directory: apps/web
+        run: |
+          npx vite build
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright-core@1.56.1
+          PW="$RUNNER_TEMP/pw/node_modules/playwright-core"
+          node "$PW/cli.js" install --with-deps chromium
+          export FLURBO_TEST_PLAYWRIGHT="$PW/index.mjs"
+          export FLURBO_TEST_BROWSER="$(node -e "console.log(require(process.argv[1]).chromium.executablePath())" "$PW")"
+          node --experimental-strip-types --test --test-concurrency=1 tests/*browser.test.ts
+      - name: Protocol documents parse
+        run: |
+          python3 -m pip install --quiet pyyaml==6.0.2
+          python3 scripts/check_protocol_documents.py
+          python3 -c "import json; json.load(open('protocol/fixtures/semantics.json'))"
+
+  sdks:
+    # TypeScript, Python and Rust share the fixtures in protocol/fixtures and the local-chain harness.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            packages/sdk/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - name: Install dependencies and build contracts for the local chain
+        run: |
+          npm --prefix apps/web ci
+          npm --prefix packages/sdk ci
+          npm --prefix contracts ci
+          forge build
+          python3 -m pip install --quiet -e packages/sdk-python
+      # Runs after apps/web is installed: the CRE tests import apps/web modules that resolve viem from apps/web/node_modules.
+      - name: Settlement preparation types and rules
+        working-directory: workflows/cre
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun test
+      - name: Historical source-to-contract settlement replay (offline)
+        run: node apps/web/scripts/replay-settlement-chain.mjs
+      - name: TypeScript SDK
+        working-directory: packages/sdk
+        run: npm run typecheck && npm test
+      - name: SDK dashboard with a real local-chain runtime
+        run: |
+          npm --prefix apps/web run build
+          npm install --prefix "$RUNNER_TEMP/pw-sdk" --no-audit --no-fund playwright-core@1.56.1
+          PW="$RUNNER_TEMP/pw-sdk/node_modules/playwright-core"
+          node "$PW/cli.js" install --with-deps chromium
+          export FLURBO_TEST_PLAYWRIGHT="$PW/index.mjs"
+          export FLURBO_TEST_BROWSER="$(node -e "console.log(require(process.argv[1]).chromium.executablePath())" "$PW")"
+          node --test packages/sdk/test/dashboard-browser.test.ts
+      - name: Python SDK
+        working-directory: packages/sdk-python
+        run: python3 -m unittest discover -s tests
+      - name: Rust SDK
+        working-directory: packages/sdk-rust
+        run: cargo test --locked
+
+  sdk-cpp:
+    # The supported C++ platform: GCC and OpenSSL 3.2+ under MSYS2 UCRT64 (see packages/sdk-cpp/README.md).
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: make mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-openssl
+      - name: Conformance and runtime unit tests
+        working-directory: packages/sdk-cpp
+        run: make test
+
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm --prefix apps/web ci
+      - run: npm ci
+        working-directory: apps/mobile
+      - run: npm run typecheck
+        working-directory: apps/mobile
+      - run: npm test
+        working-directory: apps/mobile
+      - name: JavaScript bundle resolves every shared module
+        working-directory: apps/mobile
+        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/mobile-bundle"
+        env:
+          CI: '1'
