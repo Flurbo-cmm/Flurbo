@@ -257,7 +257,9 @@ test('portfolio shares one discovery read across linked wallets, bounds reads an
     assert.equal(scans,1,'one shared discovery read, not one per wallet');
     assert.ok(peak<=4,`at most four concurrent holdings reads (two pools, two wallets each), saw ${peak}`);
     assert.ok(batches.length>0&&batches.every(n=>n>0&&n<=60),`position batches exceed sixty claims: ${batches}`);
-    await page.clock.runFor(3100);
+    // Let the effect register its timer and the resulting request finish under slow CI scheduling.
+    for(let attempt=0;scans<2&&attempt<6;attempt++)await page.clock.runFor(1000);
+    await until(()=>scans===2);
     await page.getByRole('button',{name:'Refresh',exact:true}).waitFor();
     assert.equal(scans,2,'one bounded history catch-up is allowed');
     await page.clock.runFor(6500);assert.equal(scans,2,'unchanged index progress must stop automatic catch-up');
