@@ -132,11 +132,13 @@ export async function runNotifications({ env = process.env, args = process.argv.
     if (args.length > 1 || args.length === 1 && args[0] !== '--test-email') throw new Error('Invalid arguments');
     const config = emailConfig(env), command = redisCommand(env, request), send = resendDelivery(config, request);
     const root = fileURLToPath(new URL('../../../', import.meta.url));
-    const manifests = [JSON.parse(env.FLURBO_PILOT_MANIFEST_JSON ?? await readFile(resolve(root, 'config/pilot-testnet.json'), 'utf8'))];
-    if (['rehearsal','ethereum-activity',DETERMINISTIC_MODE].includes(manifests[0].publication?.mode)) throw new Error('Configure the release pilot pool');
+    const manifests = env.FLURBO_PILOT_DISABLED === 'true' ? []
+      : [JSON.parse(env.FLURBO_PILOT_MANIFEST_JSON ?? await readFile(resolve(root, 'config/pilot-testnet.json'), 'utf8'))];
+    if (manifests.length && ['rehearsal','ethereum-activity',DETERMINISTIC_MODE].includes(manifests[0].publication?.mode)) throw new Error('Configure the release pilot pool');
     // With the registry, every pool the bot may act on is watched, plus every listed pool.
-    const extras=registryEnabled(env)?monitoredCollections(await loadRegistry(readRegistry?{read:readRegistry}:{})).map(({label,manifest})=>({label,manifest}))
+    const extras=registryEnabled(env)?monitoredCollections(await loadRegistry(readRegistry?{read:readRegistry,env}:{env})).map(({label,manifest})=>({label,manifest}))
       :env.FLURBO_PRACTICE_COLLECTIONS_JSON?JSON.parse(env.FLURBO_PRACTICE_COLLECTIONS_JSON):[];
+    if (!manifests.length && !extras.length) throw Error('Settlement monitor has no registered pools');
     if(!Array.isArray(extras)||extras.length>MAX_MONITORED_POOLS)throw Error('Invalid practice collections');
     for(const row of extras){
       if(!row?.manifest||!['rehearsal','ethereum-activity',DETERMINISTIC_MODE].includes(row.manifest.publication?.mode)

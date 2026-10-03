@@ -198,6 +198,7 @@ function pageTitle(location: string) {
 
 export default function App() {
   const [location] = useLocation();
+  const companySite = window.location.hostname === 'flurbopm.singu.online';
   const previousLocation = useRef(location);
   useEffect(() => {
     document.title = pageTitle(location);
@@ -222,13 +223,13 @@ export default function App() {
       <Route path="/markets/:collection/:event/thesis" component={AccountRoute} />
       <Route path="/fund" component={AccountRoute} />
       <Route path="/access" component={AccountRoute} />
-      <Route path="/account" component={AccountRoute} />
+      <Route path="/account">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
       <Route path="/portfolio" component={AccountRoute} />
       <Route path="/agents" component={AccountRoute} />
       <Route path="/agents/:id" component={AccountRoute} />
       <Route path="/history"><Redirect to="/portfolio" replace /></Route>
-      <Route path="/events" component={AccountRoute} />
-      <Route path="/evidence" component={AccountRoute} />
+      <Route path="/events">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
+      <Route path="/evidence">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
       <Route path="/metrics" component={AccountRoute} />
       <Route component={() => <AppShell><NotFound /></AppShell>} />
     </Switch>

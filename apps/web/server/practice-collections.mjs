@@ -10,7 +10,7 @@ export const practiceNamespace = pool => {
 // FLURBO_PRACTICE_COLLECTIONS_JSON bundle with FLURBO_PRACTICE_ACTIVE_POOL as the featured pool.
 export async function collectionRows({env=process.env,registry=null}={}) {
   if(registryEnabled(env)){
-    const r=registry||await loadRegistry();
+    const r=registry||await loadRegistry({env});
     return {rows:listedCollections(r).map(({label,manifest})=>({label,manifest})),featured:r.featured??undefined};
   }
   const rows=env.FLURBO_PRACTICE_COLLECTIONS_JSON===undefined?[]:JSON.parse(env.FLURBO_PRACTICE_COLLECTIONS_JSON);

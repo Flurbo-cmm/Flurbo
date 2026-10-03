@@ -4,6 +4,7 @@ import { batchSchema, expandPool, preparePool, judgeCheck, fundingAtoms } from '
 import { verifyPilot } from '../src/pilot-verification';
 import { checkRule } from '../../../apps/web/scripts/check-settlement-rule.mjs';
 import { validateRegistry, REGISTRY_SCHEMA, SETTLEMENT_MODES, REGISTRY_STATUSES } from '../../../apps/web/server/collection-registry.mjs';
+import { checkCompanySelection, COMPANY_SMOKE_ID } from '../src/company-smoke';
 
 // One command for every step of listing pools, for any number of pools at once:
 //   prepare --spec <batch.json> [--pools a,b]   build <id>-prepared.json for each pool after checking every rule live
@@ -58,7 +59,11 @@ async function prepare() {
   if (!specFile) throw Error('Use prepare --spec <batch.json> [--pools a,b]');
   const batch = batchSchema.parse(await json(resolve(specFile)));
   const chosen = flag('pools') ? ids(flag('pools')) : batch.pools.map(p => p.id);
-  const selection = await json(new URL('config/pilot-alpha-selection.json', root));
+  if (chosen.includes(COMPANY_SMOKE_ID) && (chosen.length !== 1 || batch.pools.length !== 1 || batch.pools[0].rules.length !== 2))
+    throw Error('Company smoke release is exactly one pool with two markets');
+  if (chosen.includes(COMPANY_SMOKE_ID) && !flag('selection')) throw Error('Company smoke release requires --selection with three new reviewer wallets');
+  const selection = await json(flag('selection') ? resolve(flag('selection')!) : new URL('config/pilot-alpha-selection.json', root));
+  if (chosen.includes(COMPANY_SMOKE_ID)) checkCompanySelection(selection, batch);
   await mkdir(deployments(''), { recursive: true });
   const results = [];
   for (const id of chosen) {
@@ -104,7 +109,7 @@ async function check() {
   out({ status: problems.length ? 'blocked' : 'ready', pools, totalFundingAusd: Number(funding) / 1e6, deployerAusd: Number(balance) / 1e6,
     deployerMon: Number(gas) / 1e18, problems,
     note: 'source-error before a release (404, empty list, missing row) is expected; review each reason above.',
-    deploy: `FOUNDRY_PROFILE=demo FLURBO_DEPLOY_IDS=${list.join(',')} forge script contracts/script/DeployPilotBatch.s.sol:DeployPilotBatch --use target/tools/solc-0.8.28.exe --rpc-url https://testnet-rpc.monad.xyz --account flurbo-testnet --sender "$FLURBO_DEPLOYER" --broadcast --slow` });
+    deploy: `$env:FOUNDRY_PROFILE='demo'; $env:FLURBO_DEPLOY_IDS='${list.join(',')}'; forge script contracts/script/DeployPilotBatch.s.sol:DeployPilotBatch --rpc-url https://testnet-rpc.monad.xyz --account $deployerAccount --sender $env:FLURBO_DEPLOYER --broadcast --slow` });
   if (problems.length) process.exitCode = 2;
 }
 
@@ -136,7 +141,11 @@ async function register() {
   const mode = flag('settlement'), feature = flag('feature');
   if (mode && !SETTLEMENT_MODES.includes(mode)) throw Error(`--settlement is one of ${SETTLEMENT_MODES.join(', ')}`);
   for (const id of ids()) {
+    if (id === COMPANY_SMOKE_ID && (registry.collections.length || registry.pilotSettlement !== 'off'))
+      throw Error('Company release requires an empty company-only registry');
     const manifest = await json(deployments(`${id}-testnet.json`));
+    if (id === COMPANY_SMOKE_ID && manifest.publication.draft.events.length !== 2)
+      throw Error('Company release must contain two markets');
     const listing = await exists(deployments(`${id}-listing.json`)) ? await json(deployments(`${id}-listing.json`)) : {};
     if (registry.collections.some((r: any) => r.manifest.pool === manifest.pool)) throw Error(`${id} is already registered`);
     registry.collections.push({ label: listing.label ?? manifest.publication.draft.title, settlement: mode ?? listing.settlement ?? 'auto', status: 'active', manifest });

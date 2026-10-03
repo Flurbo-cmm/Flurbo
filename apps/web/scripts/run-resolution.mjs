@@ -148,7 +148,7 @@ async function basePilotManifest(env){
 export async function runResolution(env=process.env,deps={}){
   let configured=false;
   try{
-  const registry=registryEnabled(env)?(deps.registry||await loadRegistry()):null;
+  const registry=registryEnabled(env)?(deps.registry||await loadRegistry({env})):null;
   const manifest=registry?null:JSON.parse(env.FLURBO_RESOLUTION_MANIFEST_JSON||'null');
   const deterministic=manifest?.publication?.mode===DETERMINISTIC_MODE;
   if(!registry){
