@@ -22,8 +22,11 @@ export function readerProvider(url) {
   return host === 'monad-testnet.g.alchemy.com' ? 'alchemy' : host.endsWith('.monad-testnet.quiknode.pro') ? 'quicknode' : 'public';
 }
 
+export const HOSTED_ORIGINS = new Set(['https://flurbo.singu.online', 'https://flurbopm.singu.online']);
+
 export function hostedConfig(env = process.env) {
-  if (env.FLURBO_ORIGIN !== 'https://flurbo.singu.online') throw new Error('Set FLURBO_ORIGIN to the canonical HTTPS origin');
+  if (!HOSTED_ORIGINS.has(env.FLURBO_ORIGIN)) throw new Error('Set FLURBO_ORIGIN to an approved HTTPS origin');
+  if (env.FLURBO_ORIGIN === 'https://flurbopm.singu.online' && env.FLURBO_SETTLEMENT_BOT === 'true') throw new Error('Second site cannot run a duplicate settlement bot');
   if (env.FLURBO_NETWORK !== 'public_testnet') throw new Error('This release supports public Monad testnet only');
   const rpc = new URL(env.FLURBO_ALCHEMY_TESTNET_RPC_URL || TESTNET.rpc);
   if (rpc.protocol !== 'https:' || rpc.username || rpc.password || rpc.hash || rpc.port ||

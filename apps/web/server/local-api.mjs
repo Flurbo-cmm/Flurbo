@@ -1,7 +1,7 @@
 import {requestLimits,CapacityError,expensivePath} from './request-limits.mjs';
 import {rpcFetch} from './rpc-capacity.mjs';
 import { SessionStore, cookieValue, LOGIN_MS, digest } from './session.mjs';
-import { TESTNET } from './network.mjs';
+import { TESTNET, HOSTED_ORIGINS } from './network.mjs';
 import { learningDeployment } from '../shared/learning-contracts.mjs';
 import { evidenceAssistant } from './evidence-assistant.mjs';
 import { priceHistory } from './price-history.mjs';
@@ -56,7 +56,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   const page=(res,status,title,body)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | flurbo</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#14271d;background:#f5f4ec;line-height:1.5"><h1 style="font-size:1.5rem">${title}</h1>${body}</body></html>`);};
   const assistant=publishedPilot&&store.command?evidenceAssistant({manifest:publishedPilot.manifest,command:store.command,...evidenceOptions}):null;
-  if (hosted && (publicOrigin !== 'https://flurbo.singu.online' || !rpcUrl.startsWith('https://'))) throw new Error('Invalid hosted API configuration');
+  if (hosted && (!HOSTED_ORIGINS.has(publicOrigin) || !rpcUrl.startsWith('https://'))) throw new Error('Invalid hosted API configuration');
   // Anonymous/public traffic never consumes authenticated account capacity. With sharedLimits off (a single
   // server), the rate windows count in memory instead of costing Redis commands on every request.
   const limits=requestLimits({command:sharedLimits?store.command:null});

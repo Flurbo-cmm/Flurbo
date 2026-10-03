@@ -44,7 +44,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
           : isLogin ? "Use your saved Flurbo passkey to return to your account."
           : "Start with a passkey. Your device or password manager handles the sign-in, without another password to remember."}</p>
       </header>
-      {policy.local && <p className="callout callout-attention">Local test account only. This passkey will not work on flurbo.singu.online. Do not send real funds to this account.</p>}
+      {policy.local && <p className="callout callout-attention">Local test account only. This passkey will not work on a hosted Flurbo site. Do not send real funds to this account.</p>}
       {active ? <section className="auth-body" aria-label="Signed in with Mera">
         <h2 className="auth-subtitle">Account created.</h2>
         <p>Your account is ready. Checking your testnet access.</p>

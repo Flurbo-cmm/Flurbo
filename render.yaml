@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: flurbo-testnet
+    name: flurbopm-testnet
     runtime: docker
     plan: free
     dockerfilePath: ./apps/web/Dockerfile
@@ -8,9 +8,11 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: FLURBO_ORIGIN
-        value: https://flurbo.singu.online
+        value: https://flurbopm.singu.online
       - key: FLURBO_NETWORK
         value: public_testnet
+      - key: FLURBO_SETTLEMENT_BOT
+        value: "false"
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN

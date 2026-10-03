@@ -10,7 +10,7 @@ All four runtimes (TypeScript, Python, Rust, C++) read the same `flurbo.agent-co
 | `mode` | `paper` | `paper` simulates fills; `live` signs and sends. Live trading also needs "Allow live testnet trades" on the agent's Flurbo page. |
 | `markets` | `["pilot"]`, or the list given to `init --markets` | Market namespaces the agent may read: `pilot` or `practice-<pool address without 0x>`. |
 | `stateDir` | `.flurbo-agent` | Journal, paper book and runtime status. Keep it private; never delete the journal of a live agent. |
-| `api.baseUrl` | `https://flurbo.singu.online` | Flurbo API. |
+| `api.baseUrl` | `https://flurbopm.singu.online` | Flurbo API. |
 | `api.credentialEnv` | `FLURBO_AGENT_TOKEN` | Environment variable holding the agent credential issued on the Agents page. |
 | `chain.rpcUrl` | `https://testnet-rpc.monad.xyz` | Monad testnet RPC. |
 | `signer.keyEnv` | `FLURBO_AGENT_PRIVATE_KEY` | Environment variable holding the agent wallet key (live mode only). |

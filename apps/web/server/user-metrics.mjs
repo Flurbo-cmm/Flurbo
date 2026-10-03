@@ -313,7 +313,7 @@ export function userMetrics({ command, origin, pools, links = null, applications
       pending.length ? `Trade data still scanning: ${pending.join(', ')}` : 'Trade data is up to date.',
       ...[['AUSD dispenser', r.funds?.dispenser], ['Starter MON wallet', r.funds?.starter]].filter(([, w]) => w)
         .map(([name, w]) => `${name}: ${w.balance} ${w.unit}, about ${w.left} ${w.leftLabel} left${w.low ? '. LOW, top it up.' : '.'}`),
-      'Details: https://flurbo.singu.online/metrics',
+      `Details: ${origin}/metrics`,
     ].filter(Boolean).join('\n\n');
   }
 

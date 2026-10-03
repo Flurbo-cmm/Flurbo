@@ -1,6 +1,6 @@
 # Flurbo project reference
 
-Snapshot: 3 October 2026. This company repository starts from the local personal-repository `main` commit `8443469`; its first company commit is `6d144cc`. The company remote is `Flurbo-cmm/Flurbo`. The live Render environment was not independently queried for this document. Treat values described as "reported" as a handoff record, then verify them in the service dashboards before cutover.
+Snapshot: 3 October 2026. Company second-site configuration was prepared later that day. The new Render service is not deployed until its environment, DNS and checks are verified. This company repository starts from the local personal-repository `main` commit `8443469`; its first company commit is `6d144cc`. The company remote is `Flurbo-cmm/Flurbo`. The live Render environment was not independently queried for this document. Treat values described as "reported" as a handoff record, then verify them in the service dashboards before cutover.
 
 ## Product and boundaries
 
@@ -55,7 +55,7 @@ The current local `main` registry has `pilotSettlement: "finish-only"`. A 2 Octo
 
 ## Runtime, hosting and data
 
-The reported live origin is `https://flurbo.singu.online` on one free Render Docker web service (`render.yaml` names `flurbo-testnet`). That service serves the site and API and, with `FLURBO_SETTLEMENT_BOT=true`, runs the monitor and worker in the same process. The monitor and worker normally run every 10 minutes, then every 2 minutes near deadlines. A single settlement signer has one pending transaction at a time; signed bytes are journaled in Redis before broadcast so a restart can resume without replacing a transaction. The worker handles up to 12 transactions per cycle and isolates a failed pool from other pools.
+The reported hackathon origin is `https://flurbo.singu.online` on one free Render Docker web service. With `FLURBO_SETTLEMENT_BOT=true`, that original service runs the monitor and worker alongside the site and API. The company `render.yaml` defines a separate `flurbopm-testnet` service at `https://flurbopm.singu.online` with its settlement bot disabled. The monitor and worker normally run every 10 minutes, then every 2 minutes near deadlines. A single settlement signer has one pending transaction at a time; signed bytes are journaled in Redis before broadcast so a restart can resume without replacing a transaction. The worker handles up to 12 transactions per cycle and isolates a failed pool from other pools.
 
 The handoff reports cron-job.org sending `/healthz` every 10 minutes to keep the free Render service awake, and Healthchecks.io watching the bot. Verify those accounts and schedules before moving deployments. The old GitHub Actions monitor, worker and Cloudflare alarm are excluded from this company copy. Render is the sole scheduler in this baseline.
 
@@ -79,11 +79,11 @@ Keep actual secret values in Render or another secret manager, never in Git. The
 
 | Group | Names and known non-secret values |
 | --- | --- |
-| Core | `FLURBO_NETWORK=public_testnet`, `FLURBO_ORIGIN=https://flurbo.singu.online`, `PORT` set by Render, `RENDER_GIT_COMMIT`, `FLURBO_ALCHEMY_TESTNET_RPC_URL` secret RPC URL, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
+| Core | `FLURBO_NETWORK=public_testnet`, `FLURBO_ORIGIN=https://flurbopm.singu.online` for the company service (`https://flurbo.singu.online` on the hackathon service), `PORT` set by Render, `RENDER_GIT_COMMIT`, `FLURBO_ALCHEMY_TESTNET_RPC_URL` secret RPC URL, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
 | Database | `FLURBO_SUPABASE_KV=true` reported, `FLURBO_APPLICATIONS_SUPABASE_URL`, `FLURBO_APPLICATIONS_SUPABASE_SECRET`, `FLURBO_SHARED_LIMITS` unset for one instance |
 | Access and mail | `FLURBO_APPLICATIONS_ENABLED`, `FLURBO_APPLICATIONS_CODE_SECRET`, `FLURBO_APPLICATIONS_RESEND_KEY`, `FLURBO_APPLICATIONS_EMAIL_FROM`, `FLURBO_APPLICATIONS_EMAIL_DAILY_LIMIT`, `FLURBO_TESTNET_APPROVED_ACCOUNTS`, `FLURBO_TESTING_OPERATOR_ACCOUNT`, `FLURBO_NOTIFY_ENABLED`, `FLURBO_NOTIFY_DAILY_LIMIT` |
 | Wallet funding | `FLURBO_STARTER_PRIVATE_KEY`, `FLURBO_STARTER_MON`, `FLURBO_STARTER_DAILY_LIMIT`, `FLURBO_TEST_AUSD_FAUCET`, `FLURBO_ALERT_STARTER_MON`, `FLURBO_ALERT_DISPENSER_AUSD`, `FLURBO_ALERT_EMAIL` |
-| Settlement | `FLURBO_SETTLEMENT_BOT=true`, `FLURBO_COLLECTIONS_SOURCE=registry`, `FLURBO_MONITOR_ENABLED=true`, `FLURBO_RESOLUTION_ENABLED=true`, `FLURBO_RESOLUTION_PROPOSALS=true`, `FLURBO_RESOLUTION_EXECUTE=true` reported, `FLURBO_RESOLUTION_SIGNER_ADDRESS`, `FLURBO_RESOLUTION_PRIVATE_KEY`, `FLURBO_RESOLUTION_EVIDENCE_ORIGIN=https://flurbo.singu.online`, `FLURBO_RESOLUTION_HOLD` optional |
+| Settlement | `FLURBO_SETTLEMENT_BOT=false` on the company service (`true` reported on the hackathon service), `FLURBO_COLLECTIONS_SOURCE=registry`, `FLURBO_MONITOR_ENABLED=true`, `FLURBO_RESOLUTION_ENABLED=true`, `FLURBO_RESOLUTION_PROPOSALS=true`, `FLURBO_RESOLUTION_EXECUTE=true` reported, `FLURBO_RESOLUTION_SIGNER_ADDRESS`, `FLURBO_RESOLUTION_PRIVATE_KEY`, `FLURBO_RESOLUTION_EVIDENCE_ORIGIN=https://flurbo.singu.online`, `FLURBO_RESOLUTION_HOLD` optional |
 | Monitoring | `FLURBO_MONITOR_RESEND_KEY`, `FLURBO_MONITOR_EMAIL_FROM`, `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_HEALTHCHECK_URL`, `FLURBO_METRICS_DIGEST`, `FLURBO_METRICS_DIGEST_UTC`, `FLURBO_METRICS_SCAN_STEPS`, `FLURBO_METRICS_EXCLUDE` |
 | Optional and integrations | `FLURBO_ENVIO_GRAPHQL_URL`, `FLURBO_ALCHEMY_WEBHOOK_SIGNING_KEY`, `FLURBO_EVIDENCE_GEMINI_KEY`, `FLURBO_EVIDENCE_MODEL`, `FLURBO_EVIDENCE_FREE_TIER_CONFIRMED`, `FLURBO_EVIDENCE_OPERATOR`, `FLURBO_SEMANTIC_MODE` (off), `FLURBO_SEMANTIC_RULES_JSON`, `FLURBO_AGENT_RESERVED_WALLETS`, `FLURBO_ANDROID_CERT_SHA256` |
 
@@ -93,13 +93,13 @@ The old registry-bundle variables remain a rollback only: `FLURBO_PRACTICE_COLLE
 
 Mera is the account login, MetaMask is the member's trading wallet. The site checks that a trading wallet is linked to the account; the contracts themselves remain permissionless. The settlement signer is a separate wallet and must never trade. The old lost-key signer must never be funded. Member agent private keys stay on members' machines. A test AUSD dispenser and starter MON wallet fund invited members, with daily limits and alerts.
 
-Keep `flurbo.singu.online` as the origin during the first repository migration. Passkey relying-party configuration, Android association, session cookies, evidence URLs and external monitoring depend on that host. A domain move is a separate verified migration. Do not replace the Render service or signing key while existing assertions are pending.
+The original hackathon site stays at `flurbo.singu.online`. The company service targets `flurbopm.singu.online` in a separate Render account. Each hostname is its own passkey relying party; existing passkeys do not transfer to the new hostname. The company service must not run a second settlement bot, reuse the settlement signer, or send duplicate notifications. See [second-site deployment](SECOND_SITE_DEPLOYMENT.md) before copying any hosted settings.
 
 ## Checks and cutover
 
 Run web typecheck, server tests and build; `bun` workflow checks; Foundry tests against the pinned contracts checkout; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. The mobile job is retired from this company repository. Build the Docker image from the root because the web Dockerfile copies sibling packages.
 
-The personal hackathon repository remains unchanged. This company repository has no Git history from it; that avoids publishing old research, local files or historical secrets. Before a live cutover, review the complete file list and run secret scanning. After the new repo passes checks, connect a separate preview deployment and compare account login, wallet linking, market directory, quotes, buy/sell, evidence, settlement monitor health and redemption. Repoint the live Render service only after that acceptance. Verify the environment names and values directly in Render at cutover, using hidden inputs for secrets.
+The personal hackathon repository remains unchanged. This company repository has no Git history from it; that avoids publishing old research, local files or historical secrets. Before a live cutover, review the complete file list and run secret scanning. After the new repo passes checks, deploy the company service separately at `flurbopm.singu.online` and compare account login, wallet linking, market directory, quotes, buy/sell, evidence and redemption. Keep the original Render service and domain online. Verify environment names and values directly in Render using hidden inputs for secrets; the company service starts with settlement automation off.
 
 ## Known gaps at this snapshot
 
