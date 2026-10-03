@@ -300,7 +300,7 @@ export function userMetrics({ command, origin, pools, links = null, applications
     const f = Object.fromEntries(r.funnel.map(s => [s.key, s]));
     const pending = r.markets.filter(m => !m.scanned.complete).map(m => `${m.label} ${m.scanned.percent}%`);
     return [
-      `Flurbo daily metrics, ${day} (UTC). Team accounts are excluded.`,
+      `Flurbo daily metrics for ${new URL(origin).hostname}, ${day} (UTC). Team accounts are excluded.`,
       [`Signed in: ${f.signedIn.count} (+${r.last24h.signIns} in the last 24 hours)`,
         `Access requested: ${f.requested.count} (+${r.last24h.requests}), email verified ${f.requested.detail.emailVerified}`,
         `Access granted: ${f.granted.count} (+${r.last24h.approvals})`,
@@ -324,11 +324,15 @@ export function userMetrics({ command, origin, pools, links = null, applications
     if (!(hh >= 0 && hh < 24 && mm >= 0 && mm < 60)) throw Error('Invalid FLURBO_METRICS_DIGEST_UTC');
     const t = now(), day = dayOf(t), due = Date.parse(`${day}T00:00:00Z`) + (hh * 60 + mm) * 60_000;
     if (t < due) return 'not_due';
-    const key = PREFIX + 'digest:' + day;
+    // Each site has its own daily report and may send through the same Resend account.
+    // Scope both the Redis lock and Resend idempotency key to the origin so one site's
+    // accepted email cannot reject another site's different report on the same UTC day.
+    const site = new URL(origin).hostname.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const key = PREFIX + 'digest:' + site + ':' + day;
     if (await command('SET', key, String(t), 'NX', 'EX', 259_200) !== 'OK') return 'sent';
     try {
       const config = emailConfig(env), send = deliver || resendDelivery(config);
-      await send({ key: `flurbo-metrics-${day}`, body: { from: config.from, to: config.to, subject: `Flurbo daily metrics, ${day}`, text: digestText(await report(), day) } });
+      await send({ key: `flurbo-metrics-${site}-${day}`, body: { from: config.from, to: config.to, subject: `Flurbo daily metrics, ${day}`, text: digestText(await report(), day) } });
       return 'sent_now';
     } catch (error) { await command('DEL', key); throw error; }
   }
