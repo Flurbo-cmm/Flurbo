@@ -5,7 +5,7 @@ import time
 
 from check_monad_readiness import CheckError, quantity
 from dashboard_data import Dashboard, DashboardRpc, claim, hash32, wins
-from scan_arbitrage import address, block_info
+from evm_helpers import address, block_info
 from verify_learning_deployment import PLAN, RULES, RULES_HASH, OPERATOR, AUSD
 
 POOL = "0x094ed5f95188c222a61c27cae24b068120a52dd4"

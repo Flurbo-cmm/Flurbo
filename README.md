@@ -15,13 +15,10 @@ npm --prefix apps/web ci
 npm --prefix apps/web run typecheck
 npm --prefix apps/web test
 npm --prefix apps/web run build
-npm --prefix apps/mobile ci
-npm --prefix apps/mobile run typecheck
-npm --prefix apps/mobile test
 ```
 
 The full CI workflow is in `.github/workflows/checks.yml`. The Render Dockerfile builds from the repository root and the deployed service uses `render.yaml`.
 
 ## Repository status
 
-This company copy was prepared from the personal repository's local `main` commit `8443469`. The personal repository remains the hackathon submission. The new company repository starts with a clean history after its file list, checks and secret scan are reviewed.
+This company repository started from the personal repository's local `main` commit `8443469` and was initialized at company commit `6d144cc`. The personal repository remains the hackathon submission. Mobile and the privacy lab remain there and are outside the startup web release. The Android asset-links configuration stays here only for compatibility with previously installed preview builds.

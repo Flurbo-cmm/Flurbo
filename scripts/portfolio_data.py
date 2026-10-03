@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from check_monad_readiness import CheckError, quantity
 from dashboard_data import DashboardRpc, TRADED, REDEEMED, WRAPPED, UNWRAPPED, claim, hash32, wins
-from scan_arbitrage import address, block_info
+from evm_helpers import address, block_info
 
 STARTS = {"0x162ca69cea4306e2e184dc9be8b226580970607b": 65122647,
           "0x094ed5f95188c222a61c27cae24b068120a52dd4": 65285614}

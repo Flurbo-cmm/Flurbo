@@ -1,12 +1,12 @@
 # Flurbo project reference
 
-Snapshot: 3 October 2026. This company copy starts from the local personal-repository `main` commit `8443469` and removes standalone Kuru screens and experiments. It has not been pushed or connected to Render. The live Render environment and GitHub remote were not independently queried for this document. Treat values described as "reported" as a handoff record, then verify them in the service dashboards before cutover.
+Snapshot: 3 October 2026. This company repository starts from the local personal-repository `main` commit `8443469`; its first company commit is `6d144cc`. The company remote is `Flurbo-cmm/Flurbo`. The live Render environment was not independently queried for this document. Treat values described as "reported" as a handoff record, then verify them in the service dashboards before cutover.
 
 ## Product and boundaries
 
 Flurbo is an invite-only prediction market on Monad testnet (chain 10143) using test AUSD. A market pool has 2 to 4 related binary questions and one trading close. Members buy or sell single answers and Boolean combinations in the same funded pool. Mera passkeys provide the Flurbo login. A linked MetaMask wallet signs trades. Member-run agents use their own wallets and agent tokens. The server does not sign agent trades.
 
-The company product consists of the web client and API, mobile client, Solidity pools and resolver, market preparation workflow, shared protocol fixtures, the agent SDKs, and the Rust pricing reference. Reality.eth and Kleros are future settlement integrations; neither is part of this baseline. The MetaMask Agent Wallet plugin is outside this repository. Kuru order-book screens, endpoints, fork tests, and deployment experiments are excluded. The older synthetic-pool dashboard reader still consumes Kuru contract fields from its deployed manifest, so its internal compatibility code remains until that legacy pool is retired or extracted. This does not affect the newer real-event pools.
+The startup product consists of the web client and API, Solidity pools and resolver, market preparation workflow, shared protocol fixtures, the agent SDKs currently coupled to web code, and the Rust pricing reference. The mobile client and privacy lab are parked in the personal hackathon repository. Reality.eth and Kleros are future settlement integrations; neither is part of this baseline. The MetaMask Agent Wallet plugin is outside this repository. Kuru order-book screens, endpoints, fork tests, and deployment experiments are excluded. The older synthetic-pool dashboard reader still consumes Kuru contract fields from its deployed manifest, so its internal compatibility code remains until that legacy pool is retired or extracted. This does not affect the newer real-event pools.
 
 Do not use real money or represent the current reviewer panel as independent arbitration. All live assets described here are test assets.
 
@@ -16,7 +16,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | --- | --- |
 | `apps/web/src` | React and Vite site, passkey login, market and wallet views |
 | `apps/web/server` | Node API, access, evidence, monitor, settlement worker, Redis and Supabase routing |
-| `apps/mobile` | Expo client with the same Mera account and MetaMask trading wallet model |
+| `config/mobile-passkeys.json` | Public Android association data retained for already installed preview builds; no mobile app is developed here |
 | `apps/dashboard` and `scripts` | Legacy synthetic-pool reader and wallet trading compatibility used by the running server |
 | `contracts/src`, `contracts/script` | Factored pool, optimistic resolver, test asset and current deployment scripts |
 | `config/collections.json` | Committed list of pools and their settlement modes |
@@ -26,7 +26,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | `protocol`, `crates/flurbo-core` | Interchange fixtures and Rust reference calculations |
 | `.github/workflows/checks.yml` | Code checks; scheduled settlement workflows are excluded |
 
-The web Dockerfile builds from the repository root. It copies the Rust crate, web app, TypeScript SDK, legacy dashboard, privacy lab, Python scripts and config. Keep these inputs together until their runtime imports are replaced. This is a cleaned single repository with product packages, not independently deployed component repositories.
+The web Dockerfile builds from the repository root. It copies the Rust crate, web app, TypeScript SDK, legacy dashboard, Python scripts and config. Keep these inputs together until their runtime imports are replaced. This is one repository with product packages, not independently deployed component repositories.
 
 ## Trading and settlement mechanics
 
@@ -57,7 +57,7 @@ The current local `main` registry has `pilotSettlement: "finish-only"`. A 2 Octo
 
 The reported live origin is `https://flurbo.singu.online` on one free Render Docker web service (`render.yaml` names `flurbo-testnet`). That service serves the site and API and, with `FLURBO_SETTLEMENT_BOT=true`, runs the monitor and worker in the same process. The monitor and worker normally run every 10 minutes, then every 2 minutes near deadlines. A single settlement signer has one pending transaction at a time; signed bytes are journaled in Redis before broadcast so a restart can resume without replacing a transaction. The worker handles up to 12 transactions per cycle and isolates a failed pool from other pools.
 
-The handoff reports cron-job.org sending `/healthz` every 10 minutes to keep the free Render service awake, and Healthchecks.io watching the bot. Verify those accounts and schedules before moving deployments. The old GitHub Actions monitor and worker used environment-bundle assumptions and are excluded from this company copy. Render is the sole scheduler in this baseline.
+The handoff reports cron-job.org sending `/healthz` every 10 minutes to keep the free Render service awake, and Healthchecks.io watching the bot. Verify those accounts and schedules before moving deployments. The old GitHub Actions monitor, worker and Cloudflare alarm are excluded from this company copy. Render is the sole scheduler in this baseline.
 
 Upstash Redis holds sessions, agent state, wallet links, settlement journals, evidence, alerts and starter-fund records. Supabase holds access applications and, when `FLURBO_SUPABASE_KV=true`, rebuildable price history, indexes and metrics. The same Supabase project and service key are used for the KV route; migration `004_kv_store.sql` establishes that table. The handoff reports both services on free plans. Render free hours, Upstash commands, Supabase storage, QuickNode credits and Resend email limits need dashboard checks before scaling. The code currently has one-instance in-memory request limits unless `FLURBO_SHARED_LIMITS=true`.
 
@@ -97,9 +97,9 @@ Keep `flurbo.singu.online` as the origin during the first repository migration. 
 
 ## Checks and cutover
 
-Run web typecheck, server tests and build; mobile typecheck and tests; `bun` workflow checks; Foundry tests; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. Build the Docker image from the root because the web Dockerfile copies sibling packages.
+Run web typecheck, server tests and build; `bun` workflow checks; Foundry tests; and the browser suite in the pinned Playwright Docker image. CI in `.github/workflows/checks.yml` records the exact commands and uses Node 24. The mobile job is retired from this company repository. Build the Docker image from the root because the web Dockerfile copies sibling packages.
 
-The personal hackathon repository remains unchanged. This company copy has no Git history from it; that avoids publishing old research, local files or historical secrets. Before first push, review the complete file list and run secret scanning. After the new repo passes checks, connect a separate preview deployment and compare account login, wallet linking, market directory, quotes, buy/sell, evidence, settlement monitor health and redemption. Repoint the live Render service only after that acceptance. Verify the environment names and values directly in Render at cutover, using hidden inputs for secrets.
+The personal hackathon repository remains unchanged. This company repository has no Git history from it; that avoids publishing old research, local files or historical secrets. Before a live cutover, review the complete file list and run secret scanning. After the new repo passes checks, connect a separate preview deployment and compare account login, wallet linking, market directory, quotes, buy/sell, evidence, settlement monitor health and redemption. Repoint the live Render service only after that acceptance. Verify the environment names and values directly in Render at cutover, using hidden inputs for secrets.
 
 ## Known gaps at this snapshot
 
@@ -109,4 +109,4 @@ The personal hackathon repository remains unchanged. This company copy has no Gi
 - Long pools pay after their last question. Early redemption and more than 4 questions per pool need contract changes.
 - Rate limits and free-tier usage were reported in handoff notes, not measured during this migration.
 - The legacy synthetic reader still has Kuru-specific compatibility fields. Extract or retire it in a separate change once the real-event path is verified.
-- The mobile app refuses to restore a pending order-book transaction after those controls are removed. Check and clear any such transaction in the old mobile preview before releasing this copy to the same devices.
+- The Android asset-links endpoint remains for already installed mobile previews. The startup web release does not develop or ship the mobile client.

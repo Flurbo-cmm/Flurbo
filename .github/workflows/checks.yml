@@ -130,26 +130,3 @@ jobs:
       - name: Conformance and runtime unit tests
         working-directory: packages/sdk-cpp
         run: make test
-
-  mobile:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm --prefix apps/web ci
-      - run: npm ci
-        working-directory: apps/mobile
-      - run: npm run typecheck
-        working-directory: apps/mobile
-      - run: npm test
-        working-directory: apps/mobile
-      - name: JavaScript bundle resolves every shared module
-        working-directory: apps/mobile
-        run: npx expo export --platform android --output-dir "$RUNNER_TEMP/mobile-bundle"
-        env:
-          CI: '1'

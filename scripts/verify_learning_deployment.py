@@ -8,8 +8,7 @@ import re
 import time
 
 from check_monad_readiness import CONFIG, CheckError, Rpc, quantity, rpc_endpoint
-from check_kuru_readiness import words
-from scan_arbitrage import abi, address, block_info, uint
+from evm_helpers import words, abi, address, block_info, uint
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "target/foundry/out"

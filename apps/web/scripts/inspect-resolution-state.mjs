@@ -4,7 +4,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { redisCommand } from '../server/redis-session.mjs';
 import { monitorIdentity } from '../server/settlement-monitor.mjs';
-import { jsonRpc } from '../server/settlement-alarm.mjs';
 
 // Read-only pre-push inspection of the worker journal, signer lease and per-pool monitor state.
 // Only GET and PTTL reach Redis. Raw signed transactions, credentials and endpoints are never printed.
@@ -12,6 +11,17 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const READ_ONLY = new Set(['GET', 'PTTL']);
 const hashKey = identity => 'flurbo:monitor:v1:' + createHash('sha256').update(identity).digest('hex');
 const iso = t => Number.isFinite(t) ? new Date(t * 1000).toISOString() : null;
+
+function jsonRpc(endpoint, fetcher = fetch) {
+  return async (method, params) => {
+    const response = await fetcher(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });
+    if (!response.ok) throw new Error('RPC unavailable');
+    const body = await response.json();
+    if (body?.error || body?.result === undefined) throw new Error('RPC call failed');
+    return body.result;
+  };
+}
 
 export function readOnly(command) {
   return (op, ...args) => { if (!READ_ONLY.has(op)) throw new Error('Inspection is read-only'); return command(op, ...args); };

@@ -5,7 +5,7 @@ import unittest
 
 from check_monad_readiness import CheckError
 from local_wallet_setup import LocalWalletSetup, LOCAL_RPC, MON_TARGET, AUSD_TARGET
-from scan_arbitrage import abi
+from evm_helpers import abi
 from serve_dashboard import handler
 from test_dashboard_data import setup
 

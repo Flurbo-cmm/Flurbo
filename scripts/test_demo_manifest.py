@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from check_monad_readiness import CONFIG, CheckError, rpc_endpoint
-from scan_arbitrage import abi, SELECTORS
+from evm_helpers import abi, SELECTORS
 from verify_demo import verify, main, RULES, RULES_HASH
 
 NETWORK = json.loads(CONFIG.read_text())["networks"]["testnet"]

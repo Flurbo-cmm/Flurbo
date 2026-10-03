@@ -7,7 +7,7 @@ from pathlib import Path
 
 from check_monad_readiness import CONFIG, CheckError, quantity
 from dashboard_data import Dashboard, DashboardRpc
-from scan_arbitrage import block_info
+from evm_helpers import block_info
 
 
 class LocalClockRpc(DashboardRpc):

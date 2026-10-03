@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from check_monad_readiness import CheckError
-from scan_arbitrage import abi
+from evm_helpers import abi
 from verify_learning_deployment import AUSD, OPERATOR, PLAN, RULES, RULES_HASH, main, match_runtime, verify
 
 
