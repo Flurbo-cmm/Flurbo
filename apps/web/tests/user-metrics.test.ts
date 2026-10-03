@@ -43,7 +43,7 @@ test('claims are classified as a single answer or a combination with its payout 
   }
 });
 
-function fixture({ digestEnv = {} as Record<string, string>, deliver = null as any } = {}) {
+function fixture({ digestEnv = {} as Record<string, string>, deliver = null as any, origin = 'https://flurbo.singu.online' } = {}) {
   const redis = fakeRedis(), OPERATOR = addr(0x0a);
   const alice = addr(0xa1), bob = addr(0xb2), carol = addr(0xc3), dave = addr(0xd4), legacyMember = addr(0xe5);
   const aliceWallet = addr(0x11), bobWallet = addr(0x12), operatorWallet = addr(0x13), stranger = addr(0x14), agentWallet = addr(0x15), creator = addr(0x16);
@@ -73,7 +73,7 @@ function fixture({ digestEnv = {} as Record<string, string>, deliver = null as a
   const refreshes: string[] = [];
   const service = { manifest: { pool, verifiedBlock: String(started), publication: { draft: { closesAt: 1 } } },
     index: { refresh: async () => { refreshes.push('refresh'); return { through: 200, target: 200, complete: true, logs }; } } };
-  const metrics = userMetrics({ command: redis.command, origin: 'https://flurbo.singu.online', links, applications, operatorAccount: OPERATOR,
+  const metrics = userMetrics({ command: redis.command, origin, links, applications, operatorAccount: OPERATOR,
     reservedWallets: new Set([creator]), pools: () => [{ namespace: 'pilot', label: 'Release milestones', service }], now: () => NOW,
     env: { FLURBO_TESTNET_APPROVED_ACCOUNTS: legacyMember, FLURBO_MONITOR_EMAIL_TO: 'to@example.com', FLURBO_MONITOR_EMAIL_FROM: 'from@example.com', FLURBO_MONITOR_RESEND_KEY: 're_test', ...digestEnv },
     rpc: async (method: string, params: any[]) => ({ timestamp: '0x' + (Math.floor(NOW / 1000)).toString(16), method, params }), deliver })!;
@@ -135,10 +135,22 @@ test('the daily summary email goes out once per day after its time, and retries 
   assert.equal(await due.metrics.digest(), 'sent_now');
   assert.equal(await due.metrics.digest(), 'sent');
   assert.equal(sent.length, 1);
-  assert.equal(sent[0].key, 'flurbo-metrics-2026-10-05');
+  assert.equal(sent[0].key, 'flurbo-metrics-flurbo-singu-online-2026-10-05');
   assert.match(sent[0].body.text, /Made at least one bet: 2/);
   assert.match(sent[0].body.text, /Wallets that traded without a linked Flurbo account: 1/);
   assert.deepEqual(sent[0].body.to, ['to@example.com']);
+});
+
+test('daily metrics from two sites use distinct Resend idempotency keys', async () => {
+  const sent: any[] = [];
+  const deliver = async (item: any) => { sent.push(item); return 'id'; };
+  const digestEnv = { FLURBO_METRICS_DIGEST: 'true' };
+  assert.equal(await fixture({ digestEnv, deliver }).metrics.digest(), 'sent_now');
+  assert.equal(await fixture({ digestEnv, deliver, origin: 'https://flurbopm.singu.online' }).metrics.digest(), 'sent_now');
+  assert.equal(sent.length, 2);
+  assert.notEqual(sent[0].key, sent[1].key);
+  assert.notEqual(sent[0].body.text, sent[1].body.text);
+  assert.match(sent[1].body.text, /Flurbo daily metrics for flurbopm\.singu\.online, 2026-10-05 \(UTC\)/);
 });
 
 test('metrics routes are for the operator passkey only, and trading requires a linked wallet', async () => {
