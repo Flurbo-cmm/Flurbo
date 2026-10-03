@@ -94,6 +94,7 @@ export function productionServer(config, store, staticRoot = dist) {
 
 async function main() {
   const config = hostedConfig();
+  const companySite = config.origin === 'https://flurbopm.singu.online';
   config.envioGraphqlUrl = process.env.FLURBO_ENVIO_GRAPHQL_URL || null;
   config.applications = configureApplications();
   config.androidAssetLinks = config.origin === 'https://flurbo.singu.online' ? androidAssetLinks() : null;
@@ -111,10 +112,12 @@ async function main() {
     config.pilotEvidence = pilotEvidence(store.command, config.origin);
     config.settlementPackets = createSettlementStores({command:store.command,origin:config.origin}).packetStore;
   config.starter = starterFunds({ config: starterConfig(), command: store.command, rpcUrl: config.rpcUrl });
+  if (companySite && config.starter && config.starter.address.toLowerCase() !== process.env.FLURBO_COMPANY_STARTER_ADDRESS?.toLowerCase())
+    throw Error('Company starter wallet needs an explicit matching public address');
   // Low-balance email for the AUSD dispenser and the starter MON wallet, checked by the settlement bot.
   config.fundingAlerts = fundingAlerts({ rpcUrl: config.rpcUrl, command: store.command, dispenser: config.testFaucet,
     starter: config.starter ? { address: config.starter.address, amount: config.starter.amountWei } : null });
-  config.pilot = await configurePilot({rpcUrl:config.rpcUrl,command:store.command});
+  config.pilot = companySite ? null : await configurePilot({rpcUrl:config.rpcUrl,command:store.command});
   config.practiceCollections=await configurePracticeCollections({rpcUrl:config.rpcUrl,command:store.command});
   for(const service of config.practiceCollections.services.values())if(config.pilot&&(service.manifest.pool===config.pilot.manifest.pool||service.manifest.resolver===config.pilot.manifest.resolver))throw Error('Practice collections must be separate from the real pilot');
   // Invalid semantic configuration fails the deploy here instead of failing purchases later.
@@ -142,6 +145,7 @@ async function main() {
   config.learningOperatorAccount = /^0x[0-9a-f]{40}$/.test(operatorAccount || '') && !/^0x0{40}$/.test(operatorAccount) ? operatorAccount : null;
   let learningModel = null;
   try {
+    if (companySite) throw Error('Company site does not load the legacy learning pool');
     const manifest = JSON.parse(await readFile(resolve(root, 'config/learning-testnet.json'), 'utf8'));
     config.learningPool = learningService({ manifest, rpc: learningRpc(config.rpcUrl), modelReport: () => learningModel });
     config.learningModelStatus = 'starting';
@@ -149,7 +153,7 @@ async function main() {
       config.learningModelStatus = 'unavailable';
       console.error('Learning fixture unavailable; proposal preparation disabled');
     });
-  } catch { console.error('Learning pool configuration unavailable; existing trading continues'); }
+  } catch { if (!companySite) console.error('Learning pool configuration unavailable; existing trading continues'); }
   let reader, learningReader;
   if (config.learningPool) {
     config.learningDashboardUrl = 'http://127.0.0.1:18768';
@@ -159,7 +163,7 @@ async function main() {
     learningReader.on('error', () => console.error('Learning market reader could not start; requests will remain unavailable'));
     learningReader.on('exit', () => console.error('Learning market reader stopped; requests will remain unavailable'));
   }
-  if (process.env.FLURBO_MANIFEST_JSON) {
+  if (!companySite && process.env.FLURBO_MANIFEST_JSON) {
     const manifest = JSON.parse(process.env.FLURBO_MANIFEST_JSON);
     if (manifest.environment !== 'public_testnet' || manifest.status !== 'verified_snapshot' || manifest.chain_id !== 10143) throw new Error('Verified public Monad testnet manifest required');
     // The non-secret manifest is supplied through hosting configuration, never

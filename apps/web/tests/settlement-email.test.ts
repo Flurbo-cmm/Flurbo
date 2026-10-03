@@ -6,6 +6,7 @@ import { notifyPool, runNotifications, watchdog } from '../scripts/notify-settle
 import { monitorIdentity } from '../server/settlement-monitor.mjs';
 import { pilotFixture, hash } from './pilot-fixture.ts';
 import { deterministicManifest } from './deterministic-fixture.ts';
+import { assertCompanyRegistry } from '../server/collection-registry.mjs';
 
 const config = { from: 'alerts@example.com', to: ['operator@example.com'], key: 're_test-secret' };
 const identity = 'test-pool';
@@ -260,6 +261,30 @@ test('bot schedule: a pool far from due is re-read only every few minutes, a set
   // Without the bot's schedule (GitHub job, CLI) every pool is read on every run.
   const before = reads.length; assert.equal(await runNotifications({ ...options, schedule: null }), 0);
   assert.equal(reads.length - before, 2);
+});
+
+test('company monitor reads only its two-market registry pool and rejects legacy or extra pools', async () => {
+  const manifest = deterministicManifest();
+  const registry = { schema: 'flurbo.collections.v1', featured: manifest.pool, pilotSettlement: 'off',
+    collections: [{ label: 'Company test', settlement: 'auto', status: 'active', manifest }] };
+  const env = { FLURBO_ORIGIN: 'https://flurbopm.singu.online', FLURBO_COLLECTIONS_SOURCE: 'registry', FLURBO_PILOT_DISABLED: 'true',
+    FLURBO_PILOT_MANIFEST_JSON: JSON.stringify(pilotFixture().manifest),
+    UPSTASH_REDIS_REST_URL: 'https://fixture.upstash.io', UPSTASH_REDIS_REST_TOKEN: 'storage-secret',
+    FLURBO_MONITOR_EMAIL_FROM: config.from, FLURBO_MONITOR_EMAIL_TO: config.to[0], FLURBO_MONITOR_RESEND_KEY: config.key,
+    FLURBO_MONITOR_HEALTHCHECK_URL: 'https://hc-ping.com/00000000-0000-0000-0000-000000000000' };
+  assert.equal(assertCompanyRegistry(registry, env), registry);
+  const reads: string[] = [], output: string[] = [], storage = redis();
+  const request = async (url: string, init: any) => url.includes('upstash.io')
+    ? Response.json({ result: await storage.command(...JSON.parse(init.body)) })
+    : url === 'https://api.resend.com/emails' ? Response.json({ id: 'accepted-id' }) : new Response('OK');
+  const result = await runNotifications({ env, request, now: () => 1000, output: (line: string) => output.push(line),
+    inspect: async ({ manifest: item }: any) => { reads.push(item.pool); return observed(item, 1000); },
+    readRegistry: async () => JSON.stringify(registry) });
+  assert.equal(result, 0);
+  assert.deepEqual(reads, [manifest.pool]);
+  assert.equal(output.length, 1);
+  assert.throws(() => assertCompanyRegistry({ ...registry, pilotSettlement: 'auto' }, env), /one deterministic pool/);
+  assert.throws(() => assertCompanyRegistry({ ...registry, collections: [...registry.collections, registry.collections[0]] }, env), /one deterministic pool/);
 });
 
 test('next due time follows observation ends, deadlines and delivery; repeated observations skip rewriting state', async () => {

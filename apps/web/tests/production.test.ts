@@ -44,8 +44,19 @@ test('host configuration rejects local/mainnet RPC and session storage never fal
   const env = {FLURBO_ORIGIN:origin,FLURBO_NETWORK:'public_testnet'};
   assert.equal(hostedConfig(env).rpcUrl,TESTNET.rpc + '/');
   const companyOrigin = 'https://flurbopm.singu.online';
-  assert.equal(hostedConfig({...env,FLURBO_ORIGIN:companyOrigin}).origin,companyOrigin);
-  assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:companyOrigin,FLURBO_SETTLEMENT_BOT:'true'}),/duplicate settlement bot/);
+  const company = {...env,FLURBO_ORIGIN:companyOrigin,FLURBO_COLLECTIONS_SOURCE:'registry',FLURBO_PILOT_DISABLED:'true'};
+  assert.equal(hostedConfig(company).origin,companyOrigin);
+  assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:companyOrigin}),/own registry/);
+  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true'}),/evidence origin/);
+  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin}),/monitor and worker/);
+  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
+    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true'}),/proposals enabled/);
+  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
+    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true',FLURBO_RESOLUTION_PROPOSALS:'true',
+    FLURBO_RESOLUTION_SIGNER_ADDRESS:'0x632a158d5eccc10f864ab94cec99511e1cc514f3'}),/dedicated new signer/);
+  assert.equal(hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
+    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true',FLURBO_RESOLUTION_PROPOSALS:'true',
+    FLURBO_RESOLUTION_SIGNER_ADDRESS:'0x'+'44'.repeat(20)}).origin,companyOrigin);
   assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:'https://evil.singu.online'}));
   for(const url of ['http://127.0.0.1:18545','https://rpc.monad.xyz','https://evil.example']) assert.throws(()=>hostedConfig({...env,FLURBO_ALCHEMY_TESTNET_RPC_URL:url}));
   assert.throws(()=>hostedConfig({...env,FLURBO_NETWORK:'mainnet'}));

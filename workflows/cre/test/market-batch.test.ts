@@ -2,8 +2,40 @@ import { expect, test } from 'bun:test';
 import { BATCH_SCHEMA, batchSchema, expandPool, preparePool, judgeCheck, fundingAtoms, atoms } from '../src/market-batch';
 import { validateSettlementPublication } from '../../../apps/web/server/settlement-publication.mjs';
 import { settlementRuleAuthoringIssues } from '../../../apps/web/server/settlement-rules.mjs';
+import { companySmokeBatch, checkCompanySelection, COMPANY_SMOKE_ID } from '../src/company-smoke';
+import { checkRule } from '../../../apps/web/scripts/check-settlement-rule.mjs';
 
 const selection = { creator: '0xf1fea08ebba92ed342acc5639db312c3694bc391', reviewers: [1, 2, 3].map(i => ({ name: `Reviewer ${i}`, address: '0x' + String(i).repeat(40) })) };
+
+test('company smoke pool commits exactly two future mechanical outcomes with new reviewers', () => {
+  const closes = Math.ceil((Date.now() / 1000 + 26 * 3600) / 3600) * 3600;
+  const spec = companySmokeBatch(closes, 41, 1_500_000n);
+  expect(spec.pools).toHaveLength(1);
+  const pool = expandPool(spec, COMPANY_SMOKE_ID);
+  expect(pool.rules).toHaveLength(2);
+  expect(pool.rules.map(r => (r.source.reader as any).field)).toEqual(['transactions', 'gasUsed']);
+  expect(() => checkCompanySelection({ ...selection, reviewers: [{ name: 'Old reviewer', address: '0x1fc63b1f8e89473b7bea3b44fc4936b8d9416201' },
+    ...selection.reviewers.slice(1)] }, spec)).toThrow(/new wallets/);
+  const prepared = checkCompanySelection({ ...selection, reviewers: [4, 5, 6].map(i => ({ name: `Reviewer ${i}`, address: '0x' + String(i).repeat(40) })) }, spec);
+  expect(validateSettlementPublication(prepared.publication)).toHaveLength(2);
+});
+
+test('company block reader treats the future block as pending before trading closes', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const spec = companySmokeBatch(now + 26 * 3600, 41, 1_500_000n);
+  const pool = expandPool(spec, COMPANY_SMOKE_ID);
+  const request = async (_url: string, init: any) => {
+    const input = JSON.parse(init.body);
+    const result = input.method === 'eth_chainId' ? '0x8f'
+      : { number: '0x1234', timestamp: '0x' + now.toString(16) };
+    return Response.json({ jsonrpc: '2.0', id: input.id, result });
+  };
+  for (const rule of pool.rules) {
+    const checked = await checkRule(rule, { now, closesAt: pool.closesAt, request });
+    expect(checked.status).toBe('ok');
+    expect(checked.sources[0].reason).toBe('EVM_BLOCK_NOT_YET_AVAILABLE');
+  }
+});
 const T = (s: string) => Date.parse(s) / 1000;
 const bls = (eventId: string, series: string, value: string) => ({ eventId, question: `Will BLS ${series} for September 2026 be at least ${value}?`,
   source: { id: `bls-${series.toLowerCase()}`, publisher: 'U.S. Bureau of Labor Statistics', urls: [`https://api.bls.gov/publicAPI/v1/timeseries/data/${series}`], adapter: 'json-api.v1',

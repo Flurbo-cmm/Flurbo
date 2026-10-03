@@ -55,8 +55,24 @@ export function validateRegistry(registry) {
   return registry;
 }
 
-export async function loadRegistry({ read = readFile, file = REGISTRY_FILE } = {}) {
-  return validateRegistry(JSON.parse(await read(file, 'utf8')));
+export function assertCompanyRegistry(registry, env = process.env) {
+  if (env.FLURBO_ORIGIN !== 'https://flurbopm.singu.online') return registry;
+  if (registry.pilotSettlement !== 'off' || registry.collections.length > 1 ||
+      registry.collections.some(row => row.manifest.publication.mode !== DETERMINISTIC_MODE ||
+        row.manifest.publication.draft.events.length !== 2))
+    throw Error('Company test release permits one deterministic pool with exactly two markets and no legacy pilot');
+  if (env.FLURBO_SETTLEMENT_BOT === 'true') {
+    if (registry.collections.length !== 1) throw Error('Company settlement needs its registered pool');
+    const publication = registry.collections[0].manifest.publication;
+    const signer = env.FLURBO_RESOLUTION_SIGNER_ADDRESS?.toLowerCase();
+    if (signer === publication.creator.toLowerCase() || publication.reviewers.some(row => signer === row.address.toLowerCase()))
+      throw Error('Company settlement signer must be separate from creator and reviewers');
+  }
+  return registry;
+}
+
+export async function loadRegistry({ read = readFile, file = REGISTRY_FILE, env = process.env } = {}) {
+  return assertCompanyRegistry(validateRegistry(JSON.parse(await read(file, 'utf8'))), env);
 }
 
 // The site lists active collections. The monitor watches every pool the bot may act on, plus every listed pool.
