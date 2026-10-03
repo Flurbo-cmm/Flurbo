@@ -51,7 +51,9 @@ test('activity panels remain unique across repeated navigation and session resto
     assert.equal(await selector.inputValue(), 'learning');
     await selector.selectOption('original');
     await page.getByRole('link', { name: 'Explore & trade', exact: true }).click();
-    assert.equal(await page.locator('.core-market .book').isVisible(), true);
+    assert.equal(await selector.inputValue(), 'original');
+    assert.equal(await page.locator('.core-market .book').isVisible(), false);
+    assert.equal(await page.locator('#liability').locator('..').locator('.eyebrow').textContent(), 'MAXIMUM LIABILITY');
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
