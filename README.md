@@ -19,6 +19,19 @@ npm --prefix apps/web run build
 
 The full CI workflow is in `.github/workflows/checks.yml`. The Render Dockerfile builds from the repository root and the deployed service uses `render.yaml`.
 
+## Contracts checkout
+
+Contract source lives in the private `Flurbo-cmm/Flurbo-contracts` repository. Local Foundry, settlement preparation and SDK local-chain checks expect a second checkout at `contracts/` pinned to commit `9f2510eebbfe34f06809e3db5ed9d9010a018eae`:
+
+```sh
+git clone https://github.com/Flurbo-cmm/Flurbo-contracts.git contracts
+git -C contracts checkout 9f2510eebbfe34f06809e3db5ed9d9010a018eae
+npm --prefix contracts ci
+forge test --offline
+```
+
+The CI `sdks` job checks out that exact commit using a read-only fine-grained token stored as `FLURBO_CONTRACTS_READ_TOKEN`. The token needs Contents: read access to `Flurbo-contracts`. The web Docker build does not fetch or package contract source.
+
 ## Repository status
 
 This company repository started from the personal repository's local `main` commit `8443469` and was initialized at company commit `6d144cc`. The personal repository remains the hackathon submission. Mobile and the privacy lab remain there and are outside the startup web release. The Android asset-links configuration stays here only for compatibility with previously installed preview builds.
