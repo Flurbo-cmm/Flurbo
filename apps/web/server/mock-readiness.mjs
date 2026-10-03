@@ -4,7 +4,7 @@ import { pilotService } from './pilot.mjs';
 import { pairAnalytics } from './pair-analytics.mjs';
 
 // Public reads only. Configuration, chain state and manual acceptance are separate claims.
-export async function checkMockReadiness({manifest,namespace,featured=false,request=fetch,rpc,model,now=()=>Math.floor(Date.now()/1000)}){
+export async function checkMockReadiness({manifest,namespace,featured=false,request=fetch,rpc,model,now=()=>Math.floor(Date.now()/1000),origin=process.env.FLURBO_ORIGIN||'https://flurbo.singu.online'}){
   if(namespace!=='pilot'&&namespace!==`practice-${manifest.pool.slice(2)}`)throw Error('Invalid collection binding');
   if((['rehearsal','ethereum-activity','deterministic-source-v1'].includes(manifest.publication.mode))!==(namespace!=='pilot'))throw Error('Invalid collection mode');
   const service=pilotService({manifest,rpc,now}),checks=[];
@@ -12,8 +12,8 @@ export async function checkMockReadiness({manifest,namespace,featured=false,requ
     try{checks.push({name,status:'pass',details:await fn()});}
     catch(error){checks.push({name,status:'fail',code:['HOSTED_DIAGNOSTIC_NOT_DEPLOYED','HOSTED_COLLECTION_MISMATCH'].includes(error?.readinessCode)?error.readinessCode:'CHECK_NOT_VERIFIED',details:'Could not verify this check. No transaction was sent; upstream details withheld.'});}
   }
-  const hosted=(path,post)=>request('https://flurbo.singu.online'+path,{method:post?'POST':'GET',redirect:'error',credentials:'omit',
-    headers:post?{'Content-Type':'application/json',Origin:'https://flurbo.singu.online'}:{},body:post?JSON.stringify(post):undefined,signal:AbortSignal.timeout(60_000)});
+  const hosted=(path,post)=>request(origin+path,{method:post?'POST':'GET',redirect:'error',credentials:'omit',
+    headers:post?{'Content-Type':'application/json',Origin:origin}:{},body:post?JSON.stringify(post):undefined,signal:AbortSignal.timeout(60_000)});
   await check('Hosted collection matches the saved deployment'+(featured?' and is featured':''),async()=>{
     const response=await hosted('/healthz'),health=await response.json();
     if(!response.ok||health.service!=='flurbo')throw Error('Unavailable');

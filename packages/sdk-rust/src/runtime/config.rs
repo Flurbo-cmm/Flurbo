@@ -122,7 +122,7 @@ pub struct AgentConfig {
 pub fn default_config() -> Value {
     serde_json::json!({
         "schema": "flurbo.agent-config.v1",
-        "api": {"baseUrl": "https://flurbo.singu.online", "credentialEnv": "FLURBO_AGENT_TOKEN"},
+        "api": {"baseUrl": "https://flurbopm.singu.online", "credentialEnv": "FLURBO_AGENT_TOKEN"},
         "chain": {"rpcUrl": "https://testnet-rpc.monad.xyz"},
         "signer": {"kind": "local-key", "keyEnv": "FLURBO_AGENT_PRIVATE_KEY"},
         "stateDir": ".flurbo-agent", "mode": "paper", "markets": ["pilot"],

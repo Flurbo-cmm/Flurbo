@@ -72,10 +72,10 @@ export function configureApplications(env = process.env, request = fetch) {
       return Object.fromEntries(rows.filter(r => accountPattern.test(r?.account || '') && emailPattern.test(r?.email || '')).map(r => [r.account, r.email]));
     } catch { throw unavailable(); }
   };
-  return {...applicationService({db, send, secret}), stats, contacts, noticeSecret: secret, noticeEmail: {key: emailKey, from}};
+  return {...applicationService({db, send, secret, origin: env.FLURBO_ORIGIN || 'https://flurbo.singu.online'}), stats, contacts, noticeSecret: secret, noticeEmail: {key: emailKey, from}};
 }
 
-export function applicationService({db, send, secret}) {
+export function applicationService({db, send, secret, origin = 'https://flurbo.singu.online'}) {
   const identity = value => {
     const account = value?.toLowerCase();
     if (!accountPattern.test(account || '')) throw new ApplicationError(400, 'Invalid account.');
@@ -88,7 +88,7 @@ export function applicationService({db, send, secret}) {
     if (notification.expired) return {notification: 'needs_review'};
     try {
       await send({account,to: notification.email, id: notification.id, subject: 'Your Flurbo invitation is ready',
-        text: 'Your Flurbo account has been approved for the Monad testnet preview. Test assets only.\n\nSign in with your existing Flurbo passkey at https://flurbo.singu.online/access\n\nThis email does not sign you in or authorize a transaction.'});
+        text: `Your Flurbo account has been approved for the Monad testnet preview. Test assets only.\n\nSign in with your Flurbo passkey at ${origin}/access\n\nThis email does not sign you in or authorize a transaction.`});
       await db('notified', account, {id: notification.id});
       return {notification: 'sent'};
     } catch { return {notification: 'pending'}; }

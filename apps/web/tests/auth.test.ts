@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AuthController, deriveAccount } from "../src/auth/controller.ts";
-import { authPolicy, PASSKEY_HOST, SESSION_MS } from "../src/auth/policy.ts";
+import { authPolicy, PASSKEY_HOST, COMPANY_PASSKEY_HOST, SESSION_MS } from "../src/auth/policy.ts";
 import type { WebAuthnClient } from "@category-labs/mera";
 
 const local = authPolicy("http://localhost:18767/signup", true, true, true);
@@ -26,6 +26,7 @@ function setup(options: { client?: Partial<WebAuthnClient>; initial?: string; no
 test("RP policy pins the public host and separates local test accounts", () => {
   assert.equal(local.rpId, "localhost");
   assert.equal(authPolicy(`https://${PASSKEY_HOST}/login`, false, true, true).rpId, PASSKEY_HOST);
+  assert.equal(authPolicy(`https://${COMPANY_PASSKEY_HOST}/login`, false, true, true).rpId, COMPANY_PASSKEY_HOST);
   for (const url of ["https://preview.vercel.app", "https://singu.online", `https://evil.${PASSKEY_HOST}`, `http://${PASSKEY_HOST}`, "http://localhost:18767"]) {
     assert.equal(authPolicy(url, false, true, true).rpId, null, url);
   }

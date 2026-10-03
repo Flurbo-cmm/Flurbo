@@ -4,7 +4,7 @@ Flurbo is a testnet prediction market for related yes or no questions. Members t
 
 The current product runs on Monad testnet with test AUSD only. Settlement uses public evidence, a bonded proposal, a challenge window and an operator-controlled reviewer panel. It is not a real-money service or an independent arbitration system.
 
-Read [the project reference](docs/PROJECT_REFERENCE.md) for architecture, contracts, settlement, hosting, environment names, operations and migration status.
+Read [the project reference](docs/PROJECT_REFERENCE.md) for architecture, contracts, settlement, hosting, environment names, operations and migration status. The separate company deployment is described in [second-site deployment](docs/SECOND_SITE_DEPLOYMENT.md).
 
 ## Local checks
 

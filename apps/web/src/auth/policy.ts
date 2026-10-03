@@ -1,4 +1,5 @@
 export const PASSKEY_HOST = "flurbo.singu.online";
+export const COMPANY_PASSKEY_HOST = "flurbopm.singu.online";
 export const SESSION_MS = 60 * 60 * 1000;
 
 export type AuthPolicy = { rpId: string | null; local: boolean; reason: string | null; localUrl?: string };
@@ -10,9 +11,9 @@ export function authPolicy(url: string, development: boolean, secure: boolean, s
       localUrl: `http://localhost:${location.port || "18767"}${location.pathname}` };
   }
   const local = development && location.hostname === "localhost";
-  if (!local && (location.hostname !== PASSKEY_HOST || location.protocol !== "https:")) {
-    return { rpId: null, local: false, reason: `Passkey access is available only at https://${PASSKEY_HOST}.` };
+  if (!local && (location.protocol !== "https:" || ![PASSKEY_HOST, COMPANY_PASSKEY_HOST].includes(location.hostname))) {
+    return { rpId: null, local: false, reason: "Passkey access requires a supported Flurbo HTTPS domain." };
   }
   if (!secure || !supported) return { rpId: null, local, reason: "This browser does not provide secure passkey access. Open this page in a supported browser." };
-  return { rpId: local ? "localhost" : PASSKEY_HOST, local, reason: null };
+  return { rpId: local ? "localhost" : location.hostname, local, reason: null };
 }

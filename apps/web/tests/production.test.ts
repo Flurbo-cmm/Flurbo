@@ -43,6 +43,10 @@ test('durable session adapter survives service reconstruction, consumes proofs o
 test('host configuration rejects local/mainnet RPC and session storage never falls back to memory', async () => {
   const env = {FLURBO_ORIGIN:origin,FLURBO_NETWORK:'public_testnet'};
   assert.equal(hostedConfig(env).rpcUrl,TESTNET.rpc + '/');
+  const companyOrigin = 'https://flurbopm.singu.online';
+  assert.equal(hostedConfig({...env,FLURBO_ORIGIN:companyOrigin}).origin,companyOrigin);
+  assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:companyOrigin,FLURBO_SETTLEMENT_BOT:'true'}),/duplicate settlement bot/);
+  assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:'https://evil.singu.online'}));
   for(const url of ['http://127.0.0.1:18545','https://rpc.monad.xyz','https://evil.example']) assert.throws(()=>hostedConfig({...env,FLURBO_ALCHEMY_TESTNET_RPC_URL:url}));
   assert.throws(()=>hostedConfig({...env,FLURBO_NETWORK:'mainnet'}));
   assert.throws(()=>redisCommand({}));
@@ -220,4 +224,27 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
     await request('/api/auth/logout',{},cookie); assert.equal((await request('/api/auth/session',undefined,cookie)).json().session,null);
     assert.equal((await request('/api/learning/comparison',undefined,cookie)).status,401);
   } finally { globalThis.fetch=originalFetch;server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));assert.equal(dirname(directory),tmpdir());assert.ok(basename(directory).startsWith('flurbo-server-'));await rm(directory,{recursive:true,force:true}); }
+});
+
+test('company hostname serves the app and API while rejecting the hackathon host', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'flurbo-company-host-'));
+  await writeFile(join(directory, 'index.html'), '<html>Flurbo company</html>');
+  const companyOrigin = 'https://flurbopm.singu.online';
+  const server = productionServer({origin: companyOrigin, rpcUrl: TESTNET.rpc, previewAccess: null}, new SessionStore(), directory);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as {port:number}).port;
+  const request = (host:string, path:string) => new Promise<{status:number;body:string}>((resolve, reject) => {
+    const req = httpRequest({hostname:'127.0.0.1', port, path, headers:{Host:host}}, res => {
+      let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>resolve({status:res.statusCode!,body}));
+    });req.on('error',reject);req.end();
+  });
+  try {
+    assert.equal((await request('flurbopm.singu.online', '/')).status, 200);
+    assert.equal((await request('flurbopm.singu.online', '/api/network')).status, 200);
+    assert.equal((await request('flurbo.singu.online', '/')).status, 421);
+    assert.equal((await request('flurbo.singu.online', '/api/network')).status, 421);
+  } finally {
+    await new Promise<void>(resolve => server.close(()=>resolve()));
+    await rm(directory,{recursive:true,force:true});
+  }
 });
