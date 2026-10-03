@@ -1,0 +1,17 @@
+{
+    "creator":  "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+    "reviewers":  [
+                      {
+                          "name":  "Company test reviewer 1",
+                          "address":  "0x4629033ddF0DDf839f3001Cf8810E792D93c6cc3"
+                      },
+                      {
+                          "name":  "Company test reviewer 2",
+                          "address":  "0x11dD3480Cc779c31cfBc34967D3070CeF225Ac95"
+                      },
+                      {
+                          "name":  "Company test reviewer 3",
+                          "address":  "0xF25CC6B93cA4a90f0De0796deD4d2B39d2ACff9E"
+                      }
+                  ]
+}
