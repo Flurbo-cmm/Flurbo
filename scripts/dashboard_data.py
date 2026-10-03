@@ -10,8 +10,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request
 
 from check_monad_readiness import CheckError, Rpc, quantity
-from check_kuru_readiness import words
-from scan_arbitrage import abi, address, block_info
+from evm_helpers import words, abi, address, block_info
 from verify_demo import RULES, RULES_HASH
 
 TRADED = "0xfafd4a382ead0cb54fe827af5995137a1a8b433ebfd5a8d13def35a83adfb9b5"

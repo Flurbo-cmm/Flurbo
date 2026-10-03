@@ -5,7 +5,7 @@ import unittest
 
 from check_monad_readiness import CheckError
 from dashboard_data import Dashboard, DashboardRpc, TRADED, APPROVAL, TRANSFER, REDEEMED, WRAPPED, UNWRAPPED, wins
-from scan_arbitrage import abi
+from evm_helpers import abi
 from serve_dashboard import route
 from test_demo_manifest import FakeRpc as ManifestRpc, fixture, NETWORK
 from verify_demo import verify

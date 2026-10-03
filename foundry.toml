@@ -16,12 +16,6 @@ failure_persist_dir = "target/foundry/test-cache/fuzz"
 runs = 256
 seed = "0x666c7572626f"
 
-# Opt-in integration tests; ordinary `forge test` remains offline.
-[profile.kuru_fork]
-test = "contracts/fork"
-fork_block_number = 64729226
-fs_permissions = [{ access = "read", path = "./config" }]
-
 # Deployment remains opt-in; manifests start unverified until checked against RPC state.
 [profile.demo]
 script = "contracts/script"

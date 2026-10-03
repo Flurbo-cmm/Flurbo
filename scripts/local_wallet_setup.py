@@ -4,7 +4,7 @@ import threading
 
 from check_monad_readiness import CheckError, quantity
 from dashboard_data import DashboardRpc, hash32
-from scan_arbitrage import address, abi
+from evm_helpers import address, abi
 
 LOCAL_RPC = "http://127.0.0.1:18545"
 MON_TARGET = 10 * 10**18

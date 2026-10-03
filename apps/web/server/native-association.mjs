@@ -1,5 +1,5 @@
 // These public fingerprints identify installed Android builds. They are not keys.
-// Keep the package ID aligned with apps/mobile/app.json; changing it breaks login.
+// Retain association for already installed Android preview builds while mobile is parked.
 import association from '../../../config/mobile-passkeys.json' with { type: 'json' };
 export function androidAssetLinks(env = process.env) {
   const raw = env.FLURBO_ANDROID_CERT_SHA256 ?? association.certificateSha256.join(',');

@@ -22,14 +22,11 @@ COPY --from=learning-build /app/target/release/examples/parlay_testnet_model bin
 RUN node --input-type=module -e "import {runComparison} from './apps/web/server/learning-comparison.mjs'; await runComparison();"
 RUN node --input-type=module -e "import {loadLearningModel} from './apps/web/server/learning-pool.mjs'; await loadLearningModel();"
 RUN npm --prefix apps/web run build
-COPY experiments/privacy-beta experiments/privacy-beta
-RUN npm --prefix experiments/privacy-beta ci --ignore-scripts --no-audit --no-fund && npm --prefix experiments/privacy-beta run build
 
 FROM node:24-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/apps/web/dist apps/web/dist
-COPY --from=build /app/experiments/privacy-beta/dist apps/web/dist/privacy-lab
 COPY --from=build /app/apps/web/node_modules apps/web/node_modules
 COPY --from=build /app/bin/flurbo-parlay-compare bin/flurbo-parlay-compare
 COPY --from=build /app/bin/flurbo-pair-analytics bin/flurbo-pair-analytics

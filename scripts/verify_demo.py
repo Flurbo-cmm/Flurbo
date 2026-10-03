@@ -6,8 +6,7 @@ import json
 from pathlib import Path
 
 from check_monad_readiness import CONFIG, CheckError, Rpc, quantity, rpc_endpoint
-from scan_arbitrage import abi, address, block_info, SELECTORS
-from check_kuru_readiness import words
+from evm_helpers import abi, address, block_info, SELECTORS, words
 import os
 
 RULES_HASH = "0xd33b9c4b1bc5b33fb0551ade458586ba51f1df5fceeedc62098515635da23354"
