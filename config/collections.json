@@ -1,6 +1,192 @@
 {
   "schema": "flurbo.collections.v1",
-  "featured": null,
+  "featured": "0x8c931a6f799d69185ee2f2f47e46667fd0da545b",
   "pilotSettlement": "off",
-  "collections": []
+  "collections": [
+    {
+      "label": "Monad block activity",
+      "settlement": "auto",
+      "status": "active",
+      "manifest": {
+        "schema": "flurbo.pilot-manifest.v1",
+        "status": "verified_pilot_snapshot",
+        "chainId": 10143,
+        "pool": "0x8c931a6f799d69185ee2f2f47e46667fd0da545b",
+        "resolver": "0x349a0d009f163c4c83c5c507b38fe617e726408f",
+        "rulesHash": "0x889189c889a2d56685bb589dba16c451332ade6d204b651df63cf9705cc3f364",
+        "draftHash": "0xf023469b01d58d07a427e9e7bb483a8eb0b9e01a185bfebbfebc3b7dc19475d1",
+        "publication": {
+          "schema": "flurbo.pilot-publication.v1",
+          "mode": "deterministic-source-v1",
+          "settlementRules": [
+            {
+              "schema": "flurbo.settlement-rule.v1",
+              "eventId": "block-transactions",
+              "question": "Will the first Monad mainnet block at or after 2026-10-04T18:01:00Z have at least 15 transactions, as read from the public Monad RPC during 2026-10-04T18:06:00Z to 2026-10-04T19:06:00Z?",
+              "source": {
+                "id": "monad-mainnet-rpc",
+                "publisher": "Monad Foundation public RPC",
+                "urls": [
+                  "https://rpc.monad.xyz/"
+                ],
+                "adapter": "evm-rpc.v1",
+                "reader": {
+                  "chainId": 143,
+                  "at": 1791136860,
+                  "metric": "block-field",
+                  "field": "transactions",
+                  "finalitySeconds": 60
+                }
+              },
+              "observation": {
+                "series": "monad-mainnet-block-transactions",
+                "period": "2026-10-04T18:01:00Z",
+                "unit": "transactions"
+              },
+              "decision": {
+                "type": "number",
+                "operator": "gte",
+                "value": "15"
+              },
+              "timing": {
+                "scheduledAt": 1791137160,
+                "publicationCutoff": 1791140760,
+                "correctionCutoff": 1791140760,
+                "observationEndsAt": 1791140760,
+                "assertionPeriod": 3600,
+                "challengePeriod": 3600,
+                "votingPeriod": 3600
+              },
+              "vintage": "first-observed-snapshot",
+              "missingPolicy": "resolver-timeout-void"
+            },
+            {
+              "schema": "flurbo.settlement-rule.v1",
+              "eventId": "block-gas-used",
+              "question": "Will the first Monad mainnet block at or after 2026-10-04T18:01:00Z have at least 7403940 gas units used, as read from the public Monad RPC during 2026-10-04T18:06:00Z to 2026-10-04T19:06:00Z?",
+              "source": {
+                "id": "monad-mainnet-rpc",
+                "publisher": "Monad Foundation public RPC",
+                "urls": [
+                  "https://rpc.monad.xyz/"
+                ],
+                "adapter": "evm-rpc.v1",
+                "reader": {
+                  "chainId": 143,
+                  "at": 1791136860,
+                  "metric": "block-field",
+                  "field": "gasUsed",
+                  "finalitySeconds": 60
+                }
+              },
+              "observation": {
+                "series": "monad-mainnet-block-gasUsed",
+                "period": "2026-10-04T18:01:00Z",
+                "unit": "gas units used"
+              },
+              "decision": {
+                "type": "number",
+                "operator": "gte",
+                "value": "7403940"
+              },
+              "timing": {
+                "scheduledAt": 1791137160,
+                "publicationCutoff": 1791140760,
+                "correctionCutoff": 1791140760,
+                "observationEndsAt": 1791140760,
+                "assertionPeriod": 3600,
+                "challengePeriod": 3600,
+                "votingPeriod": 3600
+              },
+              "vintage": "first-observed-snapshot",
+              "missingPolicy": "resolver-timeout-void"
+            }
+          ],
+          "creator": "0xf1fea08ebba92ed342acc5639db312c3694bc391",
+          "draft": {
+            "schema": "flurbo.event-draft.v1",
+            "status": "draft",
+            "chainId": 10143,
+            "clusterId": "company-smoke-1-1791136800",
+            "title": "Monad mainnet block activity at 2026-10-04T18:01:00Z",
+            "closesAt": 1791136800,
+            "events": [
+              {
+                "id": "block-transactions",
+                "question": "Will the first Monad mainnet block at or after 2026-10-04T18:01:00Z have at least 15 transactions, as read from the public Monad RPC during 2026-10-04T18:06:00Z to 2026-10-04T19:06:00Z?",
+                "yesRule": "YES if the valid source record selected by the committed rule satisfies number gte \"15\". Missing or ambiguous evidence does not mean NO.",
+                "noRule": "NO if the valid source record selected by the committed rule does not satisfy number gte \"15\". Missing or ambiguous evidence follows the committed VOID timeout.",
+                "observationStartsAt": 1791137160,
+                "observationEndsAt": 1791140760,
+                "source": {
+                  "publisher": "Monad Foundation public RPC",
+                  "referenceUrl": "https://rpc.monad.xyz/",
+                  "recordId": "settlement-rule:sha256:79d1d912018c7a8ee6f32f600168286c808e6b725ba4d963c684ed2233a686f8",
+                  "selectionRule": "Adapter evm-rpc.v1; source monad-mainnet-rpc; series monad-mainnet-block-transactions; period 2026-10-04T18:01:00Z; unit transactions. Only the exact URLs and record-selection rules in the committed settlement rule are accepted.",
+                  "finalityRule": "UTC seconds: observation start 1791137160; publication cutoff 1791140760; correction cutoff and observation end 1791140760. Assertion window 3600; challenge window 3600; voting window 3600. All transitions require transactions.",
+                  "revisionRule": "Vintage first-observed-snapshot. Missing policy resolver-timeout-void. Source revisions and unavailable evidence follow the committed rule; the operator cannot change it after deployment."
+                }
+              },
+              {
+                "id": "block-gas-used",
+                "question": "Will the first Monad mainnet block at or after 2026-10-04T18:01:00Z have at least 7403940 gas units used, as read from the public Monad RPC during 2026-10-04T18:06:00Z to 2026-10-04T19:06:00Z?",
+                "yesRule": "YES if the valid source record selected by the committed rule satisfies number gte \"7403940\". Missing or ambiguous evidence does not mean NO.",
+                "noRule": "NO if the valid source record selected by the committed rule does not satisfy number gte \"7403940\". Missing or ambiguous evidence follows the committed VOID timeout.",
+                "observationStartsAt": 1791137160,
+                "observationEndsAt": 1791140760,
+                "source": {
+                  "publisher": "Monad Foundation public RPC",
+                  "referenceUrl": "https://rpc.monad.xyz/",
+                  "recordId": "settlement-rule:sha256:60a0984823f05fba261380547f00a188bd62315d8fd6024721117d0117101c62",
+                  "selectionRule": "Adapter evm-rpc.v1; source monad-mainnet-rpc; series monad-mainnet-block-gasUsed; period 2026-10-04T18:01:00Z; unit gas units used. Only the exact URLs and record-selection rules in the committed settlement rule are accepted.",
+                  "finalityRule": "UTC seconds: observation start 1791137160; publication cutoff 1791140760; correction cutoff and observation end 1791140760. Assertion window 3600; challenge window 3600; voting window 3600. All transitions require transactions.",
+                  "revisionRule": "Vintage first-observed-snapshot. Missing policy resolver-timeout-void. Source revisions and unavailable evidence follow the committed rule; the operator cannot change it after deployment."
+                }
+              }
+            ],
+            "exceptionPolicy": "Valid event outcomes stay fixed. Each void event receives equal YES and NO weight, independently of other void events. Each claim pays its average truth-table payout across compatible states, rounded down to test AUSD atoms on each redemption. This is not a refund of purchase cost. Missing evidence, unresolved ambiguity and reviewer nonresponse produce VOID under the fixed deadlines. No creator override or reviewer replacement is permitted.",
+            "disputeModel": "reviewer-panel",
+            "disputePolicy": "Operator-run testnet alpha. All reviewer wallets are controlled by the creator (0xf1fea08ebba92ed342acc5639db312c3694bc391). These wallets are not independent reviewers. The operator can determine disputed outcomes through the voting quorum. Named testnet reviewer panel: Company test reviewer 1 (0x4629033ddf0ddf839f3001cf8810e792d93c6cc3), Company test reviewer 2 (0x11dd3480cc779c31cfbc34967d3070cef225ac95), Company test reviewer 3 (0xf25cc6b93ca4a90f0de0796ded4d2b39d2acff9e). Quorum 2 of 3 matching votes. One test AUSD has 1000000 atoms. Assertion and dispute bond: 1000000 atoms each. Assertion window: 3600 seconds after observation end. Challenge window: 3600 seconds after assertion. Vote window: 3600 seconds after dispute. Reviewers cannot assert or dispute from their registered addresses. One vote per reviewer per event. Unchallenged assertions return their bond. A panel decision matching a party pays both bonds to that party. Third outcomes and voting timeouts return each party's own bond. Missing assertions and voting timeouts finalize VOID. Anyone may finalize elapsed deadlines and deliver all final results. Test bonds provide no economic security; panel members are explicitly trusted."
+          },
+          "reviewers": [
+            {
+              "name": "Company test reviewer 1",
+              "address": "0x4629033ddf0ddf839f3001cf8810e792d93c6cc3"
+            },
+            {
+              "name": "Company test reviewer 2",
+              "address": "0x11dd3480cc779c31cfbc34967d3070cef225ac95"
+            },
+            {
+              "name": "Company test reviewer 3",
+              "address": "0xf25cc6b93ca4a90f0de0796ded4d2b39d2acff9e"
+            }
+          ],
+          "reviewerControl": "single-operator",
+          "independentReviewersConfirmed": false,
+          "rulesReviewed": true,
+          "bondAtoms": "1000000",
+          "assertionPeriod": 3600,
+          "challengePeriod": 3600,
+          "votingPeriod": 3600
+        },
+        "configHash": "0xa4e045863675597f8e21acbcdccca6108c445e05496ca1d40232f5347ee38953",
+        "verifiedBlock": "67896793",
+        "verifiedBlockHash": "0x4e0b6d18e436ef2cf26092c4fd7eeeb06b3d058dff9048a6fcf3ece1a9496580",
+        "verifiedTimestamp": 1791050908,
+        "codeHashes": {
+          "0x8c931a6f799d69185ee2f2f47e46667fd0da545b": "0x1f58b7cb33c80b97d540ce5e0ead7f689b39bb1e6a354e18d84d9cc14b591aa8",
+          "0x349a0d009f163c4c83c5c507b38fe617e726408f": "0xfbcee72c8d0ca329dbde5404bd6644d84c7dadad136b65a03548981ab8da90cc",
+          "0x5931e497050e46b14b144e7e7720955c6f4b66ab": "0x1c745983843d2cad54683709f89172094076beb19d9608f7f627a8c1fcf6e838",
+          "0x283dc79ad4d3981eeb5f49030b1ecac70d661352": "0xd1882fa449e825cbe762ed41092e7aaf4a6486052d6281ce01e6f718e5a89d45",
+          "0x52780a73bb28490294605a500405b3e4daf565be": "0x769dff2e26952eca217f64ed51e13b731f9ea7d3600eb7cc748bb8d0949042ae"
+        },
+        "receipts": [
+          "0x283dc79ad4d3981eeb5f49030b1ecac70d661352",
+          "0x52780a73bb28490294605a500405b3e4daf565be"
+        ],
+        "notice": "Compiled code and reviewed configuration verified at one snapshot. Named panel trust, test assets only. Kuru pairs and authenticated CRE delivery are not established by this manifest."
+      }
+    }
+  ]
 }
