@@ -63,7 +63,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Deployment did not complete. Preserve broadcast files and inspect receipts before retrying.' }
   & $rehearsalBun workflows/cre/scripts/verify-pilot.ts --deterministic-test
   if ($LASTEXITCODE -ne 0) { throw 'Deployment verification failed. Do not trade or start the worker.' }
-  Write-Host 'Fresh deployment verified. Return to Codex to connect the local website, evidence gateway and worker, then place a test trade.'
+  Write-Host 'Fresh deployment verified. Return to the app to connect the local website, evidence gateway and worker, then place a test trade.'
 } finally {
   $env:FLURBO_DEPLOYER=$rehearsalPriorDeployer
   $env:FLURBO_ALCHEMY_TESTNET_RPC_URL=$rehearsalPriorRpc
