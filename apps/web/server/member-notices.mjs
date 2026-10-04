@@ -10,8 +10,8 @@ import { LINKS } from './user-metrics.mjs';
 // for that member at once. Sent items are recorded, so a notice is never sent twice.
 const PREFIX = 'flurbo:notify:v1:';
 export const PREFS = PREFIX + 'prefs';
-export const DEFAULT_PREFS = Object.freeze({ payouts: true, challenges: true, closing: false });
-const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', closing: 'closing' };
+export const DEFAULT_PREFS = Object.freeze({ payouts: true, challenges: true, observations: true, closing: false });
+const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', observation: 'observations', closing: 'closing' };
 const HOUR = 3600, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR;
 const OUTCOME = ['Unset', 'No', 'Yes', 'VOID'];
 const address = v => typeof v === 'string' && /^0x[0-9a-f]{40}$/.test(v);
@@ -49,7 +49,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
   async function unsubscribe(token) {
     const account = verifyUnsubscribeToken(secret, token);
     if (!account) return null;
-    await command('HSET', PREFS, account, JSON.stringify({ payouts: false, challenges: false, closing: false }));
+    await command('HSET', PREFS, account, JSON.stringify({ payouts: false, challenges: false, observations: false, closing: false }));
     return account;
   }
 
@@ -92,6 +92,12 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const events = m.publication.draft.events;
     if (!status.resolved && t >= closesAt - CLOSING_BEFORE && t < closesAt - 300)
       stages.push({ kind: 'closing', id: `closing:${m.pool}`, market: label, namespace, closesAt });
+    if (namespace.startsWith('oracle:')) events.forEach((event, index) => {
+      const end = Number(event.observationEndsAt);
+      if (Number.isSafeInteger(end) && t >= end && t < end + 2 * HOUR)
+        stages.push({ kind: 'observation', id: `observation:${m.pool}:${index}:${end}`, market: label, namespace,
+          event: index, question: event.question, href: service.eventHref?.(index) });
+    });
     status.cases.forEach((c, event) => {
       if (Number(c.phase) === 1 && Number(c.challengeUntil) > t + 600)
         stages.push({ kind: 'challenge', id: `challenge:${m.pool}:${event}:${c.challengeUntil}`, market: label, namespace, event,
@@ -120,7 +126,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
       }
       return { payoutAtoms: String(total), href: event < 32 ? stage.eventHref?.(event) : null };
     }
-    if (stage.kind === 'challenge') return rows.some(r => Number(r.scope) & (1 << stage.event)) ? {} : null;
+    if (stage.kind === 'challenge' || stage.kind === 'observation') return rows.some(r => Number(r.scope) & (1 << stage.event)) ? {} : null;
     return rows.length ? {} : null;
   }
 
@@ -130,12 +136,14 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const parts = items.map(({ stage, detail }) => {
       if (stage.kind === 'payout' || stage.kind === 'reminder') return `${stage.kind === 'reminder' ? 'Reminder: ' : ''}results are final for ${stage.market}. You have about ${ausd(detail.payoutAtoms)} test AUSD to collect. Payouts are not sent automatically: open ${detail.href || stage.href ? 'the market page' : 'Portfolio'} and collect with the MetaMask wallet that holds the shares.\n${url}${detail.href || stage.href || '/portfolio'}`;
       if (stage.kind === 'challenge') return `An answer was proposed for a question you hold in ${stage.market}:\n"${stage.question}"\nProposed answer: ${stage.proposal}. It can be challenged until ${utc(stage.until)}. If it is right, you do not need to do anything. If it is wrong, review the evidence and challenge it from the market page before the deadline.\n${url}${stage.href || `/markets/${stage.namespace}/${stage.event}`}`;
+      if (stage.kind === 'observation') return `The source window has ended for a question you hold in ${stage.market}:\n"${stage.question}"\nThe answer is not final yet. A bonded answer can be submitted on Reality.eth, and disputed answers can go to Kleros. Follow the settlement timeline on the market page.\n${url}${stage.href}`;
       return `Trading in ${stage.market} closes at ${utc(stage.closesAt)}, in about 2 hours. After that you can no longer buy or sell there.\n${url}/markets`;
     });
     const kinds = new Set(items.map(i => i.stage.kind === 'reminder' ? 'payout' : i.stage.kind));
     const subject = kinds.size > 1 ? 'Updates on your Flurbo predictions'
       : kinds.has('payout') ? 'You have test AUSD to collect on Flurbo'
       : kinds.has('challenge') ? 'An answer was proposed for a question you hold'
+      : kinds.has('observation') ? 'The source window has ended for your Flurbo prediction'
       : `Trading closes in about 2 hours: ${items[0].stage.market}`;
     const text = [...parts,
       'Flurbo runs on Monad testnet. Test assets only; nothing here has monetary value.',

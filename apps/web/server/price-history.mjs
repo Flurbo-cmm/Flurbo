@@ -12,7 +12,7 @@ redis.call('ZREMRANGEBYRANK',KEYS[1],0,-289)
 redis.call('EXPIRE',KEYS[1],2592000)
 return redis.call('ZRANGE',KEYS[1],-288,-1)`;
 
-export function priceHistory({service,command,now=()=>Math.floor(Date.now()/1000)}){
+export function priceHistory({service,command,now=()=>Math.floor(Date.now()/1000),maxQuoteAtoms=2_000_000n}){
   const m=service.manifest,count=m.publication.draft.events.length;
   const key='flurbo:prices:v1:'+createHash('sha256').update(`${m.chainId}:${m.pool}:${m.rulesHash}`).digest('hex');
   let pending=null,cached=null,expires=0;
@@ -21,7 +21,7 @@ export function priceHistory({service,command,now=()=>Math.floor(Date.now()/1000
       ||!/^\d{1,30}$/.test(sample.blockNumber)||!/^0x[0-9a-f]{64}$/i.test(sample.blockHash)
       ||!Array.isArray(sample.prices)||sample.prices.length!==count)throw Error('Invalid price sample');
     const prices=sample.prices.map((p,event)=>{
-      if(p.event!==event||![p.yes,p.no].every(v=>v===null||typeof v==='string'&&/^\d{1,7}$/.test(v)&&BigInt(v)<=2_000_000n))throw Error('Invalid price sample');
+      if(p.event!==event||![p.yes,p.no].every(v=>v===null||typeof v==='string'&&/^\d{1,30}$/.test(v)&&BigInt(v)<=maxQuoteAtoms))throw Error('Invalid price sample');
       return {event,yes:p.yes,no:p.no};
     });
     return {timestamp:sample.timestamp,blockNumber:sample.blockNumber,blockHash:sample.blockHash,prices};

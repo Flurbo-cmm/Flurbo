@@ -41,6 +41,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   }:null;
   const authorizeHolder=holderAuthorizer(challengeOptions);
   const priceArchives=new WeakMap();
+  const oraclePriceArchives=new Map();
   // Agents: account-isolated profiles, paper trading and user-approved proposals. Never a signer.
   const agents=(()=>{try{return agentApi({command:store.command||null,hosted,links,localCounters:!sharedLimits,rpc:agentRpc(rpcUrl,{hosted}),previewAllows,reservedWallets,
     serviceFor:namespace=>namespace==='pilot'?publishedPilot:practiceCollections?.services.get(namespace)||null});}catch{return null;}})();
@@ -52,7 +53,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   const oracleNoticePools=oracle?.noticePools?.(store.command||null)||[];
   const metrics=userMetrics({command:store.command||null,origin:publicOrigin||`http://${hosts[0]}`,links,applications,operatorAccount:testingOperatorAccount,funding,
     openAccess:!previewAllows,reservedWallets,rpcUrl,pools:listedPools});
-  // Email notices to members about their own positions (payout ready, answer proposed, trading closing).
+  // Email notices to members about their own positions and settlement stages.
   const notices=memberNotices({command:store.command||null,pools:()=>[...listedPools(),...oracleNoticePools],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
     send:applications?.noticeEmail?noticeDelivery(applications.noticeEmail):null});
   const page=(res,status,title,body)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
@@ -133,7 +134,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
     if(unsubscribe){
       try{limits.localTake('notice-unsubscribe',120);}catch{return page(res,429,'Try again shortly','<p>Too many requests. Try again in a minute.</p>');}
       if(!notices)return page(res,503,'Unavailable','<p>Notices are not available right now.</p>');
-      if(req.method==='GET')return page(res,200,'Stop Flurbo emails?',`<p>Stop all Flurbo notices about payouts, proposed answers and closing markets. You can turn them back on from Your account.</p><form method="post"><button type="submit" style="font:inherit;padding:10px 18px;border-radius:8px;border:0;background:#14271d;color:#f5f4ec;cursor:pointer">Stop all notices</button></form>`);
+      if(req.method==='GET')return page(res,200,'Stop Flurbo emails?',`<p>Stop all Flurbo notices about payouts, proposed answers, source windows and closing markets. You can turn them back on from Your account.</p><form method="post"><button type="submit" style="font:inherit;padding:10px 18px;border-radius:8px;border:0;background:#14271d;color:#f5f4ec;cursor:pointer">Stop all notices</button></form>`);
       if(req.method!=='POST')return page(res,405,'Not allowed','<p>Use the link in the email.</p>');
       for await(const chunk of req){if(chunk.length>2048)break;}
       const account=await notices.unsubscribe(unsubscribe[1]).catch(()=>null);
@@ -324,7 +325,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         if(Object.keys(input).sort().join(',')!=='eventId,useAI'||typeof input.eventId!=='string'||typeof input.useAI!=='boolean')return send(res,400,{error:'Choose an event and whether to request AI assistance'});
         return send(res,200,await assistant.review(input.eventId,input.useAI));
       }
-      if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence|market))?$/.test(url.pathname)) {
+      if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence|market|price-history))?$/.test(url.pathname)) {
         const login = await getLogin();
         if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
         if (previewAllows && !await previewAllows(login.address)) return send(res, 403, { error: 'Account approval required.' });
@@ -337,6 +338,22 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
           const parts = url.pathname.split('/'), id = parts[3], op = parts[4] || '';
           if (op === 'market' && req.method === 'GET' && !url.search)
             return send(res, 200, await oracle.marketSummary(id));
+          if (op === 'price-history' && req.method === 'GET' && !url.search) {
+            if (!store.command) return send(res, 503, { error: 'Price history storage is unavailable.' });
+            if (!oraclePriceArchives.has(id)) {
+              const route = oracle.routeFor(id);
+              const manifest = { chainId: 10143, pool: route.pool, rulesHash: route.eventHash,
+                publication: { draft: { events: [{}] } } };
+              oraclePriceArchives.set(id, priceHistory({ command: store.command, maxQuoteAtoms: 1_000_000_000_000n,
+                service: { manifest, async markets() {
+                  const value = await oracle.marketSummary(id);
+                  return { manifest, open: value.funded && !value.resolved && value.marketNow < route.publication.closesAt,
+                    snapshot: { timestamp: value.marketNow, blockNumber: value.blockNumber, blockHash: value.blockHash },
+                    prices: [{ event: 0, yes: value.prices.yes, no: value.prices.no }] };
+                } } }));
+            }
+            return send(res, 200, await oraclePriceArchives.get(id).read());
+          }
           if (op === '' && req.method === 'GET') {
             const wallet = url.searchParams.get('wallet');
             if ([...url.searchParams.keys()].some(key => key !== 'wallet')) return send(res, 400, { error: 'Unexpected parameter.' });

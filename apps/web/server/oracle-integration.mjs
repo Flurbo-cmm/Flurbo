@@ -143,7 +143,8 @@ export function oracleService({ catalog, source, market, evidence = null }) {
     client.readContract({ address: getAddress(address), abi, functionName, args });
   const routePublic = route => ({ id: route.id, pool: route.pool, eventIndex: route.eventIndex,
     poolTitle: route.publication.title, question: route.publication.events[route.eventIndex].question, closesAt: route.publication.closesAt,
-    observationEndsAt: route.publication.events[route.eventIndex].observationEndsAt });
+    observationEndsAt: route.publication.events[route.eventIndex].observationEndsAt,
+    questionTxHash: route.publication.events[route.eventIndex].source.questionTxHash });
   async function marketSummary(id) {
     const route = routeFor(id);
     if (await market.getChainId() !== 10143) throw Error('Oracle RPC chain mismatch');
@@ -164,7 +165,8 @@ export function oracleService({ catalog, source, market, evidence = null }) {
       if (quotes[0].status === 'fulfilled') yes = BigInt(quotes[0].value).toString();
       if (quotes[1].status === 'fulfilled') no = BigInt(quotes[1].value).toString();
     }
-    return { schema: 'flurbo.oracle-market.v1', id, pool: route.pool, marketNow, funded, resolved,
+    return { schema: 'flurbo.oracle-market.v1', id, pool: route.pool, marketNow,
+      blockNumber: BigInt(block.number).toString(), blockHash: block.hash, funded, resolved,
       prices: { yes, no } };
   }
   function noticePools(command) {
@@ -198,7 +200,8 @@ export function oracleService({ catalog, source, market, evidence = null }) {
       const sorted = [...group].sort((a, b) => a.eventIndex - b.eventIndex);
       const service = {
         manifest: { pool, publication: { draft: { closesAt: first.publication.closesAt,
-          events: sorted.map(route => ({ question: route.publication.events[route.eventIndex].question })) } } },
+          events: sorted.map(route => ({ question: route.publication.events[route.eventIndex].question,
+            observationEndsAt: route.publication.events[route.eventIndex].observationEndsAt })) } } },
         index: { refresh },
         eventHref: event => `/markets/oracle/${sorted[event].id}`,
         payoutHref: `/markets/oracle/${sorted[0].id}`,
@@ -481,7 +484,7 @@ export function oracleService({ catalog, source, market, evidence = null }) {
         [getAddress(owner), scope, BigInt(mask)]);
       return { action, scope, mask, holdingsAtoms: BigInt(holdings).toString() };
     }
-    if (action === 'buy' || action === 'approve' || action === 'sell' || action === 'redeem') {
+    if (action === 'buy' || action === 'approve' || action === 'sell' || action === 'redeem' || action === 'quote') {
       const side = input?.side;
       if (!['yes', 'no'].includes(side) || typeof input?.quantity !== 'string'
         || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(input.quantity)) throw Error('Enter a valid share quantity');
@@ -491,6 +494,18 @@ export function oracleService({ catalog, source, market, evidence = null }) {
       const holdings = chosen.length === 1 ? BigInt(side === 'yes' ? snap.user.yesShares : snap.user.noShares)
         : BigInt(await read(market, route.pool, poolAbi, 'holdings',
           [getAddress(owner), scope, BigInt(mask)]));
+      if (action === 'quote') {
+        if (snap.resolved || snap.marketNow >= snap.closesAt) throw Error('Trading is closed');
+        const buyAtoms = BigInt(await read(market, route.pool, poolAbi, 'quoteBuy', [scope, BigInt(mask), quantity]));
+        const maxCostAtoms = buyAtoms + (buyAtoms + 99n) / 100n;
+        let sellAtoms = null;
+        if (holdings >= quantity) {
+          try { sellAtoms = BigInt(await read(market, route.pool, poolAbi, 'quoteSell', [scope, BigInt(mask), quantity])).toString(); }
+          catch { sellAtoms = null; }
+        }
+        return { action, buyAtoms: buyAtoms.toString(), maxCostAtoms: maxCostAtoms.toString(), sellAtoms,
+          allowanceAtoms: snap.user.allowanceAtoms, cashAtoms: snap.user.cashAtoms, holdingsAtoms: holdings.toString() };
+      }
       if (action === 'redeem') {
         if (!snap.resolved || holdings < quantity)
           throw Error('Shares are not ready to redeem');
