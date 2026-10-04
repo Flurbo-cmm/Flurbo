@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'wouter';
-import { ArrowLeft, ArrowRight, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Link } from 'wouter';
+import { ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 import { formatEther, formatUnits } from 'viem';
 import { appFetch } from '../platform-fetch';
+import { useAuth } from '../auth/context';
 import { discoverWallets, type BrowserWallet } from '../auth/wallet-choice';
-import PageHeader from '../components/PageHeader';
+import { linkTradingWallet } from '../wallet-links';
+import { type OracleMarket, type OracleMarketSummary } from '../market-directory';
+import './market-detail.css';
 import './oracle.css';
 
-type OracleMarket = { id: string; pool: string; eventIndex: number; question: string;
-  closesAt: number; observationEndsAt: number };
 type OracleUser = { wallet: string; creditedEthWei: string; noShares: string; yesShares: string;
   cashAtoms: string; allowanceAtoms: string };
 type OracleSnapshot = OracleMarket & { schema: string; reality: string; arbitrator: string;
@@ -66,11 +67,10 @@ async function selectChain(provider: BrowserWallet['provider'], chainId: number)
   if (await provider.request({ method: 'eth_chainId' }) !== hex) throw Error(`Switch MetaMask to ${chainName(chainId)}.`);
 }
 
-export default function OracleMarkets() {
-  const [location] = useLocation();
-  const id = location.match(/^\/oracle\/([a-z0-9-]{1,64})$/)?.[1] || null;
-  const [markets, setMarkets] = useState<OracleMarket[] | null>(null);
+export default function OracleMarketDetail({ id, markets }: { id: string; markets: OracleMarket[] }) {
+  const { state: auth } = useAuth();
   const [snapshot, setSnapshot] = useState<OracleSnapshot | null>(null);
+  const [summary, setSummary] = useState<OracleMarketSummary | null>(null);
   const [wallets, setWallets] = useState<BrowserWallet[]>([]);
   const [provider, setProvider] = useState<BrowserWallet['provider'] | null>(null);
   const [owner, setOwner] = useState('');
@@ -80,7 +80,7 @@ export default function OracleMarkets() {
   const [plan, setPlan] = useState<OraclePlan | null>(null);
   const [pending, setPending] = useState<Pending | null>(savedPending);
   const [refresh, setRefresh] = useState(0);
-  const [side, setSide] = useState<'yes' | 'no'>('yes');
+  const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(window.location.search).get('answer') === 'no' ? 'no' : 'yes');
   const [shares, setShares] = useState('1');
   const [extra1, setExtra1] = useState('');
   const [extra2, setExtra2] = useState('');
@@ -98,13 +98,7 @@ export default function OracleMarkets() {
   useEffect(() => discoverWallets(wallet => setWallets(current => current.some(item => item.provider === wallet.provider)
     ? current : [...current, wallet])), []);
   useEffect(() => {
-    let live = true;
-    void request<{ markets: OracleMarket[] }>('/api/oracle/markets').then(value => { if (live) setMarkets(value.markets); })
-      .catch(e => { if (live) setError(friendly(e)); });
-    return () => { live = false; };
-  }, []);
-  useEffect(() => {
-    if (!id || !markets?.some(m => m.id === id)) return;
+    if (!markets.some(m => m.id === id)) return;
     const current = ++generation.current;
     setError('');
     void request<OracleSnapshot>(`/api/oracle/${id}${owner ? `?wallet=${owner}` : ''}`)
@@ -112,6 +106,18 @@ export default function OracleMarkets() {
       .catch(e => { if (generation.current === current) setError(friendly(e)); });
     return () => { generation.current++; };
   }, [id, markets, owner, refresh]);
+  useEffect(() => {
+    const selected = markets.find(m => m.id === id);
+    if (!selected) return;
+    let live = true;
+    setSummary(null);
+    void request<OracleMarketSummary>(`/api/oracle/${id}/market`)
+      .then(value => {
+        if (live && value.schema === 'flurbo.oracle-market.v1' && value.id === id
+          && value.pool.toLowerCase() === selected.pool.toLowerCase()) setSummary(value);
+      }).catch(() => {});
+    return () => { live = false; };
+  }, [id, markets, refresh]);
   useEffect(() => {
     const timer = setInterval(() => { if (!document.hidden && !busy) setRefresh(n => n + 1); }, 30_000);
     return () => clearInterval(timer);
@@ -123,10 +129,17 @@ export default function OracleMarkets() {
 
   async function connect(wallet = wallets.find(item => item.provider === provider) || wallets[0]) {
     if (!wallet) throw Error('Install MetaMask or open Flurbo in its browser.');
-    const accounts = await wallet.provider.request({ method: 'eth_requestAccounts' }) as string[];
-    if (!Array.isArray(accounts) || !/^0x[0-9a-f]{40}$/i.test(accounts[0] || '')) throw Error('Select a MetaMask account.');
-    setProvider(wallet.provider); setOwner(accounts[0]); setPlan(null);
-    setNotice('MetaMask connected. This wallet signs each transaction you review.');
+    if (!auth.address) throw Error('Sign in first.');
+    setBusy(true); setError(''); setOwner(''); setProvider(null); setPlan(null);
+    try {
+      if (owner) await wallet.provider.request({ method: 'wallet_requestPermissions', params: [{ eth_accounts: {} }] });
+      const accounts = await wallet.provider.request({ method: 'eth_requestAccounts' }) as string[];
+      if (!Array.isArray(accounts) || !/^0x[0-9a-f]{40}$/i.test(accounts[0] || '')) throw Error('Select a MetaMask account.');
+      setNotice('Confirm the account link in MetaMask if requested.');
+      await linkTradingWallet(wallet.provider, auth.address, accounts[0]);
+      setProvider(wallet.provider); setOwner(accounts[0]);
+      setNotice('MetaMask connected. This wallet signs each transaction you review.');
+    } finally { setBusy(false); }
   }
   async function prepare(action: string, input: Record<string, unknown> = {}) {
     if (!id || !owner) throw Error('Connect MetaMask first.');
@@ -178,8 +191,8 @@ export default function OracleMarkets() {
     } finally { setBusy(false); }
   }
   const run = (task: () => Promise<void>) => void task().catch(e => setError(friendly(e)));
-  const market = markets?.find(m => m.id === id);
-  const others = markets?.filter(m => m.pool.toLowerCase() === market?.pool.toLowerCase() && m.id !== id) || [];
+  const market = markets.find(m => m.id === id);
+  const others = markets.filter(m => m.pool.toLowerCase() === market?.pool.toLowerCase() && m.id !== id);
   const claim = market ? [{ eventIndex: market.eventIndex, side },
     ...(extra1 ? [{ eventIndex: others.find(m => m.id === extra1)?.eventIndex ?? -1, side: extra1Side }] : []),
     ...(extra2 ? [{ eventIndex: others.find(m => m.id === extra2)?.eventIndex ?? -1, side: extra2Side }] : [])] : [];
@@ -198,23 +211,14 @@ export default function OracleMarkets() {
     && (zero(snapshot.bondWei) || snapshot.sourceNow < snapshot.finalizesAt);
   const canArbitrate = snapshot && !snapshot.finalized && !snapshot.pendingArbitration && !zero(snapshot.bondWei)
     && snapshot.sourceNow < snapshot.finalizesAt;
+  const hasAnswer = snapshot && !zero(snapshot.bondWei);
 
-  if (!id) return <main id="main" tabIndex={-1} className="page oracle-page">
-    <PageHeader title="Reality resolution." lead="Answer, challenge and follow testnet questions from Flurbo." />
-    {error && <p className="state-inline error" role="alert">{error}</p>}
-    {!markets && !error && <p role="status">Loading oracle markets...</p>}
-    {markets?.length === 0 && <div className="state-block"><h2>No oracle markets are listed yet</h2><p>The first Kleros-backed testnet pool is being prepared. Existing Flurbo markets continue in Markets.</p><Link href="/markets" className="btn btn-secondary">View current markets</Link></div>}
-    <div className="oracle-list">{markets?.map(m => <Link href={`/oracle/${m.id}`} className="oracle-list-card" key={m.id}>
-      <span className="chip">Sepolia oracle · Monad market</span><h2>{m.question}</h2>
-      <span>Observation ends {date(m.observationEndsAt)}</span><span className="oracle-card-arrow">Open market <ArrowRight size={17}/></span>
-    </Link>)}</div>
-  </main>;
-
-  return <main id="main" tabIndex={-1} className="page oracle-page">
-    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/oracle" className="link-back"><ArrowLeft size={18}/>All oracle markets</Link></nav>
-    {!market && markets && <div className="state-block"><h1>Oracle market not found</h1><Link href="/oracle" className="btn btn-secondary">Back to list</Link></div>}
+  return <main id="main" tabIndex={-1} className="page markets-page market-detail oracle-page">
+    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/markets" className="link-back"><ArrowLeft size={18}/>All markets</Link></nav>
+    {error && !market && <p className="state-inline error" role="alert">{error}</p>}
+    {!market && <div className="state-block"><h1>Market not found</h1><Link href="/markets" className="btn btn-secondary">All markets</Link></div>}
     {market && <>
-      <header className="oracle-heading"><span className="chip">Monad testnet · Reality.eth on Sepolia</span><h1>{market.question}</h1>
+      <header className="detail-heading"><span className="chip">Monad testnet · Reality.eth on Sepolia</span><h1>{market.question}</h1>
         <p>Trading closes {date(market.closesAt)}. The source can be answered after {date(market.observationEndsAt)}.</p></header>
       <div className="oracle-columns"><div className="oracle-main">
         {error && <p className="state-inline error" role="alert">{error}</p>}
@@ -222,37 +226,40 @@ export default function OracleMarkets() {
         {!snapshot && !error && <p role="status">Reading both testnets...</p>}
         {snapshot && <>
           <section className="detail-panel"><div className="panel-head"><h2>Current result</h2><button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRefresh(n => n + 1)}><RefreshCw size={15}/>Refresh</button></div>
-            <dl className="oracle-facts"><div><dt>Reality answer</dt><dd>{snapshot.answerLabel || 'No answer yet'}</dd></div>
-              <div><dt>Reality state</dt><dd>{snapshot.finalized ? 'Final' : snapshot.pendingArbitration ? 'Kleros arbitration pending' : canAnswer ? 'Open for answers' : 'Waiting for opening'}</dd></div>
-              <div><dt>Highest bond</dt><dd>{eth(snapshot.bondWei)} Sepolia ETH</dd></div>
-              <div><dt>Next bond minimum</dt><dd>{eth(snapshot.nextBondWei)} Sepolia ETH</dd></div>
-              <div><dt>Arbitration fee</dt><dd>{eth(snapshot.disputeFeeWei)} Sepolia ETH</dd></div>
+            <dl className="oracle-facts"><div><dt>Resolution</dt><dd>{snapshot.finalized ? 'Final' : snapshot.pendingArbitration ? 'Kleros arbitration pending' : hasAnswer ? canArbitrate ? 'Answer open for challenge' : 'Answer awaiting finality' : canAnswer ? 'Open for answers' : 'Waiting for observation'}</dd></div>
+              {hasAnswer && <div><dt>Proposed answer</dt><dd>{snapshot.answerLabel || 'Not available'}</dd></div>}
+              {hasAnswer && <div><dt>Highest bond</dt><dd>{eth(snapshot.bondWei)} Sepolia ETH</dd></div>}
+              {canArbitrate && <div><dt>Arbitration fee</dt><dd>{eth(snapshot.disputeFeeWei)} Sepolia ETH</dd></div>}
               <div><dt>Flurbo result</dt><dd>{snapshot.phase === 1 ? ['Unset','No','Yes','Void'][snapshot.reported] : 'Awaiting relay'}</dd></div></dl>
             {snapshot.finalizesAt > 0 && !snapshot.finalized && <p className="market-caption">Current Reality answer may finalize {date(snapshot.finalizesAt)}. A new answer resets the countdown.</p>}
             {snapshot.dispute && <p className="market-caption">Kleros case: {['none','requested','created','ruled','relayed'][snapshot.dispute.status] || 'status updating'}, dispute #{snapshot.dispute.disputeId}.</p>}
             <p className="market-caption">This testnet pool relies on a dedicated relay to deliver the final Sepolia answer to Monad. The relay can still misreport until verified cross-chain delivery is added.</p>
           </section>
 
-          <section className="detail-panel"><h2>Answer or challenge</h2><p>Posting a different answer challenges the current answer by locking a larger Sepolia ETH bond. MetaMask stays on Flurbo throughout.</p>
+          {canAnswer && !hasAnswer && <section className="detail-panel"><h2>Submit an answer</h2><p>Propose the first answer on Reality.eth with a Sepolia ETH bond. MetaMask stays on Flurbo throughout.</p>
             <div className="oracle-fields"><label>Answer<select value={answer} onChange={e => setAnswer(e.target.value as typeof answer)}><option value="yes">Yes</option><option value="no">No</option><option value="void">Void or invalid</option></select></label>
               <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)} /></label></div>
             <p className="market-caption">Minimum right now: {eth(snapshot.nextBondWei)} ETH. If another answer arrives first, the transaction may revert instead of paying a stale bond.</p>
             <button className="btn btn-primary" disabled={!canAnswer || !owner || busy || !!pending} onClick={() => run(() => prepare('answer', { answer, bondEth }))}>Review answer and bond</button>
-            {!canAnswer && <p className="field-help">Answers are available only while the Reality question is open and before arbitration begins.</p>}
-          </section>
+          </section>}
 
-          <section className="detail-panel"><h2>Request Kleros arbitration</h2><p>Use this if bond escalation cannot resolve a contested answer. The fee is separate from answer bonds and is paid in Sepolia ETH.</p>
-            <button className="btn btn-secondary" disabled={!canArbitrate || !owner || busy || !!pending} onClick={() => run(() => prepare('arbitrate'))}>Review arbitration fee</button>
-            {snapshot.pendingArbitration && <p className="field-help">Arbitration has already been requested. Submit public evidence below.</p>}
-          </section>
+          {canArbitrate && <section className="detail-panel"><h2>Challenge this answer</h2><p>Challenge the current Reality.eth answer through Kleros. The arbitration fee is paid in Sepolia ETH. Review it before MetaMask asks you to sign.</p>
+            <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('arbitrate'))}>Review Kleros challenge fee</button>
+            <details className="oracle-counteranswer"><summary>Post a different bonded answer instead</summary><p>Reality.eth also allows a counteranswer with a larger bond while the answer window is open. This does not start Kleros arbitration.</p>
+              <div className="oracle-fields"><label>Counteranswer<select value={answer} onChange={e => setAnswer(e.target.value as typeof answer)}><option value="yes">Yes</option><option value="no">No</option><option value="void">Void or invalid</option></select></label>
+                <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)} /></label></div>
+              <p className="market-caption">Minimum right now: {eth(snapshot.nextBondWei)} ETH.</p>
+              <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('answer', { answer, bondEth }))}>Review counteranswer bond</button>
+            </details>
+          </section>}
 
           {snapshot.dispute?.status === 3 && snapshot.pendingArbitration && <section className="detail-panel"><h2>Complete Kleros ruling</h2><p>Kleros has ruled. Flurbo verifies Reality's answer history, then prepares the transaction that sends the ruling into Reality so the question can finalize.</p><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></section>}
 
-          {snapshot.dispute && <section className="detail-panel"><h2>Claim appeal rewards</h2><p>If you funded an appeal, select the ruling you supported. Flurbo checks whether this wallet can withdraw its contribution or reward.</p><label>Ruling funded<select value={ruling} onChange={e => setRuling(Number(e.target.value))}><option value={2}>Yes</option><option value={1}>No</option><option value={0}>Refuse to rule / invalid</option></select></label><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling }))}>Check and claim selected ruling</button></section>}
+          {snapshot.dispute && snapshot.dispute.status >= 3 && <section className="detail-panel"><h2>Claim appeal rewards</h2><p>If you funded an appeal, select the ruling you supported. Flurbo checks whether this wallet can withdraw its contribution or reward.</p><label>Ruling funded<select value={ruling} onChange={e => setRuling(Number(e.target.value))}><option value={2}>Yes</option><option value={1}>No</option><option value={0}>Refuse to rule / invalid</option></select></label><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling }))}>Check and claim selected ruling</button></section>}
 
           {snapshot.finalized && !zero(snapshot.historyHash) && <section className="detail-panel"><h2>Claim answer bonds</h2><p>If this wallet posted a Reality answer, Flurbo prepares the history transaction that credits eligible answerers. You can withdraw credited ETH from your wallet panel.</p><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimWinnings'))}>Review bond claim</button></section>}
 
-          {snapshot.pendingArbitration && <section className="detail-panel"><h2>Submit evidence</h2><p>Evidence is public and identified by its content hash. Include only information you may disclose to jurors and everyone else.</p>
+          {snapshot.pendingArbitration && snapshot.dispute && snapshot.dispute.status <= 2 && <section className="detail-panel"><h2>Submit evidence</h2><p>Evidence is public and identified by its content hash. Include only information you may disclose to jurors and everyone else.</p>
             <div className="oracle-fields"><label>Title<input maxLength={120} value={evidence.name} onChange={e => setEvidence(v => ({ ...v, name: e.target.value }))}/></label>
               <label>Public source URL<input type="url" value={evidence.sourceURL} onChange={e => setEvidence(v => ({ ...v, sourceURL: e.target.value }))}/></label>
               <label className="oracle-wide">Explanation<textarea rows={5} maxLength={8000} value={evidence.description} onChange={e => setEvidence(v => ({ ...v, description: e.target.value }))}/></label></div>
@@ -265,15 +272,8 @@ export default function OracleMarkets() {
             <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('appeal', { ruling, amountEth: appealEth }))}>Review appeal contribution</button></section>}
         </>}
       </div><aside className="oracle-side">
-        <section className="detail-panel"><h2>Your wallet</h2><p>MetaMask signs source-chain bonds and Monad trades. Mera remains your Flurbo sign-in.</p>
-          {owner && <p className="mono oracle-address">{owner}</p>}
-          <div className="cluster"><button className="btn btn-secondary" disabled={busy} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : 'Connect MetaMask'}</button></div>
-          {wallets.length > 1 && <select aria-label="MetaMask provider" onChange={e => { setProvider(wallets[Number(e.target.value)]?.provider || null); setOwner(''); setPlan(null); }}>{wallets.map((w, i) => <option key={i} value={i}>{w.name} {i + 1}</option>)}</select>}
-          {snapshot?.user && <dl className="oracle-facts"><div><dt>Test AUSD</dt><dd>{ausd(snapshot.user.cashAtoms)}</dd></div><div><dt>Yes shares</dt><dd>{ausd(snapshot.user.yesShares)}</dd></div><div><dt>No shares</dt><dd>{ausd(snapshot.user.noShares)}</dd></div><div><dt>Credited Reality ETH</dt><dd>{eth(snapshot.user.creditedEthWei)}</dd></div></dl>}
-          {snapshot?.user && !zero(snapshot.user.creditedEthWei) && <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('withdraw'))}>Review ETH withdrawal</button>}
-        </section>
-
-        {snapshot && <section className="detail-panel"><h2>{snapshot.resolved ? 'Collect shares' : 'Trade this question'}</h2>
+        {snapshot && <section className="detail-panel detail-trade" aria-label="Trade this market"><h2>{snapshot.resolved ? 'Collect shares' : 'Trade this question'}</h2>
+          {summary && summary.marketNow < snapshot.closesAt && !snapshot.resolved && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes === null ? 'View quote' : `${ausd(summary.prices.yes)} AUSD`}</strong></div><div><span>No</span><strong>{summary.prices.no === null ? 'View quote' : `${ausd(summary.prices.no)} AUSD`}</strong></div><p className="market-caption">Price for one share, test AUSD. Review the exact quote before confirming.</p></div>}
           <div className="oracle-fields"><label>Side<select value={side} onChange={e => setSide(e.target.value as typeof side)}><option value="yes">Yes</option><option value="no">No</option></select></label>
             <label>Shares<input inputMode="decimal" value={shares} onChange={e => setShares(e.target.value)}/></label>
             <label>Second question<select value={extra1} onChange={e => { setExtra1(e.target.value); setExtra2(''); }}><option value="">None</option>{others.map(m => <option key={m.id} value={m.id}>{m.question}</option>)}</select></label>
@@ -286,6 +286,14 @@ export default function OracleMarkets() {
                 <button className="btn btn-primary" disabled={!owner || busy || !!pending || snapshot.marketNow >= snapshot.closesAt} onClick={() => run(() => prepare('buy', { side, quantity: shares, claim }))}>Review purchase</button>
                 <button className="btn btn-secondary" disabled={!owner || busy || !!pending || snapshot.marketNow >= snapshot.closesAt} onClick={() => run(() => prepare('sell', { side, quantity: shares, claim }))}>Review sale</button></div>}
           <p className="market-caption">Test assets only. Every purchase has a fresh pool quote and a maximum cost. Combinations include up to three outcomes from this pool.</p></section>}
+
+        <section className="detail-panel"><h2>Your wallet</h2><p>Connect MetaMask to your Flurbo account. This wallet signs Sepolia bonds and Monad trades.</p>
+          {owner && <p className="mono oracle-address">{owner}</p>}
+          <div className="cluster"><button className="btn btn-secondary" disabled={busy} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : 'Connect MetaMask'}</button></div>
+          {wallets.length > 1 && <select aria-label="MetaMask provider" onChange={e => { setProvider(wallets[Number(e.target.value)]?.provider || null); setOwner(''); setPlan(null); }}>{wallets.map((w, i) => <option key={i} value={i}>{w.name} {i + 1}</option>)}</select>}
+          {snapshot?.user && <dl className="oracle-facts"><div><dt>Test AUSD</dt><dd>{ausd(snapshot.user.cashAtoms)}</dd></div><div><dt>Yes shares</dt><dd>{ausd(snapshot.user.yesShares)}</dd></div><div><dt>No shares</dt><dd>{ausd(snapshot.user.noShares)}</dd></div><div><dt>Credited Reality ETH</dt><dd>{eth(snapshot.user.creditedEthWei)}</dd></div></dl>}
+          {snapshot?.user && !zero(snapshot.user.creditedEthWei) && <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('withdraw'))}>Review ETH withdrawal</button>}
+        </section>
 
         {plan && <section className="detail-panel oracle-review" aria-label="Transaction review"><h2>Review transaction</h2><p>{plan.reason}</p>
           <dl className="oracle-facts"><div><dt>Network</dt><dd>{chainName(plan.transaction.chainId)}</dd></div>

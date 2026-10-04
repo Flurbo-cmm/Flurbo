@@ -13,6 +13,10 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
   f.manifest.publication.draft.events.forEach((e:any,i:number)=>e.question=['Will the night market open?','Will the concert sell out?','Will it rain on Saturday?','Will the new cafe open?'][i]);
   f.manifest.publication.reviewerControl='single-operator';
   {f.manifest.publication.mode='rehearsal';f.manifest.publication.draft.title='Public rehearsal: scripted settlement checks';}
+  const oraclePool='0x'+'44'.repeat(20),oracleClosesAt=Math.floor(Date.now()/1000)+7200;
+  const oracleMarkets=[0,1].map(i=>({id:`oracle-smoke-${i}`,pool:oraclePool,poolTitle:'Source pool',eventIndex:i,
+    question:i===0?'Will the block be even?':'Will the block contain a transaction?',closesAt:oracleClosesAt,observationEndsAt:oracleClosesAt+3600}));
+  let oracleAnswerActive=false,arbitrationPrepared=false;
   let login=true,reads=0,historyReads=0,linked=false;const preparedQuantities:string[]=[];const preparedClaims:any[]=[];const errors:string[]=[];
   let heldCombinationQuote:Promise<void>|null=null;
   try{
@@ -53,7 +57,10 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     await page.route('**/*',async(route:any)=>{
       const url=new URL(route.request().url()),path=url.pathname;
       if(path.endsWith('/history'))historyReads++;
-      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',active:namespace,markets:[{namespace,label:'September practice',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt}]}});
+      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',active:namespace,markets:[{namespace,label:'September practice',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt}],oracleMarkets}});
+      if(/^\/api\/oracle\/oracle-smoke-[01]\/market$/.test(path))return route.fulfill({json:{schema:'flurbo.oracle-market.v1',id:path.split('/')[3],pool:oraclePool,marketNow:Math.floor(Date.now()/1000),funded:true,resolved:false,prices:{yes:'450000',no:'550000'}}});
+      if(/^\/api\/oracle\/oracle-smoke-[01]$/.test(path))return route.fulfill({json:{...oracleMarkets.find(m=>m.id===path.split('/')[3]),schema:'flurbo.oracle-snapshot.v1',reality:owner,arbitrator:owner,resolver:owner,relay:owner,questionId:hash,historyHash:hash,answer:oracleAnswerActive?hash:null,answerLabel:oracleAnswerActive?'No':null,bondWei:oracleAnswerActive?'100000000000000':'0',minBondWei:'100000000000000',nextBondWei:'200000000000000',disputeFeeWei:'1000000000000000',opensAt:oracleClosesAt+3600,finalizesAt:oracleAnswerActive?oracleClosesAt+7200:0,sourceNow:oracleAnswerActive?oracleClosesAt+3700:Math.floor(Date.now()/1000),marketNow:Math.floor(Date.now()/1000),finalized:false,pendingArbitration:false,dispute:null,reportDeadline:oracleClosesAt+86400,phase:0,reported:0,funded:true,resolved:false,user:null}});
+      if(/^\/api\/oracle\/oracle-smoke-[01]\/action$/.test(path)){arbitrationPrepared=route.request().postDataJSON().action==='arbitrate';return route.fulfill({json:{action:'arbitrate',reason:'Review the Kleros fee',transaction:{chainId:11155111,from:owner,to:owner,data:'0x',value:'0x1'}}});}
       if(path==='/api/account/wallets')return route.fulfill({json:{account:loginAddress,wallets:linked?[owner]:[]}});
       if(path==='/api/account/portfolio-sources')return route.fulfill({json:{account:loginAddress,wallets:linked?[owner]:[],agentWallets:[]}});
       if(path==='/api/account/wallets/challenge'){assert.equal(route.request().postDataJSON().wallet,owner);return route.fulfill({json:{id:'fixture-proof',message:'Link this MetaMask wallet to your Flurbo account; no transaction.'}});}
@@ -93,7 +100,26 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     await page.goto('https://flurbo.singu.online/login');
     await page.waitForURL('**/access');await page.getByRole('link',{name:'Explore markets',exact:true}).click();await page.waitForURL('**/markets');
     await page.getByRole('heading',{name:'Will the new cafe open?',exact:true}).waitFor();
-    assert.equal(await page.locator('.market-card').count(),4);
+    await page.getByRole('heading',{name:'Will the block be even?',exact:true}).waitFor();
+    await page.getByRole('heading',{name:'Will the block contain a transaction?',exact:true}).waitFor();
+    assert.equal(await page.locator('.market-card').count(),6);
+    assert.equal(await page.getByRole('link',{name:'Oracle markets'}).count(),0);
+    await page.getByRole('link',{name:'No: Will the block be even?',exact:true}).click();
+    assert.equal(new URL(page.url()).pathname,'/markets/oracle/oracle-smoke-0');
+    await page.getByRole('heading',{name:'Trade this question',exact:true}).waitFor();
+    assert.equal(await page.getByRole('heading',{name:'Challenge this answer'}).count(),0);
+    assert.equal(await page.getByLabel('Side').inputValue(),'no');
+    await page.getByRole('button',{name:'Connect MetaMask'}).click();
+    await page.getByText('MetaMask connected. This wallet signs each transaction you review.').waitFor();
+    assert.equal(linked,true);
+    oracleAnswerActive=true;
+    await page.getByRole('button',{name:'Refresh',exact:true}).click();
+    await page.getByRole('heading',{name:'Challenge this answer'}).waitFor();
+    await page.getByRole('button',{name:'Review Kleros challenge fee'}).click();
+    assert.equal(arbitrationPrepared,true);
+    await page.getByRole('heading',{name:'Review transaction'}).waitFor();
+    await page.getByRole('link',{name:'All markets'}).click();
+    await page.getByRole('heading',{name:'Will the new cafe open?',exact:true}).waitFor();
     if(process.env.FLURBO_TEST_SCREENSHOT)await page.screenshot({path:process.env.FLURBO_TEST_SCREENSHOT,fullPage:true});
     await page.getByRole('link',{name:'No: Will the concert sell out?',exact:true}).click();
     assert.equal(new URL(page.url()).pathname,'/markets/'+namespace+'/1');

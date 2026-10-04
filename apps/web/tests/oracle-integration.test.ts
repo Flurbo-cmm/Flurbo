@@ -52,12 +52,36 @@ function fixture(overrides: Record<string, unknown> = {}) {
     getLogs: async () => overrides.logs || [{ args: { answer: h('0'), history_hash: h('f'), user: owner, bond: 1000n } }] };
   const market = { getChainId: async () => 10143, getBlock: async () => ({ timestamp: BigInt(overrides.marketNow ?? 2000), number: 20n }),
     readContract: async ({ functionName }: any) => marketValues[functionName] };
-  return oracleService({ catalog, source, market });
+  return oracleService({ catalog: overrides.catalog || catalog, source, market });
 }
 
 test('catalog accepts only the pinned Reality and Kleros contracts', () => {
   assert.equal(oracleCatalog(catalog).routes.length, 2);
   assert.throws(() => oracleCatalog({ ...catalog, routes: [{ ...route, arbitrator: a('2') }, secondRoute] }), /binding mismatch/);
+});
+
+test('market directory quote reads only the Monad pool', async () => {
+  const summary = await fixture({ marketNow: 500 }).marketSummary(route.id);
+  assert.equal(summary.id, route.id);
+  assert.equal(summary.funded, true);
+  assert.equal(summary.prices.yes, '500000');
+  assert.equal(summary.prices.no, '500000');
+  const closed = await fixture({ marketNow: 1200 }).marketSummary(route.id);
+  assert.deepEqual(closed.prices, { yes: null, no: null });
+});
+
+test('oracle notice pool exposes answer stage and on-chain position reads', async () => {
+  const service = fixture({ catalog: { ...catalog, routes: [
+    { ...route, deploymentBlock: 12 }, { ...secondRoute, deploymentBlock: 12 }] },
+    market: { holdings: 2_000_000n } });
+  const [noticePool] = service.noticePools(async () => null);
+  assert.equal(noticePool.label, 'Oracle fixture');
+  assert.equal(noticePool.service.eventHref(0), '/markets/oracle/test-event');
+  const status = await noticePool.service.status();
+  assert.equal(status.cases[0].phase, 1);
+  assert.equal(status.cases[0].proposal, 1);
+  const positions = await noticePool.service.positions(owner, [{ scope: 1, mask: '1' }]);
+  assert.equal(positions.rows[0].quantity, '2000000');
 });
 
 test('reads a bound question and prepares exact answer bond', async () => {

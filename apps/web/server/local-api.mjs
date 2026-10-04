@@ -49,10 +49,11 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
     ...(publishedPilot?[{namespace:'pilot',label:(practiceCollections?.catalog?.collections||[]).find(c=>c.pool===publishedPilot.manifest.pool)?.label||'Release milestones',service:publishedPilot}]:[]),
     ...[...(practiceCollections?.services||[])].map(([namespace,service])=>({namespace,label:practiceCollections.catalog.collections.find(c=>c.namespace===namespace)?.label||namespace,service}))]
     .filter(p=>p.service.index);
+  const oracleNoticePools=oracle?.noticePools?.(store.command||null)||[];
   const metrics=userMetrics({command:store.command||null,origin:publicOrigin||`http://${hosts[0]}`,links,applications,operatorAccount:testingOperatorAccount,funding,
     openAccess:!previewAllows,reservedWallets,rpcUrl,pools:listedPools});
   // Email notices to members about their own positions (payout ready, answer proposed, trading closing).
-  const notices=memberNotices({command:store.command||null,pools:listedPools,applications,links,origin:publicOrigin||`http://${hosts[0]}`,
+  const notices=memberNotices({command:store.command||null,pools:()=>[...listedPools(),...oracleNoticePools],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
     send:applications?.noticeEmail?noticeDelivery(applications.noticeEmail):null});
   const page=(res,status,title,body)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | flurbo</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#14271d;background:#f5f4ec;line-height:1.5"><h1 style="font-size:1.5rem">${title}</h1>${body}</body></html>`);};
@@ -243,7 +244,8 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         if(!login||login.method!=='passkey')return send(res,401,{error:'Sign in with your Flurbo passkey.'});
         const entries=[...(practiceCollections?.catalog?.collections||[])];
         if(publishedPilot&&!entries.some(row=>row.pool===publishedPilot.manifest.pool))entries.push({namespace:'pilot',label:'Release milestones',pool:publishedPilot.manifest.pool,closesAt:publishedPilot.manifest.publication.draft.closesAt});
-        return send(res,200,{schema:'flurbo.market-directory.v1',markets:entries});
+        const oracleMarkets=oracle&&(!previewAllows||await previewAllows(login.address))?oracle.list():[];
+        return send(res,200,{schema:'flurbo.market-directory.v1',markets:entries,oracleMarkets});
       }
       if (url.pathname === '/api/evidence-beta' || url.pathname.startsWith('/api/learning/')) {
         const login = await getLogin();
@@ -322,7 +324,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         if(Object.keys(input).sort().join(',')!=='eventId,useAI'||typeof input.eventId!=='string'||typeof input.useAI!=='boolean')return send(res,400,{error:'Choose an event and whether to request AI assistance'});
         return send(res,200,await assistant.review(input.eventId,input.useAI));
       }
-      if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence))?$/.test(url.pathname)) {
+      if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence|market))?$/.test(url.pathname)) {
         const login = await getLogin();
         if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
         if (previewAllows && !await previewAllows(login.address)) return send(res, 403, { error: 'Account approval required.' });
@@ -333,6 +335,8 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
             return send(res, 200, { schema: 'flurbo.oracle-directory.v1', markets: oracle.list() });
           }
           const parts = url.pathname.split('/'), id = parts[3], op = parts[4] || '';
+          if (op === 'market' && req.method === 'GET' && !url.search)
+            return send(res, 200, await oracle.marketSummary(id));
           if (op === '' && req.method === 'GET') {
             const wallet = url.searchParams.get('wallet');
             if ([...url.searchParams.keys()].some(key => key !== 'wallet')) return send(res, 400, { error: 'Unexpected parameter.' });

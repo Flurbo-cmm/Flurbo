@@ -1,13 +1,13 @@
 import { decodeEventLog } from 'viem';
 import { resolverAbi, pilotPoolAbi } from '../shared/pilot.mjs';
 
-// Persistent pilot-sized index. Each refresh scans at most 1,000 blocks. A changed
+// Persistent bounded index. Each refresh scans at most maxBlocks blocks. A changed
 // checkpoint rebuilds from the verified empty-pool anchor instead of retaining orphaned events.
-export function pilotIndex({manifest,rpc,command,now=Date.now}) {
+export function pilotIndex({manifest,rpc,command,now=Date.now,maxBlocks=1000,initialWindowSize=100}) {
   const key=`flurbo:pilot:index:v1:${manifest.pool}`;
   const start=Number(manifest.verifiedBlock);
   const abi=[...resolverAbi,...pilotPoolAbi];
-  let windowSize=100;
+  let windowSize=initialWindowSize;
   const stringify=value=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v);
   async function scan() {
     const prior=await command('GET',key);
@@ -21,7 +21,7 @@ export function pilotIndex({manifest,rpc,command,now=Date.now}) {
     // Finish the persisted catch-up snapshot before following newly mined blocks.
     // A completed snapshot starts a new target on the next explicit refresh.
     const target=Number.isSafeInteger(saved.target)&&saved.target>saved.through?Math.min(saved.target,tip):tip;
-    const targetEnd=Math.min(target,saved.through+1000);
+    const targetEnd=Math.min(target,saved.through+maxBlocks);
     if(targetEnd<=saved.through)return {...saved,target,complete:saved.through>=target};
     const boundaryBefore=await rpc('eth_getBlockByNumber',['0x'+targetEnd.toString(16),false]);
     let end=saved.through,endBefore=null,attempts=0;
@@ -36,7 +36,7 @@ export function pilotIndex({manifest,rpc,command,now=Date.now}) {
         batch=await rpc('eth_getLogs',[{address:[manifest.pool,manifest.resolver],fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}]);
       } catch(error) {
         if(error.code!=='LOG_RANGE_LIMIT'||windowSize===1)throw error;
-        windowSize=windowSize===100?10:1;
+        windowSize=Math.max(1,Math.floor(windowSize/10));
         continue;
       }
       if(!Array.isArray(batch)||batch.length>2000)throw new Error('Pilot log window exceeds its bounded index');

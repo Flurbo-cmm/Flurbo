@@ -3,11 +3,13 @@ import {Link,useLocation} from 'wouter';
 import {Search,ArrowUpRight,RefreshCw,Inbox} from 'lucide-react';
 import {formatUnits} from 'viem';
 import {useAuth} from '../auth/context';
+import {appFetch} from '../platform-fetch';
 import {pilotRequest,type PilotNamespace} from '../pilot';
-import {loadMarketDirectory,marketStatus,type MarketGroup,type MarketSnapshot} from '../market-directory';
+import {loadMarketDirectory,marketStatus,type MarketGroup,type MarketSnapshot,type OracleMarket,type OracleMarketSummary,type MarketDirectory as MarketDirectoryData} from '../market-directory';
 import {marketHref} from '../market-detail';
 import {marketQuestion} from '../showcase-copy';
 import MarketDetail from './MarketDetail';
+import OracleMarketDetail from './OracleMarkets';
 import ThesisExplorer from './ThesisExplorer';
 import AccountPortfolio from './AccountPortfolio';
 import PageHeader from '../components/PageHeader';
@@ -20,14 +22,19 @@ import './markets.css';
 export default function Markets(){
   const [location]=useLocation();
   const {state:auth}=useAuth();
-  const [groups,setGroups]=useState<MarketGroup[]|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
-  useEffect(()=>{const c=new AbortController();setError('');void loadMarketDirectory(c.signal).then(setGroups).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[attempt]);
-  const gate=useLoadGate('directory',{pending:!groups&&!error,label:'Loading markets'});
-  if(!groups)return <main id="main" tabIndex={-1} className="page markets-page" aria-busy={!error}>
+  const [directory,setDirectory]=useState<MarketDirectoryData|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
+  useEffect(()=>{const c=new AbortController();setError('');void loadMarketDirectory(c.signal).then(setDirectory).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[attempt]);
+  const gate=useLoadGate('directory',{pending:!directory&&!error,label:'Loading markets'});
+  if(!directory)return <main id="main" tabIndex={-1} className="page markets-page" aria-busy={!error}>
     <PageHeader title={location==='/portfolio'?<>Your portfolio.</>:'What happens next?'} lead={location==='/portfolio'?'All your linked wallet positions. Results and payouts in one place.':'Choose a question. Take a view. Explore how it connects.'}/>
     {error?<div className="state-block" role="alert"><h2>Markets could not load</h2><p>{error}</p><button className="btn btn-primary" onClick={()=>setAttempt(x=>x+1)}>Retry</button></div>
       :<>{!gate.covered&&<span className="progress-line" aria-hidden="true"/>}<p role="status" className={gate.covered?'sr-only':'busy-text'}>Loading markets...</p><MarketSkeleton/></>}
   </main>;
+  const {groups,oracleMarkets}=directory;
+  const oracleId=location.match(/^\/markets\/oracle\/([a-z0-9-]{1,64})$/)?.[1];
+  if(oracleId)return oracleMarkets.some(m=>m.id===oracleId)
+    ?<OracleMarketDetail key={oracleId} id={oracleId} markets={oracleMarkets}/>
+    :<main id="main" tabIndex={-1} className="page page-task"><div className="state-block"><Inbox aria-hidden="true" strokeWidth={1.75}/><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div></main>;
   const detail=location.match(/^\/markets\/(pilot|practice-[0-9a-f]{40})\/([0-3])(\/thesis)?$/);
   if(location.startsWith('/markets/')){
     if(!detail||!groups.some(g=>g.namespace===detail[1]))return <main id="main" tabIndex={-1} className="page page-task"><div className="state-block"><Inbox aria-hidden="true" strokeWidth={1.75}/><h1>Market not found</h1><p>This market is not in the current directory. It may belong to an earlier collection that is no longer listed.</p><Link href="/markets" className="btn btn-primary">All markets</Link></div></main>;
@@ -37,45 +44,66 @@ export default function Markets(){
     <PageHeader title="Your portfolio." lead="All your linked wallet positions. Results and payouts in one place."/>
     {auth.address&&<AccountPortfolio account={auth.address} namespace="all" groups={groups}/>}
   </main>;
-  return <MarketDirectory groups={groups}/>;
+  return <MarketDirectory groups={groups} oracleMarkets={oracleMarkets}/>;
 }
 
 function MarketSkeleton({rows=5}:{rows?:number}){
   return <div className="market-list market-list-skeleton" aria-hidden="true">{Array.from({length:rows},(_,i)=><div className="market-row-skeleton" key={i}><span className="skeleton skeleton-line" style={{width:`${62-(i%3)*9}%`}}/><span className="skeleton skeleton-line" style={{width:'18%'}}/><span className="skeleton" style={{height:36}}/><span className="skeleton" style={{height:36}}/></div>)}</div>;
 }
 
-type Row={group:MarketGroup;event:MarketSnapshot['manifest']['publication']['draft']['events'][number];index:number;value:MarketSnapshot};
+type Row={key:string;groupKey:string;groupLabel:string;category:string;question:string;closesAt:number;status:string;prices:{yes:string|null;no:string|null}|null;priceAt:number|null;href:(yes?:boolean)=>string;combinable:boolean;payoutNote:string};
 const statusKind=(status:string,closesAt:number,now:number):[StatusKind,string]=>status==='Open'?(closesAt-now<CLOSING_SOON_SECONDS?['closing','Closing soon']:['open','Open']):status==='Closed'?['closed','Closed']:status==='Settled'?['settled','Settled']:['unavailable','Unavailable'];
 const category=(value:MarketSnapshot)=>value.manifest.publication.mode==='rehearsal'?'Practice':value.manifest.publication.mode==='ethereum-activity'?'Ethereum':'Ecosystem';
 
-function MarketDirectory({groups}:{groups:MarketGroup[]}){
-  const [data,setData]=useState<Record<string,MarketSnapshot>>({}),[failed,setFailed]=useState<string[]>([]),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
+function MarketDirectory({groups,oracleMarkets}:{groups:MarketGroup[];oracleMarkets:OracleMarket[]}){
+  const [data,setData]=useState<Record<string,MarketSnapshot>>({}),[oracleData,setOracleData]=useState<Record<string,OracleMarketSummary>>({}),[failed,setFailed]=useState<string[]>([]),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('Open'),[sort,setSort]=useState('closing'),[now,setNow]=useState(Date.now());
   const [firstAt,setFirstAt]=useState<number|null>(null),[updatedAt,setUpdatedAt]=useState<number|null>(null);
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
   useEffect(()=>{const timer=setInterval(()=>{if(!document.hidden&&!loading)setRevision(n=>n+1);},45000);return()=>clearInterval(timer);},[loading]);
   useEffect(()=>{
-    const c=new AbortController(),queue=[...groups];setLoading(true);setFailed([]);
+    const c=new AbortController(),queue:[string,MarketGroup|OracleMarket][]= [...groups.map(g=>['pilot',g] as [string,MarketGroup]),...oracleMarkets.map(m=>['oracle',m] as [string,OracleMarket])];setLoading(true);setFailed([]);
     // Two pools at a time. One unavailable pool never hides the others.
     void Promise.all(Array.from({length:Math.min(2,queue.length)},async()=>{
-      while(queue.length&&!c.signal.aborted){const group=queue.shift()!;
-        try{const value=await pilotRequest<MarketSnapshot>('markets',undefined,group.namespace,c.signal);if(value.manifest.pool!==group.pool)throw Error('Wrong market');if(!c.signal.aborted){setData(old=>({...old,[group.namespace]:value}));setFirstAt(old=>old??Date.now());}}
-        catch{if(!c.signal.aborted){setData(old=>{const next={...old};delete next[group.namespace];return next;});setFailed(old=>[...old,group.namespace]);}}
+      while(queue.length&&!c.signal.aborted){const [kind,item]=queue.shift()!,key=kind==='oracle'?`oracle:${(item as OracleMarket).id}`:(item as MarketGroup).namespace;
+        try{
+          if(kind==='oracle'){
+            const market=item as OracleMarket;
+            const response=await appFetch(`/api/oracle/${market.id}/market`,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.any([c.signal,AbortSignal.timeout(20000)])});
+            if(!response.ok)throw Error('Oracle quote unavailable');
+            const value=await response.json() as OracleMarketSummary;
+            if(value.schema!=='flurbo.oracle-market.v1'||value.id!==market.id||typeof value.pool!=='string'||value.pool.toLowerCase()!==market.pool.toLowerCase()||!Number.isSafeInteger(value.marketNow)||typeof value.funded!=='boolean'||typeof value.resolved!=='boolean'||!value.prices||[value.prices.yes,value.prices.no].some(p=>p!==null&&(typeof p!=='string'||!/^\d+$/.test(p))))throw Error('Wrong oracle market');
+            if(!c.signal.aborted){setOracleData(old=>({...old,[market.id]:value}));setFirstAt(old=>old??Date.now());}
+          }else{
+            const group=item as MarketGroup,value=await pilotRequest<MarketSnapshot>('markets',undefined,group.namespace,c.signal);
+            if(value.manifest.pool!==group.pool)throw Error('Wrong market');
+            if(!c.signal.aborted){setData(old=>({...old,[group.namespace]:value}));setFirstAt(old=>old??Date.now());}
+          }
+        }catch{if(!c.signal.aborted){if(kind==='oracle'){const id=(item as OracleMarket).id;setOracleData(old=>{const next={...old};delete next[id];return next;});}else{const namespace=(item as MarketGroup).namespace;setData(old=>{const next={...old};delete next[namespace];return next;});}setFailed(old=>[...old,key]);}}
       }
     })).finally(()=>{if(!c.signal.aborted){setLoading(false);setUpdatedAt(Date.now());}});return()=>c.abort();
-  },[groups,revision]);
+  },[groups,oracleMarkets,revision]);
   // The first visit waits under the loader until pools settle (or three seconds after the first
   // arrives), so late pools do not reorder a list the visitor has started reading.
   useLoadGate('directory-prices',{pending:loading&&!(firstAt!==null&&now-firstAt>3000),label:'Loading prices'});
-  const all:Row[]=groups.flatMap(group=>data[group.namespace]?data[group.namespace].manifest.publication.draft.events.map((event,index)=>({group,event,index,value:data[group.namespace]})):[]);
-  const rows=all.filter(r=>(filter==='All'||marketStatus(r.value,now/1000)===filter)&&marketQuestion(r.event).toLowerCase().includes(query.toLowerCase())).sort((a,b)=>{
-    const rank=(v:MarketSnapshot)=>marketStatus(v,now/1000)==='Open'?0:marketStatus(v,now/1000)==='Closed'?1:2;
-    const difference=rank(a.value)-rank(b.value);if(difference)return difference;
-    return sort==='name'?marketQuestion(a.event).localeCompare(marketQuestion(b.event)):a.group.closesAt-b.group.closesAt;
-  });
-  const pendingPools=loading?groups.filter(g=>!data[g.namespace]&&!failed.includes(g.namespace)).length:0;
-  const grouped=sort==='closing';
   const eventCount=useMemo(()=>Object.fromEntries(Object.entries(data).map(([ns,v])=>[ns,v.manifest.publication.draft.events.length])),[data]);
+  const oracleCount=useMemo(()=>oracleMarkets.reduce<Record<string,number>>((counts,m)=>{const key=m.pool.toLowerCase();counts[key]=(counts[key]||0)+1;return counts;},{}),[oracleMarkets]);
+  const all:Row[]=[
+    ...groups.flatMap(group=>data[group.namespace]?data[group.namespace].manifest.publication.draft.events.map((event,index)=>{
+      const value=data[group.namespace],quote=value.prices.find(p=>p.event===index);
+      return {key:group.namespace+event.id,groupKey:group.namespace,groupLabel:group.label,category:category(value),question:marketQuestion(event),closesAt:group.closesAt,status:marketStatus(value,now/1000),prices:quote?{yes:quote.yes,no:quote.no}:null,priceAt:value.snapshot.timestamp,href:(yes?:boolean)=>marketHref(group.namespace,index,yes),combinable:(eventCount[group.namespace]||0)>1,payoutNote:'Results available. Collect eligible payouts in Portfolio.'};
+    }):[]),
+    ...oracleMarkets.map(m=>{const value=oracleData[m.id],closed=now/1000>=m.closesAt;
+      return {key:`oracle:${m.id}`,groupKey:`oracle:${m.pool.toLowerCase()}`,groupLabel:m.poolTitle,category:'Reality.eth + Kleros',question:m.question,closesAt:m.closesAt,status:value?.resolved?'Settled':closed?'Closed':value?.funded===false?'Unavailable':'Open',prices:value?.prices??null,priceAt:value?.marketNow??null,href:(yes?:boolean)=>`/markets/oracle/${m.id}${yes===undefined?'':`?answer=${yes?'yes':'no'}`}`,combinable:oracleCount[m.pool.toLowerCase()]>1,payoutNote:'Results available. Open this market to collect eligible payouts.'};
+    }),
+  ];
+  const rows=all.filter(r=>(filter==='All'||r.status===filter)&&r.question.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>{
+    const rank=(status:string)=>status==='Open'?0:status==='Closed'?1:2;
+    const difference=rank(a.status)-rank(b.status);if(difference)return difference;
+    return sort==='name'?a.question.localeCompare(b.question):a.closesAt-b.closesAt;
+  });
+  const pendingPools=loading?groups.filter(g=>!data[g.namespace]&&!failed.includes(g.namespace)).length+oracleMarkets.filter(m=>!oracleData[m.id]&&!failed.includes(`oracle:${m.id}`)).length:0;
+  const grouped=sort==='closing';
   return <main id="main" tabIndex={-1} className="page markets-page">
     <PageHeader title="What happens next?" lead="Choose a question. Take a view. Explore how it connects." actions={<Link href="/fund" className="text-link">Get test funds <ArrowUpRight strokeWidth={1.75}/></Link>}/>
     <div className="market-toolbar" role="search">
@@ -93,20 +121,18 @@ function MarketDirectory({groups}:{groups:MarketGroup[]}){
     {rows.length>0&&<div className="market-list">
       <div className="market-list-head" aria-hidden="true"><span>Question</span><span>Status</span><span>Closes</span><span className="num">Buy Yes</span><span className="num">Buy No</span></div>
       {rows.map((row,i)=>{
-        const {group,event,index,value}=row;
-        const showGroup=grouped&&(i===0||rows[i-1].group.namespace!==group.namespace);
-        const status=marketStatus(value,now/1000),quotes=value.prices.find(p=>p.event===index),fresh=now/1000-value.snapshot.timestamp<60;
-        const [kind,label]=statusKind(status,group.closesAt,now/1000);
+        const showGroup=grouped&&(i===0||rows[i-1].groupKey!==row.groupKey);
+        const fresh=row.priceAt!==null&&now/1000-row.priceAt<60;
+        const [kind,label]=statusKind(row.status,row.closesAt,now/1000);
         const price=(atoms:string|null|undefined)=>atoms!=null&&fresh?Number(formatUnits(BigInt(atoms),6)).toFixed(3):null;
-        const combinable=(eventCount[group.namespace]||0)>1;
-        return <div className="market-row-wrap" key={group.namespace+event.id}>
-          {showGroup&&<div className="market-group-head"><strong>{group.label}</strong><span>{category(value)}</span>{combinable&&<span>Questions in this pool can be combined on any of its market pages</span>}</div>}
+        return <div className="market-row-wrap" key={row.key}>
+          {showGroup&&<div className="market-group-head"><strong>{row.groupLabel}</strong><span>{row.category}</span>{row.combinable&&<span>Questions in this pool can be combined on any of its market pages</span>}</div>}
           <article className="market-card">
-            <div className="market-question"><h2><Link href={marketHref(group.namespace,index)}>{marketQuestion(event)}</Link></h2>{!grouped&&<p className="directory-context">{group.label}</p>}</div>
+            <div className="market-question"><h2><Link href={row.href()}>{row.question}</Link></h2>{!grouped&&<p className="directory-context">{row.groupLabel}</p>}</div>
             <div className="market-status"><StatusBadge kind={kind}>{label}</StatusBadge></div>
-            <p className="directory-deadline"><span className="sr-only">{status==='Open'?'Closes':'Trading closed'} </span><time dateTime={new Date(group.closesAt*1000).toISOString()} title={exactTime(group.closesAt)}>{relativeTime(group.closesAt,now/1000)}</time><small>{shortTime(group.closesAt)}</small></p>
-            {status==='Open'?<div className="market-choices">{[true,false].map(yes=><Link key={String(yes)} aria-label={(yes?'Yes: ':'No: ')+marketQuestion(event)} href={marketHref(group.namespace,index,yes)} className={yes?'choice-yes':'choice-no'}><span>{yes?'Yes':'No'}</span><strong className="num">{price(yes?quotes?.yes:quotes?.no)??'View quote'}</strong></Link>)}</div>
-              :<p className="directory-result">{status==='Settled'?'Results available. Collect eligible payouts in Portfolio.':'Trading is unavailable. Open this market for its current resolution status.'}</p>}
+            <p className="directory-deadline"><span className="sr-only">{row.status==='Open'?'Closes':'Trading closed'} </span><time dateTime={new Date(row.closesAt*1000).toISOString()} title={exactTime(row.closesAt)}>{relativeTime(row.closesAt,now/1000)}</time><small>{shortTime(row.closesAt)}</small></p>
+            {row.status==='Open'?<div className="market-choices">{[true,false].map(yes=><Link key={String(yes)} aria-label={(yes?'Yes: ':'No: ')+row.question} href={row.href(yes)} className={yes?'choice-yes':'choice-no'}><span>{yes?'Yes':'No'}</span><strong className="num">{price(yes?row.prices?.yes:row.prices?.no)??'View quote'}</strong></Link>)}</div>
+              :<p className="directory-result">{row.status==='Settled'?row.payoutNote:'Trading is unavailable. Open this market for its current resolution status.'}</p>}
           </article>
         </div>;
       })}

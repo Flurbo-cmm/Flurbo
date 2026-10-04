@@ -1,6 +1,6 @@
 # Oracle routing and private-source proof plan
 
-Status: isolated Monad testnet proof of concept, 4 October 2026. The code described here is on the `kleros-reality-eth` branches of the company web and contracts repositories. No new pool, Reality question, proof provider, or bridge has been deployed by this work.
+Status: isolated Monad testnet proof of concept, 4 October 2026. The two-question pool, Reality questions, and trusted relay are deployed on the company site. The unified Markets and member notice changes in the current branch are awaiting the user's commit and deployment. No private proof provider or authenticated bridge has been deployed.
 
 ## Decision and trust boundary
 
@@ -12,11 +12,11 @@ For the optimal integration, give the verified Reality answer final authority on
 
 ## Existing pool and capacity
 
-The company pool `0x8c931a6f799d69185ee2f2f47e46667fd0da545b` and resolver `0x349a0d009f163c4c83c5c507b38fe617e726408f` retain their deployed bytecode and current collection entry. This branch does not migrate or upgrade them, change their bot, or change Render configuration. The new `WidePilotPool` and `WidePilotResolver` use `protocolVersion() == 3` and the distinct `flurbo.pilot.trusted-relay.v3` rules domain. The new relay rejects old pools and resolvers.
+The company pool `0x8c931a6f799d69185ee2f2f47e46667fd0da545b` and resolver `0x349a0d009f163c4c83c5c507b38fe617e726408f` retain their deployed bytecode and current collection entry. This branch does not migrate or upgrade them, change their bot, or change Render configuration. The new `WidePilotPool` and `WidePilotResolver` use `protocolVersion() == 3` and the distinct `flurbo.pilot.trusted-relay.v3` rules domain. The new relay rejects old pools and resolvers. Both pools' questions now appear in the same Markets directory, while each keeps its own settlement route.
 
 The existing public pilot handles two to four base questions. The new factored pool is tested with **32 base questions** and supports bit 31 in its unsigned scope. Each traded claim still references at most three questions. The pricing graph must have induced width at most two and there are at most 64 distinct traded scopes. The joint space of 32 questions has `2^32` assignments, but the pool never enumerates those assignments. Local payout work is bounded by at most eight states per claim. Dense combinations are rejected.
 
-Thirty-two is a tested representation and contract ceiling, not a launch recommendation. Measure worst-case trading gas, funding, settlement gas, and oracle timing before choosing an operating limit; ten may be more practical. Delivery waits for **every** question in a pool, so group questions with similar deadlines. The shared claim encoder and SDK handle 32-bit scopes. The v3 oracle page and registration tool now support new base-question markets. The existing website, manifest verification, operator bot, semantic checks, and agent deployment path still accept at most four questions. The new catalog is independent of the old collections registry.
+Thirty-two is a tested representation and contract ceiling, not a launch recommendation. Measure worst-case trading gas, funding, settlement gas, and oracle timing before choosing an operating limit; ten may be more practical. Delivery waits for **every** question in a pool, so group questions with similar deadlines. The shared claim encoder and SDK handle 32-bit scopes. V3 questions share the normal Markets list and use their own market detail controls. The existing pool's manifest verification, operator bot, semantic checks, and agent deployment path still accept at most four questions. The new catalog is independent of the old collections registry.
 
 ## Reality.eth and Kleros workflow
 
@@ -24,7 +24,7 @@ Thirty-two is a tested representation and contract ceiling, not a launch recomme
 2. Ask the question on Reality with the Kleros proxy selected as arbitrator. After the observable event, an answerer posts an answer and bond. An unchallenged answer becomes final after Reality's timeout. A disputed answer follows the Kleros court and appeal schedule.
 3. The relay worker calls `getFinalAnswerIfMatches` at a **finalized Sepolia block**. It accepts only 0 as NO, 1 as YES, and all `ff` as VOID. An unanswered or disputed question, or a mismatch in content, arbitrator, timeout, or bond, cannot be relayed by this tool.
 4. The deployment verifier checks the original Reality creation receipt and the live pool. The relay recomputes the event commitment and checks the new Monad pool and resolver versions, rules hash, event hash, relay address, event index, observation time, funded state, pending phase, and report window. It persists the exact evidence bytes at a public URI, then sends `reportFinal` from the dedicated relay wallet. The contract itself checks the relay address and timing, **not** the evidence or Sepolia answer.
-5. The relay can report each event once. If no report arrives by `observationEnds + reportPeriod`, the worker or anyone else can call `finalizeMissing` and the event becomes VOID. Once every event is final, the worker or anyone else can call `deliver`; holders redeem on the new oracle page. There is no local panel appeal or replacement report.
+5. The relay can report each event once. If no report arrives by `observationEnds + reportPeriod`, the worker or anyone else can call `finalizeMissing` and the event becomes VOID. Once every event is final, the worker or anyone else can call `deliver`; holders redeem on the market page. There is no local panel appeal or replacement report.
 
 Choose `reportPeriod` long enough for Reality's timeout, possible Kleros appeals, source-chain finality, and relay operation. The supported range is one hour to 90 days. A fixed deadline that expires during a court case yields VOID, so do not advertise a deadline shorter than the route can satisfy. Flurbo VOID uses the committed uniform averaging rule; it is neither NO nor a refund of a trade's purchase price.
 
@@ -42,7 +42,7 @@ Never put API keys, cookies, OAuth tokens, private responses, or proof-service s
 | --- | --- | --- |
 | 1. Wide math | 32-event tests and worst-case gas measurement | Separate local or testnet pool |
 | 2. Oracle PoC | Verified Reality question and Kleros proxy on Sepolia, final answer, published evidence, trusted relay into a new pool | Label relay authority clearly |
-| 3. Website v3 | Verified v3 manifest, trading, portfolio, indexer, bot and browser regressions | New pool can be listed without changing the current pool |
+| 3. Website v3 | Shared Markets directory, v3 trading and settlement controls, holder notice index, portfolio and browser regressions | New pool appears with the current pool; unified portfolio remains a follow-up |
 | 4. Private proof | Genuine keyed and logged-in provider proofs, durable one-use sessions, privacy review | Private-source questions can be tested |
 | 5. Verified delivery | Same-chain answer verification or authenticated source-chain bridge, audits | Removes the trusted relay |
 

@@ -1,13 +1,5 @@
-.oracle-page { max-width: 1440px; margin: 0 auto; padding-top: 42px; padding-bottom: 90px; }
-.oracle-heading { max-width: 900px; margin: 24px 0 36px; }
-.oracle-heading h1 { max-width: 850px; margin: 12px 0; font-size: clamp(2rem, 4vw, 3.7rem); line-height: 1.1; }
-.oracle-heading p { color: var(--color-muted, #59665d); font-size: 1.05rem; }
-.oracle-list { display: grid; gap: 16px; margin-top: 32px; }
-.oracle-list-card { display: grid; gap: 10px; padding: 26px; border: 1px solid #ccd2c8; border-radius: 18px; color: inherit; text-decoration: none; background: #f8f8f2; }
-.oracle-list-card:hover, .oracle-list-card:focus-visible { border-color: #395e47; box-shadow: 0 8px 28px #182d1c13; }
-.oracle-list-card h2 { margin: 2px 0; font-size: clamp(1.25rem, 2vw, 1.7rem); }
-.oracle-card-arrow { display: inline-flex; align-items: center; gap: 8px; color: #214b31; font-weight: 650; }
-.oracle-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 390px); align-items: start; gap: 22px; }
+.oracle-page { padding-bottom: 90px; }
+.oracle-columns { display: grid; grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); align-items: start; gap: var(--s-8); }
 .oracle-main, .oracle-side { display: grid; gap: 20px; min-width: 0; }
 .oracle-page .detail-panel { min-width: 0; }
 .oracle-page .detail-panel h2 { margin: 0 0 12px; }
@@ -23,8 +15,11 @@
 .oracle-fields .oracle-wide { grid-column: 1 / -1; }
 .oracle-address { overflow-wrap: anywhere; font-size: .84rem; }
 .oracle-review { border-color: #86a88c; background: #edf4e8; }
+.oracle-counteranswer { border-top: 1px solid var(--rule); padding-top: var(--s-3); }
+.oracle-counteranswer summary { cursor: pointer; font-weight: 600; }
+.oracle-counteranswer p { margin-top: var(--s-3); }
 .oracle-source { display: flex; gap: 16px; margin-top: 24px; }
 .oracle-source svg { flex: none; color: #3e6b49; margin-top: 3px; }
 .oracle-page .cluster { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 @media (max-width: 900px) { .oracle-columns { grid-template-columns: 1fr; } .oracle-side { grid-row: 1; } }
-@media (max-width: 600px) { .oracle-page { padding-top: 24px; } .oracle-fields { grid-template-columns: 1fr; } .oracle-list-card { padding: 20px; } .oracle-facts > div { display: grid; gap: 4px; } .oracle-facts dd { text-align: left; } }
+@media (max-width: 600px) { .oracle-fields { grid-template-columns: 1fr; } .oracle-facts > div { display: grid; gap: 4px; } .oracle-facts dd { text-align: left; } }

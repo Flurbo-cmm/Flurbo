@@ -8,7 +8,9 @@ const hash = `0x${'b'.repeat(64)}`;
 test('oracle actions and evidence use Flurbo login and origin gates', async () => {
   let logged = false, approved = false, prepared = 0;
   const oracle = {
-    list: () => [{ id: 'oracle-poc-0', pool: owner, eventIndex: 0, question: 'Did it happen?' }],
+    list: () => [{ id: 'oracle-poc-0', pool: owner, poolTitle: 'Test pool', eventIndex: 0, question: 'Did it happen?', closesAt: 123, observationEndsAt: 456 }],
+    marketSummary: async () => ({ schema: 'flurbo.oracle-market.v1', id: 'oracle-poc-0', pool: owner,
+      marketNow: 100, funded: true, resolved: false, prices: { yes: '500000', no: '500000' } }),
     snapshot: async () => ({ questionId: hash, finalized: false }),
     routeFor: () => ({ questionId: hash, pool: owner }),
     prepare: async (_id: string, action: string, _input: unknown, from: string) => {
@@ -39,6 +41,8 @@ test('oracle actions and evidence use Flurbo login and origin gates', async () =
   assert.equal((await request('/api/oracle/markets')).status, 403);
   approved = true;
   assert.equal((await request('/api/oracle/markets')).status, 200);
+  assert.equal((await request('/api/market-directory')).body.oracleMarkets.length, 1);
+  assert.equal((await request('/api/oracle/oracle-poc-0/market')).body.prices.yes, '500000');
   assert.equal((await request('/api/oracle/oracle-poc-0')).body.questionId, hash);
   const action = { action: 'arbitrate', input: {}, owner };
   assert.equal((await request('/api/oracle/oracle-poc-0/action', 'POST', action,

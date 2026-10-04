@@ -156,7 +156,9 @@ export default function Docs() {
         <section id="settlement" aria-labelledby="settlement-title">
           <h2 id="settlement-title">Settlement and payouts</h2>
           <p>Trading closes at the time specified by the market. Resolution follows the observation window and the pool’s published deadlines. A closed market is not necessarily settled.</p>
-          <h3>Who proposes each answer</h3>
+          <h3>Existing Monad activity pool</h3>
+          <p>This pool uses Flurbo’s testnet assertion and reviewer process. Its market page shows the proposal and challenge deadline.</p>
+          <h4>Who proposes each answer</h4>
           <ul>
             <li><strong>Questions with a machine-readable official source</strong>, such as earthquake counts from USGS, Ethereum network activity, or a US labour or interest-rate figure: Flurbo’s settlement bot reads the source named in the rules after the observation window and proposes Yes or No exactly as the rule states. If the source is missing or malformed, it proposes nothing rather than guessing.</li>
             <li><strong>Software release questions</strong>: the bot proposes Yes when the official GitHub release record shows the exact stable release was published inside the window. It never proposes No, because a missing release record can have other causes. A No is proposed by the Flurbo operator after checking; if nobody proposes an answer before the deadline, the question resolves VOID.</li>
@@ -170,6 +172,9 @@ export default function Docs() {
             <li><strong>Results reach the pool.</strong> Once all underlying events in the same pool are finalized, their outcomes are delivered to the pool. Individual and combined payouts follow from those answers.</li>
             <li><strong>You collect the payout.</strong> Eligible shares can be redeemed using their owning MetaMask wallet. Settlement does not automatically send winnings to every holder. Redemption requires a transaction and test MON for gas.</li>
           </ol>
+          <h3>Reality.eth and Kleros pool</h3>
+          <p>These questions appear in the same Markets list. After a question opens for answers, anyone can post Yes, No or VOID on Reality.eth with a Sepolia ETH bond from its Flurbo market page. When an answer is posted and its window is still open, Challenge this answer prepares a Kleros arbitration request. You can also post a different bonded answer through Reality.eth without starting arbitration. Evidence and appeal controls appear only when a Kleros dispute reaches those stages.</p>
+          <p>A dedicated relay reads the final Reality.eth answer on Sepolia and reports it to the separate Monad pool. That relay is trusted in this testnet proof of concept. The pool settles when every question is final or void. Eligible shares are redeemed from the market page with the wallet that holds them.</p>
           <DocsShot src={timelineShot} {...SHOT_SIZE['settlement-timeline']} alt="Settlement timeline on a market page, from trading close to result and payout" caption="Each market page shows where its question is in settlement."/>
           <h3>What happens with VOID?</h3>
           <p>VOID is an unresolved outcome, not No and not a refund of the purchase price. The payout averages the claim’s winning value over possible Yes and No answers for the unresolved events. An individual VOID share pays 0.5 test AUSD. An AND claim with one confirmed Yes and one VOID pays 0.5; with two VOID events it pays 0.25; with a confirmed losing condition it pays 0.</p>
@@ -177,7 +182,7 @@ export default function Docs() {
         </section>
         <section id="portfolio" aria-labelledby="portfolio-title">
           <h2 id="portfolio-title">Portfolio and payouts</h2>
-          <p>Your <Link href="/portfolio">portfolio</Link> brings together the shares associated with your linked trading wallets under your Flurbo account. Individual and combined positions appear in one holdings table. The Activity tab shows confirmed purchases, sales and collected payouts for those wallets. Collected lists the amount received and the transaction even after the redeemed shares leave your holdings. Payouts collected is money received, not profit.</p>
+          <p>Your <Link href="/portfolio">portfolio</Link> brings together shares in the existing Monad activity pool for your linked trading wallets. Individual and combined positions appear in one holdings table. The Activity tab shows confirmed purchases, sales and collected payouts for those wallets. Reality.eth backed pool holdings and redemption are shown on each of its market pages. Payouts collected is money received, not profit.</p>
           <DocsShot src={portfolioShot} {...SHOT_SIZE['portfolio']} alt="Portfolio holdings table with a manual holding and an agent holding labelled Via release-watcher" caption="Holdings: your own trades and an agent's trades appear on separate rows."/>
           <p>Results and payout collection live in Portfolio. Select an eligible holding, connect its owning MetaMask wallet and confirm the collection. Holdings stay combined under your Mera account; each wallet receives its own payout.</p>
           <p>Activity is indexed in the background. An approval is not a completed purchase. If a transaction is pending, check its confirmation before submitting again. If shares are missing, check that the owning wallet is linked, then refresh.</p>
@@ -232,7 +237,7 @@ export default function Docs() {
           <details><summary>I created an account. Why can't I enter the markets?</summary><p>Creating an account and being approved are separate. Request access from Your account and verify your email; the team reviews requests manually and emails you when you are approved. Your account page always shows the current status.</p></details>
           <details><summary>Why did MetaMask ask me twice for one purchase?</summary><p>The first confirmation approves the exact amount of test AUSD the purchase may spend. The second is the purchase. Only the second one buys shares.</p></details>
           <details><summary>I approved a payment. Where are my shares?</summary><p>Token approval grants spending permission. A separate purchase transaction buys the shares. Follow the ticket's next step and wait for confirmation. If a transaction is already pending, check it instead of submitting again.</p></details>
-          <details><summary>Trading closed. Can I collect a payout?</summary><p>A closed market may still be settling. Once results are delivered, Portfolio shows eligible payouts and the collect action. Collection sends funds to the wallet that owns the shares. Agent wallets collect through their runtime.</p></details>
+          <details><summary>Trading closed. Can I collect a payout?</summary><p>A closed market may still be settling. Once results are delivered, the existing pool shows eligible payouts in Portfolio. Reality.eth backed pool payouts can be collected on the market page. Collection sends funds to the wallet that owns the shares. Agent wallets collect through their runtime where supported.</p></details>
           <details><summary>Why is profit / loss still loading?</summary><p>Collected payouts and current holdings can appear before complete purchase history. The profit / loss chart waits for verified cost basis. Background history checks are bounded; Retry activity continues them if needed. A payout total is not a profit total.</p></details>
         </section>
         <section id="preview" aria-labelledby="preview-title">
