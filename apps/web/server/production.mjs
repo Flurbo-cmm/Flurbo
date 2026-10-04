@@ -23,6 +23,8 @@ import { createSettlementStores } from './settlement-persistence.mjs';
 import { starterConfig, starterFunds } from './starter-funds.mjs';
 import { fundingAlerts } from './funding-alerts.mjs';
 import { envioProxy } from './envio-proxy.mjs';
+import { oracleCatalog, oracleClients, oracleEvidence, oracleService } from './oracle-integration.mjs';
+import { oracleRelayWorker } from './oracle-relay-worker.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -35,13 +37,13 @@ const security = {
 export function productionServer(config, store, staticRoot = dist) {
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
-    learningDashboardUrl: config.learningDashboardUrl, pilot: config.pilot, practiceCollections:config.practiceCollections, evidence: config.pilotEvidence, evidenceOptions: config.evidenceOptions, challengeOptions:config.challengeOptions, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts });
+    learningDashboardUrl: config.learningDashboardUrl, pilot: config.pilot, practiceCollections:config.practiceCollections, evidence: config.pilotEvidence, evidenceOptions: config.evidenceOptions, challengeOptions:config.challengeOptions, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence });
   config.metrics = api.metrics;
   config.notices = api.notices;
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
     if (req.url === '/envio') { await envioProxy(req, res, config.envioGraphqlUrl); return; }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
@@ -77,7 +79,7 @@ export function productionServer(config, store, staticRoot = dist) {
         }
         // Serve agent deep links on direct visits too; API session and invite gates still protect data.
         const agentPage = /^\/agents(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(pathname);
-        const page = agentPage || /^\/markets\/(?:pilot|practice-[0-9a-f]{40})\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/evidence', '/metrics'].includes(pathname);
+        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/(?:pilot|practice-[0-9a-f]{40})\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/evidence', '/metrics'].includes(pathname);
         const brandAsset=/^\/brand\/(?:flurbo-icon-512\.png|flurbo-profile-2026\.png|flurbo-logo\.svg|flurbo-social-(?:landscape|portrait|banner|banner-v2)\.png)$/.test(pathname);
         const publicationAsset=pathname==='/technical_litepaper.pdf';
         if (!page && !brandAsset && !publicationAsset && !/^\/(?:assets\/[a-zA-Z0-9_.-]+|favicon(?:-contour)?\.svg|robots\.txt)$/.test(pathname)) { await notFound(pathname); return; }
@@ -118,6 +120,18 @@ async function main() {
   config.fundingAlerts = fundingAlerts({ rpcUrl: config.rpcUrl, command: store.command, dispenser: config.testFaucet,
     starter: config.starter ? { address: config.starter.address, amount: config.starter.amountWei } : null });
   config.pilot = companySite ? null : await configurePilot({rpcUrl:config.rpcUrl,command:store.command});
+  if (companySite) {
+    const catalog = oracleCatalog(JSON.parse(await readFile(resolve(root, 'config/oracle-markets.json'), 'utf8')));
+    const [source, market] = oracleClients(process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com', config.rpcUrl);
+    config.oracleEvidence = oracleEvidence(store.command, config.origin);
+    if (catalog.routes.some(route => route.evidenceOrigin !== config.origin)) throw Error('Oracle evidence origin must match this site');
+    config.oracle = oracleService({ catalog, source, market, evidence: config.oracleEvidence });
+    if (process.env.FLURBO_ORACLE_RELAY_ENABLED === 'true' && catalog.routes.length) {
+      config.oracleRelay = oracleRelayWorker({ routes: catalog.routes, source, market,
+        command: store.command, evidence: config.oracleEvidence, rpcUrl: config.rpcUrl,
+        privateKey: process.env.FLURBO_ORACLE_RELAY_PRIVATE_KEY });
+    }
+  }
   config.practiceCollections=await configurePracticeCollections({rpcUrl:config.rpcUrl,command:store.command});
   for(const service of config.practiceCollections.services.values())if(config.pilot&&(service.manifest.pool===config.pilot.manifest.pool||service.manifest.resolver===config.pilot.manifest.resolver))throw Error('Practice collections must be separate from the real pilot');
   // Invalid semantic configuration fails the deploy here instead of failing purchases later.
@@ -179,6 +193,7 @@ async function main() {
   }
   const server = productionServer(config, store);
   server.listen(config.port, '0.0.0.0', () => console.log('Flurbo server ready; public trading requires a verified deployment manifest'));
+  config.oracleRelay?.start();
   // Optional settlement monitor and resolution worker for hosts without a reliable free scheduler.
   // Disabled unless explicitly enabled; the separate GitHub Actions path is unchanged.
   if (process.env.FLURBO_SETTLEMENT_BOT === 'true') {
@@ -190,7 +205,7 @@ async function main() {
     console.log('Settlement bot enabled: monitor, worker and metrics every 2 minutes');
   }
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
-    comparison.abort(); config.settlementBot?.stop();
+    comparison.abort(); config.settlementBot?.stop(); config.oracleRelay?.stop();
     server.close(() => process.exit(0)); reader?.kill(); learningReader?.kill();
     setTimeout(() => process.exit(0), 5000).unref();
   });

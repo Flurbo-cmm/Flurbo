@@ -19,10 +19,11 @@ import {settlementPacketHandler,SETTLEMENT_PACKET_PATH} from './settlement-persi
 import {userMetrics} from './user-metrics.mjs';
 import {memberNotices,noticeDelivery} from './member-notices.mjs';
 import {handleAlchemyWebhook, getAlchemyActivities} from './alchemy-webhook.mjs';
+import { EVIDENCE_PATH } from './oracle-integration.mjs';
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null } = {}) {
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
   const links = walletLinks({command:store.command,isReserved:wallet=>agents?agents.isAgentWallet(wallet):false,reservedKey:store.command?agentWalletKey:null});
@@ -79,6 +80,17 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
     if(publicPackets&&req.url.startsWith(SETTLEMENT_PACKET_PATH)){
       try{limits.localTake('public-settlement-packets',60);await publicPackets(req,res);}
       catch(error){if(error instanceof CapacityError){res.setHeader('Retry-After',String(error.retryAfter));return send(res,429,{error:'Public evidence request limit reached.'});}return send(res,503,{error:'Public evidence unavailable.'});}
+      return;
+    }
+    if (req.method === 'GET' && req.url?.startsWith(EVIDENCE_PATH)) {
+      const hash = req.url.slice(EVIDENCE_PATH.length);
+      try {
+        limits.localTake('oracle-public-evidence', 120);
+        if (!oracleEvidenceStore) throw Error('Evidence unavailable');
+        const value = await oracleEvidenceStore.get(hash);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+        res.end(value);
+      } catch { send(res, 404, { error: 'Evidence unavailable' }); }
       return;
     }
     if (req.url === '/api/alchemy/webhook') {
@@ -309,6 +321,40 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         const input=await body(req);
         if(Object.keys(input).sort().join(',')!=='eventId,useAI'||typeof input.eventId!=='string'||typeof input.useAI!=='boolean')return send(res,400,{error:'Choose an event and whether to request AI assistance'});
         return send(res,200,await assistant.review(input.eventId,input.useAI));
+      }
+      if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence))?$/.test(url.pathname)) {
+        const login = await getLogin();
+        if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
+        if (previewAllows && !await previewAllows(login.address)) return send(res, 403, { error: 'Account approval required.' });
+        if (!oracle) return send(res, 503, { error: 'Oracle markets are unavailable.' });
+        try {
+          if (url.pathname === '/api/oracle/markets') {
+            if (req.method !== 'GET' || url.search) return send(res, 405, { error: 'GET without parameters required.' });
+            return send(res, 200, { schema: 'flurbo.oracle-directory.v1', markets: oracle.list() });
+          }
+          const parts = url.pathname.split('/'), id = parts[3], op = parts[4] || '';
+          if (op === '' && req.method === 'GET') {
+            const wallet = url.searchParams.get('wallet');
+            if ([...url.searchParams.keys()].some(key => key !== 'wallet')) return send(res, 400, { error: 'Unexpected parameter.' });
+            return send(res, 200, await oracle.snapshot(id, wallet));
+          }
+          if (url.search || req.method !== 'POST') return send(res, 405, { error: 'POST without parameters required.' });
+          const input = await body(req);
+          if (op === 'evidence') {
+            if (!oracleEvidenceStore) return send(res, 503, { error: 'Evidence storage unavailable.' });
+            const route = oracle.routeFor(id);
+            const saved = await oracleEvidenceStore.put(route, login.address, input);
+            return send(res, 200, saved);
+          }
+          if (op === 'action') {
+            const plan = await oracle.prepare(id, input.action, input.input || {}, input.owner);
+            return send(res, 200, plan);
+          }
+          return send(res, 404, { error: 'Oracle action unavailable.' });
+        } catch (error) {
+          return send(res, 400, { error: error instanceof Error && /^(Invalid |Reality |Oracle |Duplicate |Enter |Select |Bond |Arbitration |Evidence |Appeal |No |Trading |Shares |Fund |Approval |Unsupported |Insufficient |Kleros |Outside |New pool |RPC chain)/.test(error.message)
+            ? error.message : 'Oracle request unavailable. Refresh and retry.' });
+        }
       }
       if(url.pathname==='/api/practice-collections'){
         const login=await getLogin();

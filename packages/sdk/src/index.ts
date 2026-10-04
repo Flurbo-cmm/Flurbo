@@ -1,8 +1,8 @@
 export { SDK_VERSION, CHAIN_ID, SCHEMAS } from './version.ts';
 export { FlurboError, isFlurboError, type FlurboErrorCode } from './errors.ts';
 export { parseAtoms, parseSignedAtoms, parseDecimal, formatAtoms, formatPpm, ceilDiv, atomsToString, ONE_SHARE, PPM, AUSD_DECIMALS } from './amounts.ts';
-export { type Answer, type Rule, type Claim, type ClaimJSON, type ClaimShape, encode, allOf, anyOf, exactlyOne, atLeastTwo, single, describe, assertClaim, assertSamePool,
-  claimKey, claimShape, claimToJSON, claimFromJSON, winningCombinations, paysIn, payoutFraction, scopeEvents, CLAIM_ADAPTER, RULES } from './claims.ts';
+export { type Answer, type Rule, type Claim, type ClaimJSON, type ClaimShape, encode, encodeWide, allOf, anyOf, exactlyOne, atLeastTwo, single, describe, assertClaim, assertWideClaim, assertSamePool,
+  claimKey, claimShape, claimToJSON, claimFromJSON, winningCombinations, paysIn, payoutFraction, payoutFractionWide, scopeEvents, CLAIM_ADAPTER, RULES } from './claims.ts';
 export { type Joint, assertJoint, marginal, both, claimProbability, covers, frechetBounds, jointFromPair, independentJoint, jointToJSON, jointFromJSON } from './distribution.ts';
 export { type Forecast, type Evidence, type ForecastProvider, type ForecastRequest, type ProviderOutcome, parseForecast, forecastToJSON, requestForecast, fixtureProvider, makeForecast } from './forecast.ts';
 export { type Market, type Namespace, type Snapshot, type Quote, type QuoteResult, type PairImplied, type DirectoryEntry, type ReviewSummary,

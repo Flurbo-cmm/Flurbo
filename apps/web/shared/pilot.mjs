@@ -62,12 +62,12 @@ export function combinationFits(events, order, scopes, scope) {
   if (!Array.isArray(order) || order.length !== events || !Array.isArray(scopes)) return false;
   if (scopes.includes(scope)) return true;
   const popcount = value => value.toString(2).replace(/0/g, '').length;
-  const pending = [...scopes, scope];
+  const pending = [...scopes, scope].map(BigInt);
   for (const index of order) {
-    const bit = 1 << index;
+    const bit = 1n << BigInt(index);
     let joined = bit;
     for (let j = 0; j < pending.length; j++) {
-      if (pending[j] & bit) { joined |= pending[j]; pending[j] = 0; }
+      if (pending[j] & bit) { joined |= pending[j]; pending[j] = 0n; }
     }
     if (popcount(joined) - 1 > 2) return false;
     pending.push(joined & ~bit);

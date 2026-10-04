@@ -4,6 +4,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 // loading while the session and access checks run, so the loader covers both.
 const loaders = {
   markets: () => import('./pages/Markets'),
+  oracle: () => import('./pages/OracleMarkets'),
   agents: () => import('./pages/Agents'),
   access: () => import('./pages/AccessPage'),
   fund: () => import('./pages/FundingPage'),
