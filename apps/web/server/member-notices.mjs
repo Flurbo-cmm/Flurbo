@@ -12,7 +12,7 @@ const PREFIX = 'flurbo:notify:v1:';
 export const PREFS = PREFIX + 'prefs';
 export const DEFAULT_PREFS = Object.freeze({ payouts: true, challenges: true, observations: true, closing: false });
 const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', observation: 'observations', closing: 'closing' };
-const HOUR = 3600, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR;
+const HOUR = 3600, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR, OBSERVATION_WINDOW = 6 * HOUR;
 const OUTCOME = ['Unset', 'No', 'Yes', 'VOID'];
 const address = v => typeof v === 'string' && /^0x[0-9a-f]{40}$/.test(v);
 const json = raw => { try { return JSON.parse(raw); } catch { return null; } };
@@ -94,7 +94,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
       stages.push({ kind: 'closing', id: `closing:${m.pool}`, market: label, namespace, closesAt });
     if (namespace.startsWith('oracle:')) events.forEach((event, index) => {
       const end = Number(event.observationEndsAt);
-      if (Number.isSafeInteger(end) && t >= end && t < end + 2 * HOUR)
+      if (Number.isSafeInteger(end) && t >= end && t < end + OBSERVATION_WINDOW)
         stages.push({ kind: 'observation', id: `observation:${m.pool}:${index}:${end}`, market: label, namespace,
           event: index, question: event.question, href: service.eventHref?.(index) });
     });
@@ -160,7 +160,11 @@ export function memberNotices({ command, pools, applications = null, links = nul
     for (const pool of pools()) {
       let stages, held;
       try { if (pool.namespace.startsWith('oracle:')) {
-          const progress = await pool.service.index.refresh();
+          let progress;
+          for (let pass = 0; pass < 4; pass++) {
+            progress = await pool.service.index.refresh();
+            if (progress?.complete !== false) break;
+          }
           if (progress?.complete === false) indexing = true;
         }
         stages = await dueStages(pool, t); if (!stages.length) continue; held = await holdings(pool.service); }

@@ -137,14 +137,15 @@ test('Reality-backed pool uses the same member preferences and email delivery', 
 
 test('Reality source window notice reaches only a current holder and is sent once', async () => {
   const redis = fakeRedis(), pool = addr(0x72), sent: any[] = [];
+  let scans = 0;
   redis.hashes.set(LINKS, new Map([[WA, JSON.stringify({ account: A, at: 1 })], [WB, JSON.stringify({ account: B, at: 1 })]]));
   redis.kv.set(`flurbo:pilot:index:v1:${pool}`, JSON.stringify({ through: 100, target: 100,
     logs: [{ name: 'Traded', args: { trader: WA, scope: 1, mask: '2', isBuy: true } },
       { name: 'Traded', args: { trader: WB, scope: 1, mask: '2', isBuy: true } }] }));
   const service = {
-    manifest: { pool, publication: { draft: { closesAt: NOW - 3600,
-      events: [{ question: 'Will the block be even?', observationEndsAt: NOW - 60 }] } } },
-    index: { refresh: async () => ({ complete: true }) },
+    manifest: { pool, publication: { draft: { closesAt: NOW - 4 * 3600,
+      events: [{ question: 'Will the block be even?', observationEndsAt: NOW - 3 * 3600 }] } } },
+    index: { refresh: async () => ({ complete: ++scans >= 4 }) },
     eventHref: () => '/markets/oracle/oracle-test-0',
     status: async () => ({ resolved: false, delivered: false, cases: [{ phase: 0, proposal: 0, challengeUntil: 0 }] }),
     positions: async (wallet: string, claims: any[]) => ({ rows: claims.map(c => ({ ...c,
@@ -155,6 +156,7 @@ test('Reality source window notice reaches only a current holder and is sent onc
     applications: { noticeSecret: SECRET, contacts: async () => ({ [A]: 'a@example.com', [B]: 'b@example.com' }) },
     send: async (message: any) => { sent.push(message); } })!;
   assert.equal(await notices.tick(), 'sent 1');
+  assert.equal(scans, 4);
   assert.deepEqual(sent.map(message => message.to), [['a@example.com']]);
   assert.match(sent[0].subject, /source window has ended/);
   assert.match(sent[0].text, /answer is not final yet/);
