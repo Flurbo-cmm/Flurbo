@@ -7,7 +7,7 @@ import { prepareHybridPilot } from './prepare-hybrid-pilot.mjs';
 const RPC = 'https://testnet-rpc.monad.xyz/';
 
 export function createHybridEvmPilot({ creator, proposer, relay, closesAt }) {
-  const addresses = [creator, proposer, relay].map(getAddress);
+  const addresses = [creator, proposer, relay].map(address => getAddress(address));
   if (new Set(addresses.map(address => address.toLowerCase())).size !== 3
     || !Number.isSafeInteger(closesAt)
     || closesAt < Math.floor(Date.now() / 1000) + 7200

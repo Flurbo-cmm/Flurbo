@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeAbiParameters, parseAbiParameters } from 'viem';
 import { prepareHybridPilot } from '../scripts/prepare-hybrid-pilot.mjs';
+import { createHybridEvmPilot } from '../scripts/create-hybrid-evm-pilot.mjs';
 
 const T = 1_800_000_000;
 const account = (digit: string) => `0x${digit.repeat(40)}`;
@@ -45,4 +46,14 @@ test('hybrid publication rejects reviewer route drift and oversized pool', () =>
   input.events[0].route = 'mechanical';
   input.liquidityAtoms = '1000000000001';
   assert.throws(() => prepareHybridPilot(input), /Invalid hybrid publication/);
+});
+
+test('pilot generator preserves ordinary address checksums for every wallet role', () => {
+  const input = createHybridEvmPilot({
+    creator: '0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391',
+    proposer: '0xa45c95f673580132F2E6f75372808162Ea069d49',
+    relay: '0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1',
+    closesAt: Math.floor(Date.now() / 1000) + 10800,
+  });
+  assert.equal(prepareHybridPilot(input).draft.events.length, 2);
 });
