@@ -2,8 +2,15 @@ import { encodeFunctionData, formatUnits, getAddress, parseAbi } from 'viem';
 import { hybridSettlementCatalog, readHybridSnapshot } from './hybrid-settlement-worker.mjs';
 import { proxyAbi, TEST_AUSD } from './oracle-integration.mjs';
 import { hybridRealityAction, hybridRealityAppealAction, hybridRealityClaimAction, hybridRealityReportAction, hybridRealitySnapshot } from './hybrid-reality.mjs';
+import { certifiedClaim, certifiedPair, pairInput } from './pair-math.mjs';
+import { runPairModel } from './pair-analytics.mjs';
+import { simulatePairPurchase } from './pair-sensitivity.mjs';
+import { encodeClaim } from '../shared/claims.mjs';
 
 const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
+  'function liquidity() view returns (uint128)',
+  'function eliminationOrder() view returns (uint8[])',
+  'function factors() view returns ((uint32 scope,uint128[] values)[])',
   'function quoteBuy(uint32,uint256,uint128) view returns (uint128)',
   'function quoteSell(uint32,uint256,uint128) view returns (uint128)',
   'function buy(uint32,uint256,uint128,uint128,uint256) returns (uint128)',
@@ -32,15 +39,14 @@ function claimFor(record, eventIndex, input) {
   const ordered = [...chosen].sort((a, b) => a.eventIndex - b.eventIndex);
   if (ordered.some((item, i) => i > 0 && item.eventIndex === ordered[i - 1].eventIndex))
     throw Error('Choose each question once');
-  let scope = 0n, state = 0n;
-  ordered.forEach((item, index) => {
-    scope |= 1n << BigInt(item.eventIndex);
-    if (item.side === 'yes') state |= 1n << BigInt(index);
-  });
-  return { scope, mask: 1n << state, chosen: ordered };
+  const rule = ordered.length === 1 ? 'AND' : input?.rule || 'AND';
+  if (!['AND', 'OR', 'EXACTLY_ONE'].includes(rule)) throw Error('Choose a supported combination');
+  const encoded = encodeClaim({ events: count, rule,
+    legs: ordered.map(item => ({ event: item.eventIndex, yes: item.side === 'yes' })) });
+  return { scope: BigInt(encoded.scope), mask: BigInt(encoded.mask), chosen: ordered };
 }
 
-export function hybridMarketService({ catalog, market, source, evidence, origin }) {
+export function hybridMarketService({ catalog, market, source, evidence, origin, pairModel = runPairModel }) {
   const pools = hybridSettlementCatalog(catalog).pools;
   const routes = new Map(pools.flatMap(record => record.prepared.draft.events.map((event, eventIndex) => {
     const id = `${record.pool}-${eventIndex}`;
@@ -76,6 +82,65 @@ export function hybridMarketService({ catalog, market, source, evidence, origin 
       marketNow: snapshot.now, blockNumber: snapshot.blockNumber.toString(),
       blockHash: snapshot.blockHash, funded: true, resolved: snapshot.resolved,
       prices: { yes, no } };
+  }
+  async function analysis(id, input) {
+    const route = routeFor(id), record = route.record;
+    const count = record.prepared.draft.events.length;
+    if (!input || !Number.isInteger(input.a) || !Number.isInteger(input.b)
+      || input.a === input.b || input.a < 0 || input.b < 0
+      || input.a >= count || input.b >= count || typeof input.quantity !== 'string'
+      || !/^[1-9]\d{0,7}$/.test(input.quantity)
+      || input.rule !== undefined && !['AND', 'OR', 'EXACTLY_ONE'].includes(input.rule)
+      || BigInt(input.quantity) > 20_000_000n) throw Error('Choose two questions and up to twenty shares');
+    const rule = input.rule || 'AND';
+    const head = await readHybridSnapshot(record, market);
+    const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
+      abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
+    const [liquidity, order, factors] = await Promise.all([
+      at('liquidity'), at('eliminationOrder'), at('factors'),
+    ]);
+    const state = { events: count, a: input.a, b: input.b, liquidity: String(liquidity),
+      order: order.map(Number), factors: factors.map(f => ({ scope: Number(f.scope),
+        values: f.values.map(String) })) };
+    const encoded = pairInput(state), certified = certifiedPair(state);
+    const reference = await pairModel(encoded);
+    for (const [key, value] of Object.entries(certified.values)) {
+      const actual = reference?.[key];
+      if (typeof actual !== 'number' || !Number.isFinite(actual)
+        || actual < (key === 'difference' ? -1 : 0) || actual > 1
+        || value !== null && Math.round(Math.abs(actual) * 1000) * Math.sign(actual) !== value)
+        throw Error('Hybrid comparison unavailable');
+    }
+    const closed = head.resolved || head.now >= record.prepared.draft.closesAt;
+    const outcomes = [];
+    for (const a of ['no', 'yes']) for (const b of ['no', 'yes']) {
+      const { scope, mask } = claimFor(record, input.a, { side: a, rule, claim: [
+        { eventIndex: input.a, side: a }, { eventIndex: input.b, side: b },
+      ] });
+      const joint = claimFor(record, input.a, { side: a, claim: [
+        { eventIndex: input.a, side: a }, { eventIndex: input.b, side: b },
+      ] });
+      let costAtoms = null;
+      if (!closed) try { costAtoms = String(await at('quoteBuy', [scope, mask, BigInt(input.quantity)])); }
+      catch { costAtoms = null; }
+      outcomes.push({ a, b, costAtoms,
+        probability: certifiedClaim(state, Number(scope), String(mask)).values.market,
+        scenarioProbability: certifiedClaim(state, Number(joint.scope), String(joint.mask)).values.market });
+    }
+    const sensitivity = [];
+    if (!closed) for (const answer of ['yes', 'no']) {
+      try {
+        const simulated = simulatePairPurchase(state, answer);
+        const cost = String(await at('quoteBuy', [simulated.scope, BigInt(simulated.mask), 1_000_000n]));
+        sensitivity.push({ answer, costAtoms: cost, values: certifiedPair(simulated.after).values });
+      } catch { sensitivity.push({ answer, costAtoms: null, values: null }); }
+    }
+    const confirmed = await market.getBlock({ blockNumber: head.blockNumber });
+    if (!same(confirmed?.hash, head.blockHash)) throw Error('Hybrid comparison expired');
+    return { schema: 'flurbo.hybrid-analysis.v1', pool: route.pool, a: input.a, b: input.b, rule,
+      quantity: input.quantity, closed, blockNumber: String(head.blockNumber),
+      blockHash: head.blockHash, observedAt: head.now, values: certified.values,
+      reasons: certified.reasons, outcomes, sensitivity };
   }
   async function snapshot(id, owner = null) {
     const route = routeFor(id);
@@ -209,9 +274,18 @@ export function hybridMarketService({ catalog, market, source, evidence, origin 
     }
     const quoted = BigInt(await read(route.pool, poolAbi, 'quoteBuy', [scope, mask, quantity]));
     const maximum = quoted + (quoted + 99n) / 100n;
-    if (action === 'quote') return { action, buyAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
-      cashAtoms: snap.user.cashAtoms, allowanceAtoms: snap.user.allowanceAtoms,
-      holdingsAtoms: holdings.toString() };
+    if (action === 'quote') {
+      let sellAtoms = null;
+      if (holdings >= quantity) {
+        try { sellAtoms = BigInt(await read(route.pool, poolAbi, 'quoteSell', [scope, mask, quantity])).toString(); }
+        catch { sellAtoms = null; }
+      }
+      return { action, buyAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
+        sellAtoms, minProceedsAtoms: sellAtoms === null ? null
+          : (BigInt(sellAtoms) - BigInt(sellAtoms) / 100n).toString(),
+        cashAtoms: snap.user.cashAtoms, allowanceAtoms: snap.user.allowanceAtoms,
+        holdingsAtoms: holdings.toString() };
+    }
     if (action === 'approve') {
       if (BigInt(snap.user.allowanceAtoms) >= maximum) throw Error('Approval already covers this trade');
       return { action, amountAtoms: maximum.toString(), reason: `Allow up to ${formatUnits(maximum, 6)} test AUSD`,
@@ -226,5 +300,5 @@ export function hybridMarketService({ catalog, market, source, evidence, origin 
         encodeFunctionData({ abi: poolAbi, functionName: 'buy',
           args: [scope, mask, quantity, maximum, BigInt(snap.marketNow + 120)] })) };
   }
-  return { list, routeFor, marketSummary, snapshot, prepare };
+  return { list, routeFor, marketSummary, snapshot, analysis, prepare };
 }

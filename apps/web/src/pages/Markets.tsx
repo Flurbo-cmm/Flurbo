@@ -11,6 +11,7 @@ import {marketQuestion} from '../showcase-copy';
 import MarketDetail from './MarketDetail';
 import OracleMarketDetail from './OracleMarkets';
 import HybridMarketDetail from './HybridMarket';
+import { HybridThesis } from './HybridAnalysis';
 import ThesisExplorer from './ThesisExplorer';
 import AccountPortfolio from './AccountPortfolio';
 import PageHeader from '../components/PageHeader';
@@ -32,9 +33,9 @@ export default function Markets(){
       :<>{!gate.covered&&<span className="progress-line" aria-hidden="true"/>}<p role="status" className={gate.covered?'sr-only':'busy-text'}>Loading markets...</p><MarketSkeleton/></>}
   </main>;
   const {groups,oracleMarkets,hybridMarkets}=directory;
-  const hybridId=location.match(/^\/markets\/hybrid\/(0x[0-9a-f]{40})\/([0-9]|[12][0-9]|3[01])$/i);
-  if(hybridId){const id=`${hybridId[1]}-${Number(hybridId[2])}`;return hybridMarkets.some(m=>m.id.toLowerCase()===id.toLowerCase())
-    ?<HybridMarketDetail key={id} id={hybridMarkets.find(m=>m.id.toLowerCase()===id.toLowerCase())!.id} markets={hybridMarkets}/>
+  const hybridId=location.match(/^\/markets\/hybrid\/(0x[0-9a-f]{40})\/([0-9]|[12][0-9]|3[01])(\/thesis)?$/i);
+  if(hybridId){const id=`${hybridId[1]}-${Number(hybridId[2])}`;const market=hybridMarkets.find(m=>m.id.toLowerCase()===id.toLowerCase());return market
+    ?hybridId[3]?<HybridThesis key={location} market={market} markets={hybridMarkets}/>:<HybridMarketDetail key={id} id={market.id} markets={hybridMarkets}/>
     :<main id="main" tabIndex={-1} className="page page-task"><div className="state-block"><Inbox aria-hidden="true" strokeWidth={1.75}/><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div></main>;}
   const oracleId=location.match(/^\/markets\/oracle\/([a-z0-9-]{1,64})$/)?.[1];
   if(oracleId)return oracleMarkets.some(m=>m.id===oracleId)
