@@ -1,6 +1,6 @@
 # Hybrid settlement testnet runbook
 
-Status: implementation in `kleros-reality-eth`; no hybrid pool or mechanical Kleros adapter has been deployed. The company catalog is empty. The deployed Monad activity pool and the existing Reality.eth pool keep their current contracts, answers, and Render workers.
+Status update, 5 October 2026: the hybrid pool and mechanical Kleros adapter are deployed, and `config/hybrid-markets.json` lists one pool with two mechanical questions. The deployment sequence below is historical and must not be broadcast again for the same manifest. See [the current handoff](HANDOFF.md) for addresses, Render variables, architecture, and remaining verification. The existing activity and earlier Reality pools retain their contracts and workers.
 
 ## What this version does
 

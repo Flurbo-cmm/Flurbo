@@ -2,9 +2,9 @@
 
 Flurbo is a testnet prediction market for related yes or no questions. Members trade single answers and combinations from one funded on-chain pool. The site uses Mera passkeys for account access and linked MetaMask wallets for trades.
 
-The current product runs on Monad testnet with test AUSD only. Settlement uses public evidence, a bonded proposal, a challenge window and an operator-controlled reviewer panel. It is not a real-money service or an independent arbitration system.
+The current product runs on Monad testnet with test AUSD only. The original company activity pool uses an operator-controlled reviewer panel. New hybrid pools use committed mechanical or Reality.eth routes, with Kleros for challenged answers. The Sepolia-to-Monad delivery is a trusted testnet relay.
 
-Read [the project reference](docs/PROJECT_REFERENCE.md) for architecture, contracts, settlement, hosting, environment names, operations and migration status. The separate company deployment is described in [second-site deployment](docs/SECOND_SITE_DEPLOYMENT.md).
+Start with [the current handoff](docs/HANDOFF.md) for deployed addresses, architecture, workflow, Render variable names, current gaps and the latest branch work. [The project reference](docs/PROJECT_REFERENCE.md) and [second-site deployment](docs/SECOND_SITE_DEPLOYMENT.md) describe the earlier company migration.
 
 ## Local checks
 
@@ -21,11 +21,11 @@ The full CI workflow is in `.github/workflows/checks.yml`. The Render Dockerfile
 
 ## Contracts checkout
 
-Contract source lives in the private `Flurbo-cmm/Flurbo-contracts` repository. Local Foundry, settlement preparation and SDK local-chain checks expect a second checkout at `contracts/` pinned to commit `9f2510eebbfe34f06809e3db5ed9d9010a018eae`:
+Contract source lives in the private `Flurbo-cmm/Flurbo-contracts` repository. Local Foundry, settlement preparation and SDK local-chain checks expect a second checkout at `contracts/`. Use the exact commit pinned in `.github/workflows/checks.yml`, currently `a3c696f49daad145a40c7ca050db56a34d5b32b9`:
 
 ```sh
 git clone https://github.com/Flurbo-cmm/Flurbo-contracts.git contracts
-git -C contracts checkout 9f2510eebbfe34f06809e3db5ed9d9010a018eae
+git -C contracts checkout a3c696f49daad145a40c7ca050db56a34d5b32b9
 npm --prefix contracts ci
 forge test --offline
 ```
