@@ -78,8 +78,13 @@ test('settled combined shares can be read and redeemed from either market', asyn
   const quote = await service.prepare(`${pool}-0`, 'quote', { side: 'yes', claim,
     quantity: '2000000' }, owner);
   assert.equal(quote.buyAtoms, '1000000');
+  assert.equal(quote.maxCostAtoms, '1005000');
   assert.equal(quote.sellAtoms, '666666');
-  assert.equal(quote.minProceedsAtoms, '660000');
+  assert.equal(quote.minProceedsAtoms, '663333');
+  const sale = await service.prepare(`${pool}-0`, 'sell', { side: 'yes', claim,
+    quantity: '2000000' }, owner);
+  assert.equal(sale.minimumReceivedAtoms, '663333');
+  assert.equal(sale.expiresAt, at - 7200 + 120);
   const analysis = await service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' });
   assert.equal(analysis.values.givenYes, 500);
   assert.deepEqual(analysis.outcomes.map(item => item.probability), [250, 250, 250, 250]);

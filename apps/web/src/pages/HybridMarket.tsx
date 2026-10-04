@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { formatEther, formatUnits, parseUnits } from 'viem';
@@ -32,13 +32,16 @@ type Snapshot = Market & { schema: string; resolver: string; eventHash: string; 
     historyHash: string; disputeStatus: number; disputeId: string };
   user: null | { wallet: string; noShares: string; yesShares: string; cashAtoms: string;
     allowanceAtoms: string; bondAllowanceAtoms: string; bondCreditsAtoms: string } };
-type Plan = { action: string; reason: string; transaction: { chainId: number; from: string;
+type Plan = { action: string; reason: string; amountAtoms?: string; maxCostAtoms?: string;
+  expiresAt?: number;
+  minimumReceivedAtoms?: string; transaction: { chainId: number; from: string;
   to: string; data: string; value: string } };
 type Quote = { action: 'quote'; buyAtoms: string; maxCostAtoms: string;
   sellAtoms: string | null; minProceedsAtoms: string | null;
   cashAtoms: string; allowanceAtoms: string; holdingsAtoms: string };
 type PositionRead = { action: 'position'; holdingsAtoms: string; payoutAtoms: string | null };
-type Pending = { hash: string; owner: string; id: string; action: string; chainId: number };
+type Pending = { hash: string | null; owner: string; id: string; action: string; chainId: number;
+  approvalSelection?: string };
 
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString(undefined,
   { dateStyle: 'medium', timeStyle: 'short' });
@@ -48,7 +51,8 @@ const pendingKey = 'flurbo.hybrid.pending.v1';
 const readPending = (): Pending | null => {
   try {
     const item = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
-    return /^0x[0-9a-f]{64}$/i.test(item?.hash) && /^0x[0-9a-f]{40}$/i.test(item?.owner)
+    return (item?.hash === null || /^0x[0-9a-f]{64}$/i.test(item?.hash))
+      && /^0x[0-9a-f]{40}$/i.test(item?.owner)
       && typeof item.id === 'string' && [10143,11155111].includes(item.chainId) ? item : null;
   } catch { return null; }
 };
@@ -99,8 +103,14 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [refresh, setRefresh] = useState(0);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [pending, setPending] = useState<Pending | null>(readPending);
+  const [pendingHash, setPendingHash] = useState('');
+  const [pollPaused, setPollPaused] = useState(false);
+  const [approvalReady, setApprovalReady] = useState<string | null>(null);
+  const [completed, setCompleted] = useState('');
+  const pollCount = useRef(0);
   const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(location.search).get('answer') === 'no' ? 'no' : 'yes');
-  const [mode, setMode] = useState<'buy' | 'sell'>('buy');
+  const [mode, setMode] = useState<'buy' | 'sell'>(() =>
+    new URLSearchParams(location.search).get('trade') === 'sell' ? 'sell' : 'buy');
   const [shares, setShares] = useState(() => {
     const value = new URLSearchParams(location.search).get('shares') || '1';
     return /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(value) && Number(value) > 0 && Number(value) <= 20 ? value : '1';
@@ -114,10 +124,16 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     const index = Number(requested);
     return others.find(item => item.eventIndex === index)?.id || '';
   });
-  const [extra2, setExtra2] = useState('');
+  const [extra2, setExtra2] = useState(() => {
+    const requested = new URLSearchParams(location.search).get('third');
+    if (requested === null) return '';
+    const index = Number(requested);
+    return others.find(item => item.eventIndex === index && item.id !== extra1)?.id || '';
+  });
   const [extra1Side, setExtra1Side] = useState<'yes' | 'no'>(() =>
     new URLSearchParams(location.search).get('otherAnswer') === 'no' ? 'no' : 'yes');
-  const [extra2Side, setExtra2Side] = useState<'yes' | 'no'>('yes');
+  const [extra2Side, setExtra2Side] = useState<'yes' | 'no'>(() =>
+    new URLSearchParams(location.search).get('thirdAnswer') === 'no' ? 'no' : 'yes');
   const [combinationRule, setCombinationRule] = useState<'AND' | 'OR' | 'EXACTLY_ONE'>(() => {
     const value = new URLSearchParams(location.search).get('rule');
     return value === 'OR' || value === 'EXACTLY_ONE' ? value : 'AND';
@@ -155,7 +171,35 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const selectionKey = [id, owner, mode, side, shares, extra1, extra1Side, extra2, extra2Side, combinationRule].join(':');
   const quoteKey = `${selectionKey}:${refresh}`;
   const currentQuote = quote?.key === quoteKey ? quote.value : null;
-  useEffect(() => { setPlan(null); }, [selectionKey]);
+  useEffect(() => {
+    if (!market) return;
+    const params = new URLSearchParams(location.search);
+    params.set('answer', side); params.set('shares', shares);
+    if (mode === 'sell') params.set('trade', 'sell'); else params.delete('trade');
+    const second = others.find(item => item.id === extra1);
+    const third = others.find(item => item.id === extra2);
+    if (second) { params.set('other', String(second.eventIndex)); params.set('otherAnswer', extra1Side); }
+    else { params.delete('other'); params.delete('otherAnswer'); }
+    if (third) { params.set('third', String(third.eventIndex)); params.set('thirdAnswer', extra2Side); }
+    else { params.delete('third'); params.delete('thirdAnswer'); }
+    if (second) params.set('rule', combinationRule); else params.delete('rule');
+    history.replaceState(history.state, '', `${location.pathname}?${params}`);
+  }, [market, side, shares, mode, extra1, extra1Side, extra2, extra2Side, combinationRule]);
+  useEffect(() => {
+    setPlan(null);
+    setCompleted('');
+    if (approvalReady && approvalReady !== selectionKey) setApprovalReady(null);
+  }, [selectionKey]);
+  useEffect(() => { pollCount.current = 0; setPollPaused(false); }, [pending?.hash]);
+  useEffect(() => {
+    if (!pending?.hash || !provider || !owner || busy || pollPaused) return;
+    if (pollCount.current >= 40) { setPollPaused(true); return; }
+    const timer = setTimeout(() => {
+      pollCount.current += 1;
+      void checkPending().catch(error => { setError(friendly(error)); setPollPaused(true); });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [pending, provider, owner, busy, pollPaused]);
   useEffect(() => {
     if (!market || !owner || !snapshot || snapshot.marketNow >= market.closesAt || snapshot.resolved
       || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) || Number(shares) <= 0) {
@@ -209,6 +253,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   }
   async function confirm() {
     if (!plan || !provider || !owner) throw Error('Connect MetaMask and review a transaction first.');
+    if (plan.expiresAt && Date.now() / 1000 >= plan.expiresAt)
+      throw Error('This price has expired. Cancel the review and get a fresh quote.');
     setBusy(true); setError('');
     try {
       const transaction = plan.transaction;
@@ -217,28 +263,61 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       if (accounts[0]?.toLowerCase() !== owner.toLowerCase()
         || transaction.from.toLowerCase() !== owner.toLowerCase())
         throw Error('MetaMask account changed. Reconnect and review again.');
-      const hash = await provider.request({ method: 'eth_sendTransaction', params: [{
-        ...transaction, chainId: `0x${transaction.chainId.toString(16)}`,
-      }] }) as string;
+      const intent: Pending = { hash: null, owner, id, action: plan.action,
+        chainId: transaction.chainId,
+        ...(plan.action === 'approve' ? { approvalSelection: selectionKey } : {}) };
+      sessionStorage.setItem(pendingKey, JSON.stringify(intent));
+      setPending(intent);
+      let hash: string;
+      try {
+        hash = await provider.request({ method: 'eth_sendTransaction', params: [{
+          ...transaction, chainId: `0x${transaction.chainId.toString(16)}`,
+        }] }) as string;
+      } catch (error) {
+        if ((error as { code?: number })?.code === 4001) {
+          sessionStorage.removeItem(pendingKey); setPending(null);
+        }
+        throw error;
+      }
       if (!/^0x[0-9a-f]{64}$/i.test(hash)) throw Error('Check MetaMask activity before retrying.');
-      const saved = { hash, owner, id, action: plan.action, chainId: transaction.chainId };
+      const saved = { ...intent, hash };
       sessionStorage.setItem(pendingKey, JSON.stringify(saved));
       setPending(saved); setPlan(null);
-      setNotice('Transaction submitted. Check its result here before another action.');
+      setNotice('Transaction submitted. Confirmation is checked automatically.');
     } finally { setBusy(false); }
   }
   async function checkPending() {
     if (!pending || !provider) throw Error('Reconnect MetaMask to check this transaction.');
+    if (!pending.hash) throw Error('Attach the transaction hash from MetaMask before checking.');
+    if (pending.owner.toLowerCase() !== owner.toLowerCase())
+      throw Error('Reconnect the wallet that submitted this transaction.');
     setBusy(true); setError('');
     try {
       await selectChain(provider, pending.chainId);
       const receipt = await provider.request({ method: 'eth_getTransactionReceipt', params: [pending.hash] }) as { status?: string } | null;
-      if (!receipt) { setNotice('Still pending. Check again shortly.'); return; }
+      if (!receipt) return;
       sessionStorage.removeItem(pendingKey); setPending(null); setPlan(null);
-      setNotice(receipt.status === '0x1' ? 'Transaction confirmed.' : 'Transaction failed. Refresh the market before retrying.');
+      if (receipt.status === '0x1') {
+        if (pending.action === 'approve' && pending.id === id)
+          setApprovalReady(pending.approvalSelection || null);
+        if (['buy', 'sell', 'redeem'].includes(pending.action) && pending.id === id)
+          setCompleted(pending.action);
+        setNotice(pending.action === 'approve' ? 'Payment approval confirmed. Preparing the purchase.'
+          : 'Transaction confirmed. Your position is being refreshed.');
+      } else {
+        setApprovalReady(null);
+        setNotice('Transaction failed. Refresh the market before retrying.');
+      }
       setRefresh(value => value + 1);
     } finally { setBusy(false); }
   }
+  useEffect(() => {
+    if (!approvalReady || approvalReady !== selectionKey || !currentQuote || pending || plan || busy
+      || BigInt(currentQuote.allowanceAtoms) < BigInt(currentQuote.maxCostAtoms)) return;
+    setApprovalReady(null);
+    void prepare('buy', { side, rule: combinationRule, quantity: parseUnits(shares, 6).toString(), claim })
+      .catch(error => setError(friendly(error)));
+  }, [approvalReady, selectionKey, currentQuote, pending, plan, busy]);
   async function saveChallengeEvidence() {
     setBusy(true); setError('');
     try {
@@ -306,8 +385,6 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           {summary && !closed && <div><dt>Buy one share</dt><dd>Yes {summary.prices.yes ? Number(cash(summary.prices.yes)).toFixed(3) : 'unavailable'} · No {summary.prices.no ? Number(cash(summary.prices.no)).toFixed(3) : 'unavailable'}<small>test AUSD, not probabilities</small></dd></div>}</dl>
       </header>
       <div className="detail-columns"><div className="detail-primary">
-        {error && <p className="state-inline error" role="alert">{error}</p>}
-        {notice && <p className="state-inline" role="status">{notice}</p>}
         {!snapshot && !error && <p role="status">Reading this market...</p>}
         <PriceHistory hybridId={id} event={0} pool={market.pool} refresh={refresh}/>
         {others.length > 0 && <HybridConnections market={market} markets={markets}/>}
@@ -332,10 +409,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         </section>{others.length > 0 && <section className="detail-panel detail-thesis"><h2>Build your thesis</h2><p>Put your estimates beside the pool's joint outcomes and current combined-share quotes.</p><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Explore your view</Link></section>}</>}
       </div><aside className="detail-sidebar">
         <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each winning share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
+          {error && <p className="state-inline error" role="alert">{error}</p>}
+          {notice && <p className="state-inline" role="status">{notice}</p>}
           {summary && !closed && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes ? `${cash(summary.prices.yes)} AUSD` : 'Unavailable'}</strong></div><div><span>No</span><strong>{summary.prices.no ? `${cash(summary.prices.no)} AUSD` : 'Unavailable'}</strong></div></div>}
           <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot?.user ? `${cash(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs each trade and bond you review'}</small></div>
             <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : 'Connect MetaMask'}</button></div>
-          {!closed && !snapshot?.resolved && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }}/>
+          {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }}/>
             <SegmentedControl label="Your answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => { setSide(value); setPlan(null); }}/>
             <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
             {others.length > 0 && <details><summary>Combine with another prediction</summary><label>Second question<select value={extra1} onChange={e => { setExtra1(e.target.value); setExtra2(''); }}><option value="">None</option>{others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>
@@ -347,7 +426,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
               {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
               <button type="button" className="btn btn-quiet ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
             </div>}
-            {currentQuote && <div className="ticket-review" aria-label="Current prediction quote">
+            {currentQuote && !plan && <div className="ticket-review" aria-label="Current prediction quote">
               <h3>{mode === 'buy' ? 'Review your purchase' : 'Review your sale'}</h3>
               <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'} · {extra1 ? `${combinationRule.replace('_', ' ')} · ` : ''}{claim.map(item => `${markets.find(question => question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question'}: ${item.side === 'yes' ? 'Yes' : 'No'}`).join(' · ')}</p>
               {quotedAtoms && <dl className="review-figures">
@@ -357,12 +436,45 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
                 <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
                 <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
               </dl>}
-              <p>1% price tolerance. A fresh quote is checked when you review the transaction. A winning share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
+              <p>0.5% price tolerance. A fresh quote is checked when you review the transaction. A winning share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
               {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
               {mode === 'sell' && !canSell && <p role="status">This wallet does not hold enough shares of the selected prediction to sell.</p>}
               <button className="btn btn-primary" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
                 { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button>
             </div>}</>}
+          {plan && ['approve', 'buy', 'sell', 'redeem'].includes(plan.action) && <section className="ticket-review" aria-label="Transaction review">
+            <h3>{plan.action === 'approve' ? 'Step 1 of 2: allow this payment' : plan.action === 'buy' ? 'Review your purchase' : plan.action === 'sell' ? 'Review your sale' : 'Review your payout'}</h3>
+            <p className="review-claim">{plan.reason}</p>
+            <dl className="review-figures">
+              {plan.amountAtoms && <div className="review-cost"><dt>{plan.action === 'approve' ? 'Allow up to' : plan.action === 'buy' ? 'Spend up to' : plan.action === 'sell' ? 'Receive at least' : 'Expected payout'}</dt>
+                <dd>{cash(plan.action === 'buy' ? plan.maxCostAtoms || plan.amountAtoms : plan.action === 'sell' ? plan.minimumReceivedAtoms || plan.amountAtoms : plan.amountAtoms)} test AUSD</dd></div>}
+              {plan.action === 'buy' && <><div><dt>Payout if correct</dt><dd>{shares} test AUSD</dd></div><div><dt>Possible loss</dt><dd>Up to {cash(plan.maxCostAtoms || plan.amountAtoms || '0')} test AUSD plus network fees</dd></div></>}
+            </dl>
+            <p>{plan.action === 'approve' ? 'Approval alone does not buy shares. After it confirms, the purchase review appears here.' : 'Check this amount before confirming in MetaMask.'}</p>
+            {plan.expiresAt && <p className="market-caption">Review expires {date(plan.expiresAt)}.</p>}
+            <details><summary>Transaction details</summary><p>Network: {plan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</p><p>Destination: <span className="mono">{plan.transaction.to}</span></p></details>
+            <button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{plan.action === 'approve' ? 'Allow payment' : plan.action === 'buy' ? `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}` : plan.action === 'sell' ? 'Sell shares' : 'Collect payout'}</button>
+            <button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel review</button>
+          </section>}
+          {pending && ['approve', 'buy', 'sell', 'redeem'].includes(pending.action) && <section className="ticket-review ticket-pending" aria-label="Pending transaction">
+            <h3>Waiting for confirmation</h3>
+            {pending.id !== id && <p>A transaction from another market needs confirmation before another trade.</p>}
+            <p>{pending.hash ? 'Your transaction was sent. Confirmation is checked automatically, including after a reload.'
+              : 'MetaMask did not return a transaction hash. Check its activity before submitting anything else.'}</p>
+            {pending.hash ? <p className="mono">{pending.hash}</p> : <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
+            {!pending.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
+              const saved = { ...pending, hash: pendingHash };
+              sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);
+            }}>Track transaction</button>}
+            {pending.hash && <button className="btn btn-secondary" disabled={busy || !provider} onClick={() => {
+              pollCount.current = 0; setPollPaused(false); run(checkPending);
+            }}>{pollPaused ? 'Check confirmation' : 'Check now'}</button>}
+            {!provider && <button className="btn btn-secondary" disabled={busy} onClick={() => run(() => connect())}>Reconnect MetaMask</button>}
+            {pollPaused && <p className="field-help">Automatic checks paused. You can check again without resubmitting the trade.</p>}
+          </section>}
+          {completed && <section className="ticket-review ticket-done"><h3>{completed === 'buy' ? 'Purchase complete' : completed === 'sell' ? 'Sale complete' : 'Payout collected'}</h3>
+            <p>Your transaction is confirmed. The position is refreshing.</p><Link href="/portfolio" className="btn btn-primary">View portfolio</Link>
+            <button className="btn btn-secondary" onClick={() => setCompleted('')}>Make another trade</button></section>}
           {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
             {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
               && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
@@ -424,10 +536,16 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         {reality && BigInt(reality.creditedEthWei) > 0n && <section className="detail-panel"><h2>Reality.eth bond credit</h2><p>{formatEther(BigInt(reality.creditedEthWei))} Sepolia ETH is ready to withdraw.</p>
           <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('withdrawReality'))}>Review ETH withdrawal</button></section>}
         {snapshot?.user && BigInt(snapshot.user.bondCreditsAtoms) > 0n && <section className="detail-panel"><h2>Bond credit</h2><p>{cash(snapshot.user.bondCreditsAtoms)} test AUSD is ready to collect.</p><button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('withdrawBond'))}>Review withdrawal</button></section>}
-        {plan && <section className="detail-panel"><h2>Review transaction</h2><p>{plan.reason}</p><dl className="facts"><dt>Network</dt><dd>{plan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd><dt>To</dt><dd>{plan.transaction.to}</dd></dl><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{plan.action === 'approveBond' ? 'Allow challenge bond' : 'Confirm in MetaMask'}</button><button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel</button></section>}
-        {pending && <section className="detail-panel"><h2>Transaction pending</h2>
+        {plan && !['approve', 'buy', 'sell', 'redeem'].includes(plan.action) && <section className="detail-panel"><h2>Review transaction</h2><p>{plan.reason}</p><dl className="facts"><dt>Network</dt><dd>{plan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd><dt>To</dt><dd>{plan.transaction.to}</dd></dl><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{plan.action === 'approveBond' ? 'Allow challenge bond' : 'Confirm in MetaMask'}</button><button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel</button></section>}
+        {pending && !['approve', 'buy', 'sell', 'redeem'].includes(pending.action) && <section className="detail-panel"><h2>Transaction pending</h2>
           {pending.id !== id && <p>A transaction from another market needs confirmation before the next one.</p>}
-          <p>{pending.hash}</p><button className="btn btn-secondary" disabled={busy || !provider} onClick={() => run(checkPending)}>Check confirmation</button></section>}
+          <p>{pending.hash || 'Check MetaMask activity for the transaction hash.'}</p>
+          {!pending.hash && <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
+          {!pending.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
+            const saved = { ...pending, hash: pendingHash };
+            sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);
+          }}>Track transaction</button>}
+          {pending.hash && <button className="btn btn-secondary" disabled={busy || !provider} onClick={() => run(checkPending)}>Check confirmation</button>}</section>}
         <section className="detail-panel detail-position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight size={15}/></Link></div>
           <p>Yes {cash(snapshot?.user?.yesShares || '0')} shares · No {cash(snapshot?.user?.noShares || '0')} shares.</p></section>
       </aside></div>

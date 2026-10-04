@@ -266,14 +266,16 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     if (action === 'sell') {
       if (holdings < quantity) throw Error('Insufficient shares to sell');
       const quoted = BigInt(await read(route.pool, poolAbi, 'quoteSell', [scope, mask, quantity]));
-      const minimum = quoted - quoted / 100n;
-      return { action, amountAtoms: quoted.toString(), reason: `Sell for at least ${formatUnits(minimum, 6)} test AUSD`,
+      const minimum = quoted - quoted / 200n;
+      return { action, amountAtoms: quoted.toString(), minimumReceivedAtoms: minimum.toString(),
+        expiresAt: snap.marketNow + 120,
+        reason: `Sell for at least ${formatUnits(minimum, 6)} test AUSD`,
         transaction: tx(10143, owner, route.pool,
           encodeFunctionData({ abi: poolAbi, functionName: 'sell',
             args: [scope, mask, quantity, minimum, BigInt(snap.marketNow + 120)] })) };
     }
     const quoted = BigInt(await read(route.pool, poolAbi, 'quoteBuy', [scope, mask, quantity]));
-    const maximum = quoted + (quoted + 99n) / 100n;
+    const maximum = quoted + (quoted + 199n) / 200n;
     if (action === 'quote') {
       let sellAtoms = null;
       if (holdings >= quantity) {
@@ -282,7 +284,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       }
       return { action, buyAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
         sellAtoms, minProceedsAtoms: sellAtoms === null ? null
-          : (BigInt(sellAtoms) - BigInt(sellAtoms) / 100n).toString(),
+          : (BigInt(sellAtoms) - BigInt(sellAtoms) / 200n).toString(),
         cashAtoms: snap.user.cashAtoms, allowanceAtoms: snap.user.allowanceAtoms,
         holdingsAtoms: holdings.toString() };
     }
@@ -295,6 +297,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     if (BigInt(snap.user.cashAtoms) < maximum || BigInt(snap.user.allowanceAtoms) < maximum)
       throw Error('Fund and approve this purchase first');
     return { action, amountAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
+      expiresAt: snap.marketNow + 120,
       reason: `Buy ${formatUnits(quantity, 6)} shares for at most ${formatUnits(maximum, 6)} test AUSD`,
       transaction: tx(10143, owner, route.pool,
         encodeFunctionData({ abi: poolAbi, functionName: 'buy',
