@@ -21,6 +21,7 @@ const rule = (id: string) => ({ schema: 'flurbo.settlement-rule.v1', eventId: id
   vintage: 'first-observed-snapshot', missingPolicy: 'resolver-timeout-void' });
 
 test('settled combined shares can be read and redeemed from either market', async () => {
+  let open = false;
   const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v4', chainId: 10143,
     rulesReviewed: true, creator: account('1'), proposer: account('2'), relay: account('3'),
     title: 'Combined payout test', closesAt: at - 3600, assertionPeriod: 3600,
@@ -34,7 +35,8 @@ test('settled combined shares can be read and redeemed from either market', asyn
     prepared }] };
   const market = {
     getChainId: async () => 10143,
-    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at + 86400) }),
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n,
+      timestamp: BigInt(open ? at - 7200 : at + 86400) }),
     readContract: async ({ address, functionName, args = [] }: {
       address: string; functionName: string; args?: (number | bigint | string)[]
     }) => {
@@ -43,7 +45,9 @@ test('settled combined shares can be read and redeemed from either market', asyn
         protocolVersion: isPool ? 3n : 4n, rulesHash, draftHash: prepared.draftHash,
         pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n,
         eventCount: 2n, resolver, settlementRulesHash: rulesHash,
-        collateral: TEST_AUSD, funded: true, resolved: true, delivered: true,
+        collateral: TEST_AUSD, funded: true, resolved: !open, delivered: !open,
+        liquidity: 10000000n, eliminationOrder: [0, 1], factors: [],
+        quoteBuy: BigInt(args[2] || 0) / 2n, quoteSell: BigInt(args[2] || 0) / 3n,
         eventHashes: prepared.eventHashes[Number(args[0])],
         observationEnds: BigInt(at + 3600), routes: 0n,
         caseState: { phase: 3n, proposal: 2n, counter: 0n, result: 2n,
@@ -57,7 +61,8 @@ test('settled combined shares can be read and redeemed from either market', asyn
     },
   };
   const service = hybridMarketService({ catalog, market, source: {}, evidence: {},
-    origin: 'https://example.org' });
+    origin: 'https://example.org', pairModel: async () => ({ a: .5, b: .5, joint: .25,
+      givenYes: .5, givenNo: .5, independent: .25, difference: 0 }) });
   const claim = [{ eventIndex: 0, side: 'yes' }, { eventIndex: 1, side: 'yes' }];
   const position = await service.prepare(`${pool}-0`, 'position', { side: 'yes', claim }, owner);
   assert.equal(position.holdingsAtoms, '25000000');
@@ -69,4 +74,18 @@ test('settled combined shares can be read and redeemed from either market', asyn
   const decoded = decodeFunctionData({ abi: parseAbi([
     'function redeem(uint32,uint256,uint128) returns (uint128)']), data: plan.transaction.data });
   assert.deepEqual(decoded.args, [3, 8n, 25000000n]);
+  open = true;
+  const quote = await service.prepare(`${pool}-0`, 'quote', { side: 'yes', claim,
+    quantity: '2000000' }, owner);
+  assert.equal(quote.buyAtoms, '1000000');
+  assert.equal(quote.sellAtoms, '666666');
+  assert.equal(quote.minProceedsAtoms, '660000');
+  const analysis = await service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' });
+  assert.equal(analysis.values.givenYes, 500);
+  assert.deepEqual(analysis.outcomes.map(item => item.probability), [250, 250, 250, 250]);
+  assert.deepEqual(analysis.outcomes.map(item => item.costAtoms), ['500000', '500000', '500000', '500000']);
+  const alternatives = await service.analysis(`${pool}-0`,
+    { a: 0, b: 1, quantity: '1000000', rule: 'OR' });
+  assert.deepEqual(alternatives.outcomes.map(item => item.probability), [750, 750, 750, 750]);
+  assert.deepEqual(alternatives.outcomes.map(item => item.scenarioProbability), [250, 250, 250, 250]);
 });

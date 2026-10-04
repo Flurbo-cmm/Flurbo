@@ -1,0 +1,27 @@
+.hybrid-analysis-body { display: grid; gap: var(--s-4); padding-top: var(--s-4); }
+.hybrid-analysis-head { display: flex; justify-content: space-between; align-items: start; gap: var(--s-3); }
+.hybrid-analysis-head h3 { margin: 0 0 var(--s-2); }
+.hybrid-analysis-select, .hybrid-belief, .hybrid-thesis-answers label { display: grid; gap: var(--s-2); font-weight: 600; font-size: 14px; }
+.hybrid-analysis-select select, .hybrid-belief input, .hybrid-thesis-answers select { width: 100%; min-height: 42px; border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); color: var(--ink); padding: var(--s-2) var(--s-3); font: inherit; }
+.hybrid-connect .btn { justify-self: start; }
+.hybrid-conditional { display: grid; gap: var(--s-2); }
+.hybrid-conditional > div { display: grid; gap: 3px; padding: var(--s-3); background: var(--surface-sunken); border-radius: var(--r-control); }
+.hybrid-conditional span, .hybrid-outcomes small { color: var(--ink-3); font-size: 13px; }
+.hybrid-conditional strong { font-size: 15px; }
+.hybrid-outcomes { display: grid; gap: var(--s-2); }
+.hybrid-outcomes h3, .hybrid-outcomes h4 { margin: 0; font-size: 15px; }
+.hybrid-outcomes > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s-2); }
+.hybrid-outcomes > div > div { display: grid; gap: 4px; padding: var(--s-3); border: 1px solid var(--rule); border-radius: var(--r-control); }
+.hybrid-outcomes > div > div.selected { border-color: var(--ink); background: var(--lime-soft); }
+.hybrid-outcomes strong { font-variant-numeric: tabular-nums; }
+.hybrid-thesis { gap: var(--s-5); }
+.hybrid-thesis-heading { display: grid; gap: var(--s-2); }
+.hybrid-thesis-heading h1 { font-size: clamp(28px, 3vw, 42px); }
+.hybrid-thesis-heading p { color: var(--ink-2); }
+.hybrid-thesis-grid { display: grid; gap: var(--s-5); align-items: start; }
+.hybrid-thesis-grid > section { gap: var(--s-5); }
+.hybrid-thesis-answers { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s-3); }
+.hybrid-belief > span { display: flex; align-items: center; gap: var(--s-2); }
+.hybrid-thesis .btn { justify-self: start; }
+@media (min-width: 860px) { .hybrid-thesis-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+@media (max-width: 560px) { .hybrid-outcomes > div { grid-template-columns: 1fr; } }

@@ -11,6 +11,7 @@ import QuantityStepper from '../components/ui/QuantityStepper';
 import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
 import Stepper, { type Step } from '../components/ui/Stepper';
 import PriceHistory from './PriceHistory';
+import { HybridConnections } from './HybridAnalysis';
 import './market-detail.css';
 import './pilot.css';
 import './oracle.css';
@@ -34,6 +35,7 @@ type Snapshot = Market & { schema: string; resolver: string; eventHash: string; 
 type Plan = { action: string; reason: string; transaction: { chainId: number; from: string;
   to: string; data: string; value: string } };
 type Quote = { action: 'quote'; buyAtoms: string; maxCostAtoms: string;
+  sellAtoms: string | null; minProceedsAtoms: string | null;
   cashAtoms: string; allowanceAtoms: string; holdingsAtoms: string };
 type PositionRead = { action: 'position'; holdingsAtoms: string; payoutAtoms: string | null };
 type Pending = { hash: string; owner: string; id: string; action: string; chainId: number };
@@ -99,13 +101,27 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [pending, setPending] = useState<Pending | null>(readPending);
   const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(location.search).get('answer') === 'no' ? 'no' : 'yes');
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
-  const [shares, setShares] = useState('1');
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [shares, setShares] = useState(() => {
+    const value = new URLSearchParams(location.search).get('shares') || '1';
+    return /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(value) && Number(value) > 0 && Number(value) <= 20 ? value : '1';
+  });
+  const [quote, setQuote] = useState<{ key: string; value: Quote } | null>(null);
+  const [quoteError, setQuoteError] = useState('');
   const [combinedPosition, setCombinedPosition] = useState<PositionRead | null>(null);
-  const [extra1, setExtra1] = useState('');
+  const [extra1, setExtra1] = useState(() => {
+    const requested = new URLSearchParams(location.search).get('other');
+    if (requested === null) return '';
+    const index = Number(requested);
+    return others.find(item => item.eventIndex === index)?.id || '';
+  });
   const [extra2, setExtra2] = useState('');
-  const [extra1Side, setExtra1Side] = useState<'yes' | 'no'>('yes');
+  const [extra1Side, setExtra1Side] = useState<'yes' | 'no'>(() =>
+    new URLSearchParams(location.search).get('otherAnswer') === 'no' ? 'no' : 'yes');
   const [extra2Side, setExtra2Side] = useState<'yes' | 'no'>('yes');
+  const [combinationRule, setCombinationRule] = useState<'AND' | 'OR' | 'EXACTLY_ONE'>(() => {
+    const value = new URLSearchParams(location.search).get('rule');
+    return value === 'OR' || value === 'EXACTLY_ONE' ? value : 'AND';
+  });
   const [challenge, setChallenge] = useState({ name: '', description: '', sourceURL: '' });
   const [counter, setCounter] = useState(0);
   const [challengeEvidence, setChallengeEvidence] = useState<{ hash: string; uri: string } | null>(null);
@@ -130,38 +146,44 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     const timer = setInterval(() => { if (!document.hidden && !busy) setRefresh(value => value + 1); }, 30_000);
     return () => clearInterval(timer);
   }, [busy]);
-  useEffect(() => { setExtra1(''); setExtra2(''); setChallengeEvidence(null); }, [id]);
+  useEffect(() => { setChallengeEvidence(null); }, [id]);
   useEffect(() => { if (snapshot?.reality) setBondEth(formatEther(BigInt(snapshot.reality.nextBondWei)));
   }, [snapshot?.reality?.nextBondWei, snapshot?.reality?.questionId]);
   const claim = market ? [{ eventIndex: market.eventIndex, side },
     ...(extra1 ? [{ eventIndex: others.find(item => item.id === extra1)?.eventIndex ?? -1, side: extra1Side }] : []),
     ...(extra2 ? [{ eventIndex: others.find(item => item.id === extra2)?.eventIndex ?? -1, side: extra2Side }] : [])] : [];
+  const selectionKey = [id, owner, mode, side, shares, extra1, extra1Side, extra2, extra2Side, combinationRule].join(':');
+  const quoteKey = `${selectionKey}:${refresh}`;
+  const currentQuote = quote?.key === quoteKey ? quote.value : null;
+  useEffect(() => { setPlan(null); }, [selectionKey]);
   useEffect(() => {
     if (!market || !owner || !snapshot || snapshot.marketNow >= market.closesAt || snapshot.resolved
       || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) || Number(shares) <= 0) {
-      setQuote(null); return;
+      setQuote(null); setQuoteError(''); return;
     }
     let live = true;
+    setQuote(null); setQuoteError('');
     const timer = setTimeout(() => {
       void request<Quote>(id, '/action', { action: 'quote', owner,
-        input: { side, quantity: parseUnits(shares, 6).toString(), claim } })
-        .then(value => { if (live) setQuote(value); }).catch(() => { if (live) setQuote(null); });
+        input: { side, rule: combinationRule, quantity: parseUnits(shares, 6).toString(), claim } })
+        .then(value => { if (live) setQuote({ key: quoteKey, value }); })
+        .catch(() => { if (live) setQuoteError('A current quote is unavailable. Refresh and try again.'); });
     }, 300);
     return () => { live = false; clearTimeout(timer); };
   }, [id, market, owner, snapshot?.marketNow, snapshot?.resolved, side, shares,
-    extra1, extra2, extra1Side, extra2Side, refresh]);
+    extra1, extra2, extra1Side, extra2Side, combinationRule, mode, refresh]);
   useEffect(() => {
     if (!market || !owner || !snapshot?.resolved || !extra1) {
       setCombinedPosition(null); return;
     }
     let live = true;
     setCombinedPosition(null);
-    void request<PositionRead>(id, '/action', { action: 'position', owner, input: { side, claim } })
+    void request<PositionRead>(id, '/action', { action: 'position', owner, input: { side, rule: combinationRule, claim } })
       .then(value => { if (live) setCombinedPosition(value); })
       .catch(e => { if (live) setError(friendly(e)); });
     return () => { live = false; };
   }, [id, market, owner, snapshot?.resolved, side, extra1, extra2,
-    extra1Side, extra2Side, refresh]);
+    extra1Side, extra2Side, combinationRule, refresh]);
 
   async function connect(wallet = wallets.find(item => item.provider === provider) || wallets[0]) {
     if (!wallet || !auth.address) throw Error('Sign in and select MetaMask.');
@@ -268,7 +290,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     step('final', 'Final answer', 'The result is final after the window or Kleros ruling', finalIndex),
     step('payout', 'Payouts', 'Available when every question in this pool is final', payoutIndex),
   ];
-  const needsApproval = quote && BigInt(quote.allowanceAtoms) < BigInt(quote.maxCostAtoms);
+  const needsApproval = currentQuote && BigInt(currentQuote.allowanceAtoms) < BigInt(currentQuote.maxCostAtoms);
+  const quantityAtoms = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) ? parseUnits(shares, 6) : 0n;
+  const canBuy = !!currentQuote && BigInt(currentQuote.cashAtoms) >= BigInt(currentQuote.maxCostAtoms);
+  const canSell = !!currentQuote?.sellAtoms && BigInt(currentQuote.holdingsAtoms) >= quantityAtoms;
+  const quotedAtoms = mode === 'buy' ? currentQuote?.buyAtoms : currentQuote?.sellAtoms;
+  const perShare = quotedAtoms && quantityAtoms > 0n ? formatUnits(BigInt(quotedAtoms) * 1_000_000n / quantityAtoms, 6) : null;
   return <main id="main" tabIndex={-1} className="page markets-page market-detail oracle-page">
     <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/markets" className="link-back"><ArrowLeft size={18}/>All markets</Link><Link href="/fund" className="text-link">Get test funds</Link></nav>
     {!market ? <div className="state-block"><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div> : <>
@@ -283,7 +310,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         {notice && <p className="state-inline" role="status">{notice}</p>}
         {!snapshot && !error && <p role="status">Reading this market...</p>}
         <PriceHistory hybridId={id} event={0} pool={market.pool} refresh={refresh}/>
-        {others.length > 0 && <details className="detail-panel detail-connect"><summary>Explore how these markets connect</summary><p className="market-caption">Questions in this pool can be combined in the prediction ticket.</p><ul>{others.map(other => <li key={other.id}><Link href={`/markets/hybrid/${other.id.replace(/-\d+$/, '')}/${other.eventIndex}`} className="text-link">{other.question}</Link></li>)}</ul></details>}
+        {others.length > 0 && <HybridConnections market={market} markets={markets}/>}
         {snapshot && <><section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={status}>{statusText}</StatusBadge></div>
           <p>{reality ? 'Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers and Kleros hears disputes.'
             : 'Your shares stay in your wallet while the event runs. The source rule fixes the answer. Kleros hears a challenged answer.'}</p><Stepper steps={steps} label="Settlement steps"/>
@@ -302,7 +329,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           <dl className="facts"><dt>Reader</dt><dd>{snapshot.source?.adapter || 'Reality.eth'}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
             <dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></dl>
           {reality && <p className="market-caption">Question ID: {reality.questionId}. A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted.</p>}
-        </section></>}
+        </section>{others.length > 0 && <section className="detail-panel detail-thesis"><h2>Build your thesis</h2><p>Put your estimates beside the pool's joint outcomes and current combined-share quotes.</p><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Explore your view</Link></section>}</>}
       </div><aside className="detail-sidebar">
         <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each winning share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
           {summary && !closed && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes ? `${cash(summary.prices.yes)} AUSD` : 'Unavailable'}</strong></div><div><span>No</span><strong>{summary.prices.no ? `${cash(summary.prices.no)} AUSD` : 'Unavailable'}</strong></div></div>}
@@ -315,9 +342,27 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
               {extra1 && <SegmentedControl label="Second answer" value={extra1Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra1Side(value === 'no' ? 'no' : 'yes')}/>}
               {extra1 && <label>Third question<select value={extra2} onChange={e => setExtra2(e.target.value)}><option value="">None</option>{others.filter(item => item.id !== extra1).map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>}
               {extra2 && <SegmentedControl label="Third answer" value={extra2Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra2Side(value === 'no' ? 'no' : 'yes')}/>}</details>}
-            {quote && <p className="market-caption">Current buy quote: {cash(quote.buyAtoms)} test AUSD. Confirm the exact amount in your wallet.</p>}
-            <button className="btn btn-primary" disabled={!owner || busy || !!pending || !quote} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
-              { side, quantity: parseUnits(shares, 6).toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button></>}
+            {extra1 && <label>How the answers combine<select value={combinationRule} onChange={event => setCombinationRule(event.target.value as 'AND' | 'OR' | 'EXACTLY_ONE')}><option value="AND">Both answers (AND)</option><option value="OR">At least one answer (OR)</option><option value="EXACTLY_ONE">Exactly one answer</option></select></label>}
+            {owner && <div className="ticket-quote-state" aria-live="polite">
+              {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
+              <button type="button" className="btn btn-quiet ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
+            </div>}
+            {currentQuote && <div className="ticket-review" aria-label="Current prediction quote">
+              <h3>{mode === 'buy' ? 'Review your purchase' : 'Review your sale'}</h3>
+              <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'} · {extra1 ? `${combinationRule.replace('_', ' ')} · ` : ''}{claim.map(item => `${markets.find(question => question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question'}: ${item.side === 'yes' ? 'Yes' : 'No'}`).join(' · ')}</p>
+              {quotedAtoms && <dl className="review-figures">
+                <div className="review-cost"><dt>{mode === 'buy' ? 'Quoted cost' : 'Quoted proceeds'}</dt><dd>{cash(quotedAtoms)} test AUSD</dd></div>
+                <div><dt>Average per share</dt><dd>{perShare} test AUSD</dd></div>
+                <div><dt>{mode === 'buy' ? 'Gross payout if correct' : 'Shares leaving your wallet'}</dt><dd>{mode === 'buy' ? `${shares} test AUSD` : `${shares} shares`}</dd></div>
+                <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
+                <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
+              </dl>}
+              <p>1% price tolerance. A fresh quote is checked when you review the transaction. A winning share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
+              {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
+              {mode === 'sell' && !canSell && <p role="status">This wallet does not hold enough shares of the selected prediction to sell.</p>}
+              <button className="btn btn-primary" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
+                { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button>
+            </div>}</>}
           {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
             {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
               && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
@@ -329,11 +374,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
               {extra1 && <SegmentedControl label="Second answer" value={extra1Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra1Side(value === 'no' ? 'no' : 'yes')}/>}
               {extra1 && <label>Third question<select value={extra2} onChange={e => setExtra2(e.target.value)}><option value="">None</option>{others.filter(item => item.id !== extra1).map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>}
               {extra2 && <SegmentedControl label="Third answer" value={extra2Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra2Side(value === 'no' ? 'no' : 'yes')}/>}
+              <label>How the answers combine<select value={combinationRule} onChange={event => setCombinationRule(event.target.value as 'AND' | 'OR' | 'EXACTLY_ONE')}><option value="AND">Both answers (AND)</option><option value="OR">At least one answer (OR)</option><option value="EXACTLY_ONE">Exactly one answer</option></select></label>
               {extra1 && <p>{combinedPosition ? `${cash(combinedPosition.holdingsAtoms)} shares held · ${cash(combinedPosition.payoutAtoms || '0')} test AUSD payable` : 'Reading this selection...'}</p>}
               {extra1 && combinedPosition && BigInt(combinedPosition.holdingsAtoms) > 0n
                 && BigInt(combinedPosition.payoutAtoms || '0') > 0n
                 && <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
-                  { side, claim, quantity: combinedPosition.holdingsAtoms }))}>Collect combined payout</button>}
+                  { side, rule: combinationRule, claim, quantity: combinedPosition.holdingsAtoms }))}>Collect combined payout</button>}
             </details>}</>}
           <details className="disclosure"><summary>How this market works</summary><p>Trades use test AUSD on Monad. Settlement follows the published source route. Challenged results go to Kleros.</p></details></div></section>
         {snapshot?.route === 'mechanical' && snapshot.phase === 1 && snapshot.marketNow < snapshot.challengeUntil && <section className="detail-panel"><h2>Challenge this answer</h2><p>Submit a different answer and a {cash(snapshot.bondAtoms)} test AUSD bond. A challenged answer goes to Kleros.</p>
