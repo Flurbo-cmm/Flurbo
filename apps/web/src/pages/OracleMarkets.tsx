@@ -202,7 +202,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
     let live = true;
     void request<{ holdingsAtoms: string }>(`/api/oracle/${id}/action`, 'POST', {
       action: 'position', input: { side, claim }, owner,
-    }).then(value => { if (live) setPosition(value.holdingsAtoms); })
+    }).then(value => { if (live) setPosition(typeof value.holdingsAtoms === 'string' && /^\d+$/.test(value.holdingsAtoms) ? value.holdingsAtoms : null); })
       .catch(() => { if (live) setPosition(null); });
     return () => { live = false; };
   }, [id, owner, market, side, extra1, extra2, extra1Side, extra2Side, refresh]);
