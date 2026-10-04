@@ -10,8 +10,8 @@ const pools = addresses('pool'), resolvers = addresses('resolver');
 if (!pools.length || !resolvers.length || pools.some(a => !/^0x[0-9a-f]{40}$/.test(a)) || resolvers.some(a => !/^0x[0-9a-f]{40}$/.test(a))) throw new Error('Invalid registry addresses');
 const yaml = [
   '# Generated from config/collections.json. Run npm run config after registry changes.',
-  'name: flurbo-monad-indexer',
-  'description: Flurbo pool trades and resolution events on Monad testnet',
+  'name: flurbo-company-monad-indexer',
+  'description: Flurbo company pool trades and resolution events on Monad testnet',
   'address_format: lowercase',
   'contracts:',
   '  - name: PilotPool',

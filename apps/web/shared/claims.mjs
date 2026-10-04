@@ -9,11 +9,11 @@ export function ruleMatches(rule, matches) {
     : rule === 'EXACTLY_ONE' ? count === 1 : count >= 2;
 }
 export function claimEvents(scope) {
-  if (!Number.isInteger(scope) || scope <= 0 || scope >= 2 ** 4) throw Error('Invalid claim scope');
-  return [0, 1, 2, 3].filter(i => scope & (1 << i));
+  if (!Number.isInteger(scope) || scope <= 0 || scope >= 2 ** 32) throw Error('Invalid claim scope');
+  return Array.from({ length: 32 }, (_, i) => i).filter(i => Math.floor(scope / 2 ** i) % 2 === 1);
 }
 export function validateClaim(scope, mask, events) {
-  if (![2, 3, 4].includes(events) || typeof mask !== 'string' || !/^[1-9][0-9]{0,2}$/.test(mask)) throw Error('Invalid claim');
+  if (!Number.isInteger(events) || events < 2 || events > 32 || typeof mask !== 'string' || !/^[1-9][0-9]{0,2}$/.test(mask)) throw Error('Invalid claim');
   const legs = claimEvents(scope);
   if (scope >= 2 ** events || legs.length > 3 || BigInt(mask) >= (1n << BigInt(2 ** legs.length)) - 1n) throw Error('Unsupported claim');
   return legs;
@@ -23,7 +23,7 @@ export function encodeClaim({events, legs, rule}) {
   const sorted = [...legs].sort((a, b) => a.event - b.event);
   if (new Set(sorted.map(l => l.event)).size !== sorted.length || sorted.some(l => !Number.isInteger(l.event) || l.event < 0 || l.event >= events || typeof l.yes !== 'boolean')) throw Error('Invalid claim answers');
   if (rule === 'AT_LEAST_TWO' && legs.length < 2) throw Error('Choose at least two answers');
-  const scope = sorted.reduce((s, l) => s | (1 << l.event), 0);
+  const scope = sorted.reduce((s, l) => s + 2 ** l.event, 0);
   let mask = 0n;
   for (let state = 0; state < 2 ** sorted.length; state++) {
     if (ruleMatches(rule, sorted.map((l, i) => Boolean(state & (1 << i)) === l.yes))) mask |= 1n << BigInt(state);

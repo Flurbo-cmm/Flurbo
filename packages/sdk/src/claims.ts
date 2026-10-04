@@ -18,11 +18,16 @@ export const RULES = CLAIM_RULES;
 
 const POOL = /^0x[0-9a-f]{40}$/;
 export const bitCount = (value: number): number => { let n = 0; for (let v = value; v; v &= v - 1) n++; return n; };
-export const scopeEvents = (scope: number): number[] => { const out: number[] = []; for (let i = 0; i < 31; i++) if (scope & (1 << i)) out.push(i); return out; };
+export const scopeEvents = (scope: number): number[] => { const out: number[] = []; for (let i = 0; i < 32; i++) if (Math.floor(scope / 2 ** i) % 2 === 1) out.push(i); return out; };
 
 const canonical = <T>(fn: () => T, message: string): T => { try { return fn(); } catch { throw new FlurboError('unsupported_claim', message); } };
 
 export function assertClaim(claim: Claim, eventCount: number): Claim {
+  if (eventCount < 2 || eventCount > 4) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to four events.');
+  return assertWideClaim(claim, eventCount);
+}
+
+export function assertWideClaim(claim: Claim, eventCount: number): Claim {
   if (claim.chainId !== CHAIN_ID) throw new FlurboError('unsupported_claim', 'Only Monad testnet (chain 10143) is supported.');
   if (!POOL.test(claim.pool)) throw new FlurboError('unsupported_claim', 'Invalid pool address.');
   if (typeof claim.mask !== 'bigint' || claim.mask <= 0n) throw new FlurboError('unsupported_claim', 'A claim must win in some outcomes and lose in others.');
@@ -39,8 +44,12 @@ export function assertSamePool(claims: Claim[]): string {
 
 // Build a claim from answers and a payout rule through the canonical encoder.
 export function encode(pool: string, eventCount: number, answers: Answer[], rule: Rule): Claim {
+  if (eventCount < 2 || eventCount > 4) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to four events.');
+  return encodeWide(pool, eventCount, answers, rule);
+}
+export function encodeWide(pool: string, eventCount: number, answers: Answer[], rule: Rule): Claim {
   const encoded = canonical(() => encodeClaim({ events: eventCount, legs: answers, rule }), 'This combination is not supported in this pool.');
-  return assertClaim({ chainId: CHAIN_ID, pool, scope: encoded.scope, mask: BigInt(encoded.mask) }, eventCount);
+  return assertWideClaim({ chainId: CHAIN_ID, pool, scope: encoded.scope, mask: BigInt(encoded.mask) }, eventCount);
 }
 export const allOf = (pool: string, eventCount: number, answers: Answer[]): Claim => encode(pool, eventCount, answers, 'AND');
 export const anyOf = (pool: string, eventCount: number, answers: Answer[]): Claim => {
@@ -87,13 +96,25 @@ export function claimFromJSON(value: unknown, eventCount: number): Claim {
 // uniformly over both answers; known answers are fixed. VOID is not No.
 export function payoutFraction(claim: Claim, eventCount: number, resolution: { yesMask: number; voidMask: number }): { numerator: bigint; denominator: bigint } {
   assertClaim(claim, eventCount);
-  const all = 2 ** eventCount - 1, known = all ^ resolution.voidMask;
-  if ((resolution.yesMask & resolution.voidMask) !== 0 || resolution.yesMask > all || resolution.voidMask > all) throw new FlurboError('invalid_input', 'Invalid resolution.');
-  let numerator = 0n, denominator = 0n;
-  for (let state = 0; state <= all; state++) {
-    if ((state & known) !== resolution.yesMask) continue;
-    denominator++;
-    if (paysIn(claim, state)) numerator++;
+  return payoutFractionWide(claim, eventCount, resolution);
+}
+export function payoutFractionWide(claim: Claim, eventCount: number, resolution: { yesMask: number; voidMask: number }): { numerator: bigint; denominator: bigint } {
+  assertWideClaim(claim, eventCount);
+  const all = 2 ** eventCount - 1;
+  const { yesMask, voidMask } = resolution;
+  if (!Number.isInteger(yesMask) || !Number.isInteger(voidMask) || yesMask < 0 || voidMask < 0
+    || yesMask > all || voidMask > all || (yesMask & voidMask) !== 0)
+    throw new FlurboError('invalid_input', 'Invalid resolution.');
+  const events = scopeEvents(claim.scope);
+  let localNumerator = 0n, localDenominator = 0n;
+  for (let state = 0; state < 2 ** events.length; state++) {
+    if (!events.every((event, i) => Math.floor(voidMask / 2 ** event) % 2 === 1
+      || (Math.floor(yesMask / 2 ** event) % 2 === 1) === (Math.floor(state / 2 ** i) % 2 === 1))) continue;
+    localDenominator++;
+    if ((claim.mask & (1n << BigInt(state))) !== 0n) localNumerator++;
   }
+  const globalDenominator = 1n << BigInt(bitCount(voidMask));
+  const numerator = localNumerator * globalDenominator / localDenominator;
+  const denominator = globalDenominator;
   return { numerator, denominator };
 }
