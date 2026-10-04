@@ -113,6 +113,9 @@ test('new-pool binding blocks a foreign resolver and a substituted source', asyn
 });
 
 test('trading prepares a bounded pool transaction after a specific approval', async () => {
+  const quote = await fixture({ marketNow: 500 }).prepare(route.id, 'quote', { side: 'yes', quantity: '1' }, owner);
+  assert.deepEqual([quote.buyAtoms, quote.maxCostAtoms, quote.allowanceAtoms, quote.holdingsAtoms],
+    ['500000', '505000', '0', '0']);
   const approve = await fixture({ marketNow: 500 }).prepare(route.id, 'approve', { side: 'yes', quantity: '1' }, owner);
   assert.equal(approve.transaction.chainId, 10143);
   await assert.rejects(fixture({ marketNow: 500 }).prepare(route.id, 'buy', { side: 'yes', quantity: '1' }, owner), /approve/);

@@ -1,25 +1,29 @@
 .oracle-page { padding-bottom: 90px; }
-.oracle-columns { display: grid; grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); align-items: start; gap: var(--s-8); }
-.oracle-main, .oracle-side { display: grid; gap: 20px; min-width: 0; }
 .oracle-page .detail-panel { min-width: 0; }
-.oracle-page .detail-panel h2 { margin: 0 0 12px; }
-.oracle-page .detail-panel p { line-height: 1.55; }
 .oracle-facts { display: grid; gap: 0; margin: 16px 0; }
-.oracle-facts > div { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-bottom: 1px solid #e1e3da; }
-.oracle-facts dt { color: #647066; }
+.oracle-facts > div { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.oracle-facts dt { color: var(--ink-3); }
 .oracle-facts dd { margin: 0; text-align: right; font-weight: 650; overflow-wrap: anywhere; }
 .oracle-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
-.oracle-fields label { display: grid; align-content: start; gap: 7px; color: #47584b; font-weight: 600; }
-.oracle-fields input, .oracle-fields select, .oracle-fields textarea, .oracle-side > .detail-panel > select { width: 100%; box-sizing: border-box; border: 1px solid #bdc7ba; border-radius: 9px; background: #fff; color: #13271a; padding: 11px 12px; font: inherit; }
+.oracle-fields label { display: grid; align-content: start; gap: 7px; color: var(--ink-2); font-weight: 600; }
+.oracle-fields input, .oracle-fields select, .oracle-fields textarea, .oracle-wallet-provider select, .oracle-settlement-action > label select { width: 100%; box-sizing: border-box; border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); color: var(--ink); padding: 11px 12px; font: inherit; }
 .oracle-fields textarea { resize: vertical; }
 .oracle-fields .oracle-wide { grid-column: 1 / -1; }
 .oracle-address { overflow-wrap: anywhere; font-size: .84rem; }
-.oracle-review { border-color: #86a88c; background: #edf4e8; }
 .oracle-counteranswer { border-top: 1px solid var(--rule); padding-top: var(--s-3); }
 .oracle-counteranswer summary { cursor: pointer; font-weight: 600; }
 .oracle-counteranswer p { margin-top: var(--s-3); }
-.oracle-source { display: flex; gap: 16px; margin-top: 24px; }
-.oracle-source svg { flex: none; color: #3e6b49; margin-top: 3px; }
 .oracle-page .cluster { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-@media (max-width: 900px) { .oracle-columns { grid-template-columns: 1fr; } .oracle-side { grid-row: 1; } }
+.oracle-settlement-action { display: grid; gap: var(--s-3); justify-items: start; border-top: 1px solid var(--rule); padding-top: var(--s-4); }
+.oracle-settlement-action h3 { margin: 0; }
+.oracle-settlement-action > label { display: grid; gap: var(--s-2); width: min(100%, 340px); font-weight: 600; }
+.oracle-combination { border: 1px solid var(--rule); border-radius: var(--r-control); padding: var(--s-3); }
+.oracle-combination summary { cursor: pointer; font-weight: 600; }
+.oracle-combination[open] { display: grid; gap: var(--s-3); }
+.oracle-combination .oracle-fields { grid-template-columns: 1fr; margin: 0; }
+.oracle-wallet-provider { display: grid; gap: var(--s-2); font-size: 13px; }
+.oracle-ticket-action { width: 100%; }
+.oracle-credit { border-top: 1px solid var(--rule); padding-top: var(--s-3); display: grid; gap: var(--s-2); justify-items: start; }
+.oracle-page .detail-primary .ticket-review { width: 100%; }
+.oracle-page .detail-settlement > .btn { justify-self: start; }
 @media (max-width: 600px) { .oracle-fields { grid-template-columns: 1fr; } .oracle-facts > div { display: grid; gap: 4px; } .oracle-facts dd { text-align: left; } }

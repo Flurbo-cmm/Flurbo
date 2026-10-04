@@ -135,6 +135,32 @@ test('Reality-backed pool uses the same member preferences and email delivery', 
   assert.deepEqual(sent.map(message => message.to), [['a@example.com'], ['a@example.com']]);
 });
 
+test('Reality source window notice reaches only a current holder and is sent once', async () => {
+  const redis = fakeRedis(), pool = addr(0x72), sent: any[] = [];
+  redis.hashes.set(LINKS, new Map([[WA, JSON.stringify({ account: A, at: 1 })], [WB, JSON.stringify({ account: B, at: 1 })]]));
+  redis.kv.set(`flurbo:pilot:index:v1:${pool}`, JSON.stringify({ through: 100, target: 100,
+    logs: [{ name: 'Traded', args: { trader: WA, scope: 1, mask: '2', isBuy: true } },
+      { name: 'Traded', args: { trader: WB, scope: 1, mask: '2', isBuy: true } }] }));
+  const service = {
+    manifest: { pool, publication: { draft: { closesAt: NOW - 3600,
+      events: [{ question: 'Will the block be even?', observationEndsAt: NOW - 60 }] } } },
+    index: { refresh: async () => ({ complete: true }) },
+    eventHref: () => '/markets/oracle/oracle-test-0',
+    status: async () => ({ resolved: false, delivered: false, cases: [{ phase: 0, proposal: 0, challengeUntil: 0 }] }),
+    positions: async (wallet: string, claims: any[]) => ({ rows: claims.map(c => ({ ...c,
+      quantity: wallet === WA ? '1000000' : '0', payoutAtoms: null })) }),
+  };
+  const notices = memberNotices({ command: redis.command, origin: 'https://flurbopm.singu.online', now: () => NOW,
+    env: { FLURBO_NOTIFY_ENABLED: 'true' }, pools: () => [{ namespace: 'oracle:' + pool, label: 'Oracle fixture', service }],
+    applications: { noticeSecret: SECRET, contacts: async () => ({ [A]: 'a@example.com', [B]: 'b@example.com' }) },
+    send: async (message: any) => { sent.push(message); } })!;
+  assert.equal(await notices.tick(), 'sent 1');
+  assert.deepEqual(sent.map(message => message.to), [['a@example.com']]);
+  assert.match(sent[0].subject, /source window has ended/);
+  assert.match(sent[0].text, /answer is not final yet/);
+  assert.equal(await notices.tick(), 'idle');
+});
+
 test('closing reminders are opt-in and only for holders of that market', async () => {
   const h = fixture();
   assert.equal(await h.notices.tick(), 'sent 0', 'nobody opted in');
@@ -152,7 +178,7 @@ test('members who turned notices off, or used the unsubscribe link, get nothing'
   assert.equal(await h.notices.tick(), 'sent 0');
   const h2 = fixture({ delivered: true });
   assert.ok(await h2.notices.unsubscribe(unsubscribeToken(SECRET, A)));
-  assert.deepEqual(JSON.parse(h2.redis.hashes.get(PREFS)!.get(A)!), { payouts: false, challenges: false, closing: false });
+  assert.deepEqual(JSON.parse(h2.redis.hashes.get(PREFS)!.get(A)!), { payouts: false, challenges: false, observations: false, closing: false });
   assert.equal(await h2.notices.tick(), 'sent 0');
   assert.equal(await h2.notices.unsubscribe('0x' + '1'.repeat(40) + '.' + 'f'.repeat(64)), null);
   await assert.rejects(h2.notices.setPreferences(A, { payouts: 'yes' } as any));
@@ -200,7 +226,7 @@ test('settings need the signed-in member; the unsubscribe link works without sig
   try {
     assert.equal((await call('GET', '/api/account/notifications')).status, 401);
     const got = JSON.parse((await call('GET', '/api/account/notifications', 'member')).text);
-    assert.deepEqual([got.email, got.preferences], ['a@example.com', { payouts: true, challenges: true, closing: false }]);
+    assert.deepEqual([got.email, got.preferences], ['a@example.com', { payouts: true, challenges: true, observations: true, closing: false }]);
     assert.equal((await call('POST', '/api/account/notifications', 'member', { closing: 'yes' })).status, 400);
     assert.equal(JSON.parse((await call('POST', '/api/account/notifications', 'member', { closing: true })).text).preferences.closing, true);
     const link = `/api/notifications/unsubscribe/${unsubscribeToken(SECRET, A)}`;
@@ -209,7 +235,7 @@ test('settings need the signed-in member; the unsubscribe link works without sig
     assert.equal(JSON.parse((await call('GET', '/api/account/notifications', 'member')).text).preferences.payouts, true, 'opening the link changes nothing');
     const done = await call('POST', link, '', undefined, false);
     assert.equal(done.status, 200); assert.match(done.text, /You will not get Flurbo notices/);
-    assert.deepEqual(JSON.parse((await call('GET', '/api/account/notifications', 'member')).text).preferences, { payouts: false, challenges: false, closing: false });
+    assert.deepEqual(JSON.parse((await call('GET', '/api/account/notifications', 'member')).text).preferences, { payouts: false, challenges: false, observations: false, closing: false });
     assert.equal((await call('POST', `/api/notifications/unsubscribe/${A}.${'0'.repeat(64)}`, '', undefined, false)).status, 400);
   } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
 });

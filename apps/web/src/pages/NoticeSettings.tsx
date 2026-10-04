@@ -1,11 +1,12 @@
 import {useEffect,useState} from 'react';
 import {appFetch} from '../platform-fetch';
 
-type Prefs={payouts:boolean;challenges:boolean;closing:boolean};
+type Prefs={payouts:boolean;challenges:boolean;observations:boolean;closing:boolean};
 type State={enabled:boolean;email:string|null;preferences:Prefs};
 const OPTIONS:[keyof Prefs,string,string][]=[
   ['payouts','Payout ready to collect','When results are final and you have test AUSD to collect, with one reminder 3 days later if it is still uncollected.'],
   ['challenges','Answer proposed for a question you hold','With the proposed answer and the deadline to challenge it if it is wrong.'],
+  ['observations','Reality.eth source window ended','When the source window ends for a question you hold. The answer may still be disputed and is not final.'],
   ['closing','Trading closes soon','About 2 hours before trading closes in a market where you hold shares.'],
 ];
 async function call(input?:Prefs):Promise<State>{
