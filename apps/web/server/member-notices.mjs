@@ -92,11 +92,11 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const events = m.publication.draft.events;
     if (!status.resolved && t >= closesAt - CLOSING_BEFORE && t < closesAt - 300)
       stages.push({ kind: 'closing', id: `closing:${m.pool}`, market: label, namespace, closesAt });
-    if (namespace.startsWith('oracle:')) events.forEach((event, index) => {
+    if (namespace.startsWith('oracle:') || namespace.startsWith('hybrid:')) events.forEach((event, index) => {
       const end = Number(event.observationEndsAt);
       if (Number.isSafeInteger(end) && t >= end && t < end + OBSERVATION_WINDOW)
         stages.push({ kind: 'observation', id: `observation:${m.pool}:${index}:${end}`, market: label, namespace,
-          event: index, question: event.question, href: service.eventHref?.(index) });
+          event: index, question: event.question, route: event.route || 'reality', href: service.eventHref?.(index) });
     });
     status.cases.forEach((c, event) => {
       if (Number(c.phase) === 1 && Number(c.challengeUntil) > t + 600)
@@ -136,7 +136,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const parts = items.map(({ stage, detail }) => {
       if (stage.kind === 'payout' || stage.kind === 'reminder') return `${stage.kind === 'reminder' ? 'Reminder: ' : ''}results are final for ${stage.market}. You have about ${ausd(detail.payoutAtoms)} test AUSD to collect. Payouts are not sent automatically: open ${detail.href || stage.href ? 'the market page' : 'Portfolio'} and collect with the MetaMask wallet that holds the shares.\n${url}${detail.href || stage.href || '/portfolio'}`;
       if (stage.kind === 'challenge') return `An answer was proposed for a question you hold in ${stage.market}:\n"${stage.question}"\nProposed answer: ${stage.proposal}. It can be challenged until ${utc(stage.until)}. If it is right, you do not need to do anything. If it is wrong, review the evidence and challenge it from the market page before the deadline.\n${url}${stage.href || `/markets/${stage.namespace}/${stage.event}`}`;
-      if (stage.kind === 'observation') return `The source window has ended for a question you hold in ${stage.market}:\n"${stage.question}"\nThe answer is not final yet. A bonded answer can be submitted on Reality.eth, and disputed answers can go to Kleros. Follow the settlement timeline on the market page.\n${url}${stage.href}`;
+      if (stage.kind === 'observation') return `The source window has ended for a question you hold in ${stage.market}:\n"${stage.question}"\n${stage.route === 'mechanical' ? 'The committed reader checks the official source and posts a bonded answer when the evidence is ready. A challenge can go to Kleros.' : 'The answer is not final yet. A bonded answer can be submitted on Reality.eth, and disputed answers can go to Kleros.'} Follow the settlement timeline on the market page.\n${url}${stage.href}`;
       return `Trading in ${stage.market} closes at ${utc(stage.closesAt)}, in about 2 hours. After that you can no longer buy or sell there.\n${url}/markets`;
     });
     const kinds = new Set(items.map(i => i.stage.kind === 'reminder' ? 'payout' : i.stage.kind));
@@ -159,7 +159,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
     let indexing = false, unavailable = false;
     for (const pool of pools()) {
       let stages, held;
-      try { if (pool.namespace.startsWith('oracle:')) {
+      try { if (pool.namespace.startsWith('oracle:') || pool.namespace.startsWith('hybrid:')) {
           let progress;
           for (let pass = 0; pass < 4; pass++) {
             progress = await pool.service.index.refresh();

@@ -1,0 +1,15 @@
+{
+  "category": "Oracle",
+  "title": "Flurbo mechanical source dispute",
+  "description": "The question, committed source rule, provisional evidence, and challenger evidence are in the linked case evidence. Decide the outcome under that published rule. A court refusal is treated as Void by the Flurbo testnet resolver.",
+  "question": "Under the published rule and evidence for this case, what is the correct outcome?",
+  "rulingOptions": {
+    "type": "single-select",
+    "titles": ["No", "Yes", "Void"],
+    "descriptions": [
+      "The published condition is false.",
+      "The published condition is true.",
+      "The published rule requires Void, such as missing or invalid source data."
+    ]
+  }
+}

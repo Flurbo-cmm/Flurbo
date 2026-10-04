@@ -140,7 +140,7 @@ On the **company** Render service, retain the existing origin, Monad RPC, Redis,
 | `FLURBO_ORACLE_RELAY_ENABLED` | `true` after the catalog and relay key are ready |
 | `FLURBO_ORACLE_RELAY_PRIVATE_KEY` | Raw private key for the **new** `flurbo-oracle-relay` keystore, entered only in Render's secret field |
 
-Member notices for both pools use the existing `FLURBO_SETTLEMENT_BOT=true`, `FLURBO_NOTIFY_ENABLED=true`, `FLURBO_APPLICATIONS_RESEND_KEY`, and `FLURBO_APPLICATIONS_EMAIL_FROM` settings. No second email key or sender is needed for the new pool.
+Member notices for both pools use the existing `FLURBO_SETTLEMENT_BOT=true`, `FLURBO_NOTIFY_ENABLED=true`, `FLURBO_APPLICATIONS_RESEND_KEY`, and `FLURBO_APPLICATIONS_EMAIL_FROM` settings. No second email key or sender is needed for the new pool. The Monad relay does not post the first Reality.eth answer. See [ORACLE_AUTO_ANSWER.md](ORACLE_AUTO_ANSWER.md) for the separate source reader and Sepolia answer signer.
 
 To retrieve the key for Render, run `cast wallet decrypt-keystore flurbo-oracle-relay` locally and enter its hidden password. Do not paste the output into chat, a file, or a Git command. Record the encrypted keystore and its password in your own secure backup. Fund the relay's public address with Monad testnet MON. The service refuses to start the relay if the private key does not match every registered route.
 

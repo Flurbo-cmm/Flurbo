@@ -6,11 +6,11 @@ type Point={timestamp:number;blockNumber:string;prices:{event:number;yes:string|
 type History={pool:string;sampling:string;points:Point[]};
 const stamp=(n:number)=>new Date(n*1000).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 const axisStamp=(n:number)=>new Date(n*1000).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
-export default function PriceHistory({namespace,oracleId,event,pool,refresh}:{event:number;pool:string;refresh:number}&({namespace:PilotNamespace;oracleId?:never}|{namespace?:never;oracleId:string})){
+export default function PriceHistory({namespace,oracleId,hybridId,event,pool,refresh}:{event:number;pool:string;refresh:number}&({namespace:PilotNamespace;oracleId?:never;hybridId?:never}|{namespace?:never;oracleId:string;hybridId?:never}|{namespace?:never;oracleId?:never;hybridId:string})){
   const [data,setData]=useState<History|null>(null),[error,setError]=useState(false);
   const [range,setRange]=useState<'day'|'all'>('all');
   useEffect(()=>{const abort=new AbortController();setError(false);
-    const load=oracleId?appFetch(`/api/oracle/${oracleId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
+    const load=oracleId||hybridId?appFetch(`/api/${oracleId?'oracle':'hybrid'}/${oracleId||hybridId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
       if(!response.ok)throw Error('Price history unavailable');
       return response.json() as Promise<History>;
     }):pilotRequest<History>('price-history',undefined,namespace!,abort.signal);
@@ -18,7 +18,7 @@ export default function PriceHistory({namespace,oracleId,event,pool,refresh}:{ev
       if(value.pool!==pool)throw Error('Different collection');
       if(!abort.signal.aborted)setData(value);
     }).catch(()=>{if(!abort.signal.aborted)setError(true);});return()=>abort.abort();
-  },[namespace,oracleId,pool,event,refresh]);
+  },[namespace,oracleId,hybridId,pool,event,refresh]);
   const points=(data?.points||[]).filter(p=>range==='all'||p.timestamp>=Date.now()/1000-86400);
   const start=points[0]?.timestamp||0,end=points.at(-1)?.timestamp||start;
   const ceiling=Math.max(1,...points.flatMap(p=>{const q=p.prices.find(q=>q.event===event);return [Number(q?.yes||0)/1e6,Number(q?.no||0)/1e6];}));

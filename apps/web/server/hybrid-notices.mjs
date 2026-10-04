@@ -1,0 +1,62 @@
+import { getAddress, parseAbi } from 'viem';
+import { pilotIndex } from './pilot-index.mjs';
+import { readHybridSnapshot } from './hybrid-settlement-worker.mjs';
+import { hybridRealitySnapshot } from './hybrid-reality.mjs';
+
+const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
+  'function payoutFraction(uint32,uint256) view returns (uint256 numerator,uint256 denominator)']);
+
+export function hybridNoticePools({ pools, market, source, command }) {
+  if (!command || !pools?.length) return [];
+  return pools.map(record => {
+    let indexPromise = null;
+    async function refresh() {
+      if (!indexPromise) indexPromise = market.getBlock({ blockNumber: BigInt(record.deploymentBlock) })
+        .then(block => {
+          if (!block?.hash) throw Error('Hybrid verification block unavailable');
+          return pilotIndex({ manifest: { pool: record.pool.toLowerCase(),
+            resolver: record.resolver.toLowerCase(), verifiedBlock: record.deploymentBlock,
+            verifiedBlockHash: block.hash.toLowerCase() }, command, maxBlocks: 10_000,
+          initialWindowSize: 1000, rpc: (method, params) => market.request({ method, params }) });
+        }).catch(error => { indexPromise = null; throw error; });
+      return (await indexPromise).refresh();
+    }
+    const href = event => `/markets/hybrid/${record.pool}/${event}`;
+    return { namespace: `hybrid:${record.pool.toLowerCase()}`,
+      label: record.prepared.draft.title,
+      service: { manifest: { pool: record.pool.toLowerCase(),
+        publication: { draft: record.prepared.draft } },
+      index: { refresh }, eventHref: href, payoutHref: href(0),
+      async status() {
+        const snapshot = await readHybridSnapshot(record, market);
+        const cases = await Promise.all(snapshot.states.map(async (state, event) => {
+          if (record.prepared.draft.events[event].route === 'mechanical')
+            return { phase: Number(state.phase), proposal: Number(state.proposal),
+              challengeUntil: Number(state.challengeUntil) };
+          const reality = await hybridRealitySnapshot(source, record.prepared.draft.events[event]);
+          return { phase: !reality.finalized && !reality.pendingArbitration
+              && BigInt(reality.bondWei) > 0n && reality.sourceNow < reality.finalizesAt ? 1 : 0,
+            proposal: { No: 1, Yes: 2, Void: 3 }[reality.answerLabel] || 0,
+            challengeUntil: reality.finalizesAt };
+        }));
+        return { resolved: snapshot.resolved, delivered: snapshot.delivered,
+          cases };
+      },
+      async positions(wallet, claims) {
+        const snapshot = await readHybridSnapshot(record, market);
+        const rows = await Promise.all(claims.map(async claim => {
+          const quantity = await market.readContract({ address: getAddress(record.pool), abi: poolAbi,
+            functionName: 'holdings', args: [getAddress(wallet), claim.scope, BigInt(claim.mask)] });
+          let payoutAtoms = null;
+          if (snapshot.resolved && quantity > 0n) {
+            const [num, den] = await market.readContract({ address: getAddress(record.pool),
+              abi: poolAbi, functionName: 'payoutFraction', args: [claim.scope, BigInt(claim.mask)] });
+            payoutAtoms = (quantity * BigInt(num) / BigInt(den)).toString();
+          }
+          return { ...claim, quantity: quantity.toString(), payoutAtoms };
+        }));
+        return { rows };
+      } },
+    };
+  });
+}
