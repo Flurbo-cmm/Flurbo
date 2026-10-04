@@ -18,9 +18,16 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
       page.on('pageerror', (error: Error) => errors.push(error.message));
       await page.addInitScript((wallet: string) => {
+        const listeners = new Map<string, Set<() => void>>();
+        (window as any).walletEvent = (event: string) => listeners.get(event)?.forEach(listener => listener());
         (window as any).ethereum = { isMetaMask: true, request: async ({ method }: any) => {
           if (method === 'eth_chainId') return '0x279f';
-          if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [wallet];
+          if (method === 'eth_requestAccounts') {
+            sessionStorage.setItem('hybrid.permission', '1');
+            return [wallet];
+          }
+          if (method === 'eth_accounts') return sessionStorage.getItem('hybrid.permission')
+            ? [sessionStorage.getItem('hybrid.selectedWallet') || wallet] : [];
           if (method === 'eth_sendTransaction') {
             if (sessionStorage.getItem('hybrid.reject')) {
               sessionStorage.removeItem('hybrid.reject');
@@ -33,7 +40,10 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
           if (method === 'eth_getTransactionReceipt')
             return sessionStorage.getItem('hybrid.receiptReady') ? { status: '0x1' } : null;
           throw Error(`Unexpected wallet method: ${method}`);
-        } };
+        }, on: (event: string, listener: () => void) => {
+          if (!listeners.has(event)) listeners.set(event, new Set());
+          listeners.get(event)!.add(listener);
+        }, removeListener: (event: string, listener: () => void) => listeners.get(event)?.delete(listener) };
       }, owner);
       await page.route('**/*', async (route: any) => {
         const url = new URL(route.request().url()), path = url.pathname;
@@ -96,7 +106,7 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       await page.reload();
       await ticket.getByLabel('Shares', { exact: true }).waitFor({ state: 'hidden' });
       await page.evaluate(() => sessionStorage.setItem('hybrid.receiptReady', '1'));
-      await ticket.getByRole('button', { name: 'Reconnect MetaMask' }).click();
+      await ticket.getByRole('button', { name: 'Switch wallet' }).waitFor();
       await ticket.getByRole('heading', { name: 'Review your purchase' }).waitFor();
       assert.equal(await ticket.getByLabel('Shares', { exact: true }).inputValue(), '5');
       if (process.env.FLURBO_TEST_SCREENSHOT)
@@ -108,6 +118,12 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       await ticket.getByRole('heading', { name: 'Purchase complete' }).waitFor();
       assert.equal(await page.evaluate(() => sessionStorage.getItem('hybrid.sends')), '2');
       assert.equal(await page.evaluate(() => sessionStorage.getItem('flurbo.hybrid.pending.v1')), null);
+      await page.evaluate(() => {
+        sessionStorage.setItem('hybrid.selectedWallet', '0x' + '33'.repeat(20));
+        (window as any).walletEvent('accountsChanged');
+      });
+      await ticket.getByRole('button', { name: 'Link selected wallet' }).waitFor();
+      assert.equal(await ticket.getByRole('heading', { name: 'Purchase complete' }).count(), 0);
       assert.deepEqual(errors, []);
     } finally { await browser.close(); }
   });

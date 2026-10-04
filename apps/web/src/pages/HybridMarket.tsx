@@ -5,7 +5,8 @@ import { formatEther, formatUnits, parseUnits } from 'viem';
 import { appFetch } from '../platform-fetch';
 import { useAuth } from '../auth/context';
 import { discoverWallets, type BrowserWallet } from '../auth/wallet-choice';
-import { linkTradingWallet } from '../wallet-links';
+import { watchTradingWallet, type TradingConnection } from '../auth/trading-session';
+import { linkedWallets, linkTradingWallet } from '../wallet-links';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import QuantityStepper from '../components/ui/QuantityStepper';
 import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
@@ -97,6 +98,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [wallets, setWallets] = useState<BrowserWallet[]>([]);
   const [provider, setProvider] = useState<BrowserWallet['provider'] | null>(null);
   const [owner, setOwner] = useState('');
+  const [walletStatus, setWalletStatus] = useState<TradingConnection['status']>('checking');
+  const activeOwner = useRef('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -148,6 +151,24 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const run = (task: () => Promise<void>) => void task().catch(e => setError(friendly(e)));
   useEffect(() => discoverWallets(wallet => setWallets(current => current.some(item => item.provider === wallet.provider)
     ? current : [...current, wallet])), []);
+  useEffect(() => {
+    const selected = wallets[0]?.provider;
+    if (!selected || !auth.address) {
+      activeOwner.current = '';
+      setOwner(''); setProvider(null); setWalletStatus('disconnected');
+      return;
+    }
+    return watchTradingWallet({ provider: selected, account: auth.address, links: linkedWallets,
+      publish: value => {
+        setWalletStatus(value.status);
+        if (activeOwner.current !== value.owner) {
+          activeOwner.current = value.owner;
+          setPlan(null); setApprovalReady(null); setQuote(null);
+        }
+        setOwner(value.owner);
+        setProvider(value.owner ? selected : null);
+      } });
+  }, [wallets[0]?.provider, auth.address]);
   useEffect(() => {
     if (!market) return;
     let live = true;
@@ -238,7 +259,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       if (!Array.isArray(accounts) || !/^0x[0-9a-f]{40}$/i.test(accounts[0] || ''))
         throw Error('Select a MetaMask account.');
       await linkTradingWallet(wallet.provider, auth.address, accounts[0]);
+      activeOwner.current = accounts[0].toLowerCase();
       setProvider(wallet.provider); setOwner(accounts[0]);
+      setWalletStatus('connected');
       setNotice('Wallet connected. Review each transaction before signing.');
     } finally { setBusy(false); }
   }
@@ -413,7 +436,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           {notice && <p className="state-inline" role="status">{notice}</p>}
           {summary && !closed && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes ? `${cash(summary.prices.yes)} AUSD` : 'Unavailable'}</strong></div><div><span>No</span><strong>{summary.prices.no ? `${cash(summary.prices.no)} AUSD` : 'Unavailable'}</strong></div></div>}
           <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot?.user ? `${cash(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs each trade and bond you review'}</small></div>
-            <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : 'Connect MetaMask'}</button></div>
+            <button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
           {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }}/>
             <SegmentedControl label="Your answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => { setSide(value); setPlan(null); }}/>
             <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>

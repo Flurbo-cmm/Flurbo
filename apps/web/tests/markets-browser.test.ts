@@ -319,9 +319,12 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     await page.getByRole('heading',{name:'From prediction to payout'}).waitFor();
     if(process.env.FLURBO_TEST_ORACLE_SCREENSHOT)await page.screenshot({path:process.env.FLURBO_TEST_ORACLE_SCREENSHOT,fullPage:true});
     if(process.env.FLURBO_TEST_ORACLE_MOBILE_SCREENSHOT){await page.setViewportSize({width:390,height:844});await page.screenshot({path:process.env.FLURBO_TEST_ORACLE_MOBILE_SCREENSHOT,fullPage:true});await page.setViewportSize({width:1440,height:1000});}
-    await page.getByRole('button',{name:'Connect MetaMask'}).click();
+    await page.getByRole('button',{name:'Link selected wallet'}).click();
     await page.getByText('MetaMask connected. This wallet signs each transaction you review.').waitFor();
     assert.equal(linked,true);
+    assert.equal(Number(await page.evaluate(()=>sessionStorage.getItem('link.signatures'))),beforeOracleSignatures+1);
+    await page.reload();
+    await page.getByRole('button',{name:'Switch wallet'}).waitFor();
     assert.equal(Number(await page.evaluate(()=>sessionStorage.getItem('link.signatures'))),beforeOracleSignatures+1);
     await page.getByRole('button',{name:'Allow payment'}).waitFor();
     oracleAnswerActive=true;

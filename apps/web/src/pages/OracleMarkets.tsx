@@ -5,7 +5,8 @@ import { formatEther, formatUnits } from 'viem';
 import { appFetch } from '../platform-fetch';
 import { useAuth } from '../auth/context';
 import { discoverWallets, type BrowserWallet } from '../auth/wallet-choice';
-import { linkTradingWallet } from '../wallet-links';
+import { watchTradingWallet, type TradingConnection } from '../auth/trading-session';
+import { linkedWallets, linkTradingWallet } from '../wallet-links';
 import { type OracleMarket, type OracleMarketSummary } from '../market-directory';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import QuantityStepper from '../components/ui/QuantityStepper';
@@ -80,8 +81,11 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
   const [snapshot, setSnapshot] = useState<OracleSnapshot | null>(null);
   const [summary, setSummary] = useState<OracleMarketSummary | null>(null);
   const [wallets, setWallets] = useState<BrowserWallet[]>([]);
+  const [walletChoice, setWalletChoice] = useState(0);
   const [provider, setProvider] = useState<BrowserWallet['provider'] | null>(null);
   const [owner, setOwner] = useState('');
+  const [walletStatus, setWalletStatus] = useState<TradingConnection['status']>('checking');
+  const activeOwner = useRef('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -107,6 +111,24 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
 
   useEffect(() => discoverWallets(wallet => setWallets(current => current.some(item => item.provider === wallet.provider)
     ? current : [...current, wallet])), []);
+  useEffect(() => {
+    const selected = wallets[walletChoice]?.provider;
+    if (!selected || !auth.address) {
+      activeOwner.current = '';
+      setOwner(''); setProvider(null); setWalletStatus('disconnected');
+      return;
+    }
+    return watchTradingWallet({ provider: selected, account: auth.address, links: linkedWallets,
+      publish: value => {
+        setWalletStatus(value.status);
+        if (activeOwner.current !== value.owner) {
+          activeOwner.current = value.owner;
+          setPlan(null); setQuote(null);
+        }
+        setOwner(value.owner);
+        setProvider(value.owner ? selected : null);
+      } });
+  }, [wallets[walletChoice]?.provider, auth.address]);
   useEffect(() => {
     if (!markets.some(m => m.id === id)) return;
     const current = ++generation.current;
@@ -137,7 +159,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
     setBondEth(eth(snapshot.nextBondWei));
   }, [snapshot?.questionId, snapshot?.nextBondWei]);
 
-  async function connect(wallet = wallets.find(item => item.provider === provider) || wallets[0]) {
+  async function connect(wallet = wallets[walletChoice]) {
     if (!wallet) throw Error('Install MetaMask or open Flurbo in its browser.');
     if (!auth.address) throw Error('Sign in first.');
     setBusy(true); setError(''); setOwner(''); setProvider(null); setPlan(null);
@@ -147,7 +169,9 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
       if (!Array.isArray(accounts) || !/^0x[0-9a-f]{40}$/i.test(accounts[0] || '')) throw Error('Select a MetaMask account.');
       setNotice('Confirm the account link in MetaMask if requested.');
       await linkTradingWallet(wallet.provider, auth.address, accounts[0]);
+      activeOwner.current = accounts[0].toLowerCase();
       setProvider(wallet.provider); setOwner(accounts[0]);
+      setWalletStatus('connected');
       setNotice('MetaMask connected. This wallet signs each transaction you review.');
     } finally { setBusy(false); }
   }
@@ -331,8 +355,8 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
         {snapshot && <section className="detail-panel detail-trade" aria-label="Trade this market">
           {!snapshot.resolved && !closed && summary && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes === null ? 'Unavailable' : `${ausd(summary.prices.yes)} AUSD`}</strong></div><div><span>No</span><strong>{summary.prices.no === null ? 'Unavailable' : `${ausd(summary.prices.no)} AUSD`}</strong></div><p className="market-caption">Price per share, test AUSD. Exact quote before you confirm.</p></div>}
           <div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each winning share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
-            <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot.user ? `${ausd(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs Monad trades and Sepolia bonds'}</small></div><button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : 'Connect MetaMask'}</button></div>
-            {wallets.length > 1 && <label className="oracle-wallet-provider">Wallet provider<select aria-label="MetaMask provider" onChange={e => { setProvider(wallets[Number(e.target.value)]?.provider || null); setOwner(''); setPlan(null); }}>{wallets.map((w, i) => <option key={i} value={i}>{w.name} {i + 1}</option>)}</select></label>}
+            <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot.user ? `${ausd(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs Monad trades and Sepolia bonds'}</small></div><button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
+            {wallets.length > 1 && <label className="oracle-wallet-provider">Wallet provider<select aria-label="MetaMask provider" value={walletChoice} onChange={e => { activeOwner.current = ''; setWalletChoice(Number(e.target.value)); setProvider(null); setOwner(''); setPlan(null); }}>{wallets.map((w, i) => <option key={i} value={i}>{w.name} {i + 1}</option>)}</select></label>}
             <div className="ticket-controls">
               {!snapshot.resolved && !closed && <SegmentedControl label="Buy or sell" value={tradeMode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setTradeMode(value); setPlan(null); }} block/>}
               <SegmentedControl label="Your answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => { setSide(value); setPlan(null); }} block/>
