@@ -100,6 +100,41 @@ test('several notices due at once are combined into a single email', async () =>
   assert.match(h.sent[0].text, /An answer was proposed/); assert.match(h.sent[0].text, /to collect/);
 });
 
+test('Reality-backed pool uses the same member preferences and email delivery', async () => {
+  const redis = fakeRedis(), pool = addr(0x71), sent: any[] = [];
+  let resolved = false, scans = 0;
+  redis.hashes.set(LINKS, new Map([[WA, JSON.stringify({ account: A, at: 1 })]]));
+  const service = {
+    manifest: { pool, publication: { draft: { closesAt: NOW - 300,
+      events: [{ question: 'Will the block be even?' }, { question: 'Will the block contain a trade?' }] } } },
+    index: { refresh: async () => { scans++;
+      redis.kv.set(`flurbo:pilot:index:v1:${pool}`, JSON.stringify({ through: 100, target: 100,
+        logs: [{ name: 'Traded', args: { trader: WA, scope: 1, mask: '2', isBuy: true } },
+          { name: 'Traded', args: { trader: WA, scope: 2, mask: '2', isBuy: true } }] })); } },
+    eventHref: (event: number) => `/markets/oracle/oracle-test-${event}`,
+    payoutHref: '/markets/oracle/oracle-test-0',
+    status: async () => ({ resolved, delivered: resolved,
+      cases: [{ phase: resolved ? 0 : 1, proposal: 2, challengeUntil: NOW + 3600 },
+        { phase: 0, proposal: 0, challengeUntil: 0 }] }),
+    positions: async (_wallet: string, claims: any[]) => ({ rows: claims.map(c => ({ ...c,
+      quantity: '2000000', payoutAtoms: resolved ? c.scope === 2 ? '2000000' : '0' : null })) }),
+  };
+  const notices = memberNotices({ command: redis.command, origin: 'https://flurbopm.singu.online',
+    now: () => NOW, env: { FLURBO_NOTIFY_ENABLED: 'true' },
+    pools: () => [{ namespace: 'oracle:' + pool, label: 'Oracle fixture', service }],
+    applications: { noticeSecret: SECRET, contacts: async () => ({ [A]: 'a@example.com' }) },
+    send: async (message: any) => { sent.push(message); } })!;
+  assert.equal(await notices.tick(), 'sent 1');
+  assert.match(sent[0].text, /flurbopm\.singu\.online\/markets\/oracle\/oracle-test-0/);
+  assert.equal(await notices.tick(), 'idle');
+  resolved = true;
+  assert.equal(await notices.tick(), 'sent 1');
+  assert.match(sent[1].text, /open the market page and collect/);
+  assert.match(sent[1].text, /flurbopm\.singu\.online\/markets\/oracle\/oracle-test-1/);
+  assert.equal(scans, 3);
+  assert.deepEqual(sent.map(message => message.to), [['a@example.com'], ['a@example.com']]);
+});
+
 test('closing reminders are opt-in and only for holders of that market', async () => {
   const h = fixture();
   assert.equal(await h.notices.tick(), 'sent 0', 'nobody opted in');

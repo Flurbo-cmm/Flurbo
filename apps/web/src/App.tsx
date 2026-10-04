@@ -17,7 +17,6 @@ export const brand = "flurbo";
 
 const APP_LINKS = [
   { href: '/markets', label: 'Markets', match: (path: string) => path === '/markets' || path.startsWith('/markets/') },
-  { href: '/oracle', label: 'Oracle', match: (path: string) => path === '/oracle' || path.startsWith('/oracle/') },
   { href: '/agents', label: 'Agents', match: (path: string) => path === '/agents' || path.startsWith('/agents/') },
   { href: '/portfolio', label: 'Portfolio', match: (path: string) => path === '/portfolio' },
   { href: '/access', label: 'Your account', match: (path: string) => path === '/access' },
@@ -135,7 +134,6 @@ function AccountRoute() {
   // Same page choice as before; the page for this address starts loading during the checks.
   const locationKey: RouteKey | null = location==='/access' ? 'access' : location==='/fund' ? 'fund'
     : operatorPath ? (checking || !testingAccess ? null : location==='/evidence' ? 'evidence' : location==='/metrics' ? 'metrics' : 'workspace')
-    : location==='/oracle'||location.startsWith('/oracle/') ? 'oracle'
     : location==='/agents'||location.startsWith('/agents/') ? 'agents'
     : location.startsWith('/markets/')||['/markets','/portfolio'].includes(location) ? 'markets' : 'workspace';
   const approved = !!preview.access?.approved;
@@ -181,12 +179,17 @@ function AccountRoute() {
     : Page ? (key === 'access' ? <Page {...preview}/> : <Page/>) : null}</AppShell>;
 }
 
+function LegacyOracleRoute() {
+  const [location] = useLocation();
+  const id = location.match(/^\/oracle\/([a-z0-9-]{1,64})$/)?.[1];
+  return <Redirect to={id ? `/markets/oracle/${id}` : '/markets'} replace />;
+}
+
 function pageTitle(location: string) {
   return location === "/login" ? "Sign in | flurbo"
     : location === "/signup" ? "Create an account | flurbo"
     : /^\/markets\/[^/]+\/[0-3]\/thesis$/.test(location) ? "Build your thesis | flurbo"
     : location.startsWith("/markets") ? "Markets | flurbo"
-    : location.startsWith("/oracle") ? "Reality resolution | flurbo"
     : location === "/access" ? "Your account | flurbo"
     : location === "/fund" ? "Get test funds | flurbo"
     : location === "/docs" ? "Documentation | flurbo"
@@ -222,8 +225,9 @@ export default function App() {
       <Route path="/login" component={() => <AuthShell mode="login" />} />
       <Route path="/signup" component={() => <AuthShell mode="signup" />} />
       <Route path="/markets" component={AccountRoute} />
-      <Route path="/oracle" component={AccountRoute} />
-      <Route path="/oracle/:id" component={AccountRoute} />
+      <Route path="/oracle" component={LegacyOracleRoute} />
+      <Route path="/oracle/:id" component={LegacyOracleRoute} />
+      <Route path="/markets/oracle/:id" component={AccountRoute} />
       <Route path="/markets/:collection/:event" component={AccountRoute} />
       <Route path="/markets/:collection/:event/thesis" component={AccountRoute} />
       <Route path="/fund" component={AccountRoute} />

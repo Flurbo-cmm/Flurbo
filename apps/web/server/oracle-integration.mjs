@@ -1,5 +1,6 @@
 import { createPublicClient, encodeFunctionData, formatEther, formatUnits, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toHex } from 'viem';
 import { validateRealityRoute } from './reality-relay.mjs';
+import { pilotIndex } from './pilot-index.mjs';
 
 export const SEPOLIA_REALITY = '0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA';
 export const SEPOLIA_KLEROS = '0x05b942faecfb3924970e3a28e0f230910cedff45';
@@ -96,6 +97,7 @@ export function oracleCatalog(value) {
   for (const route of value.routes) {
     validateRealityRoute(route);
     if (typeof route.id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(route.id)
+      || route.deploymentBlock !== undefined && (!Number.isSafeInteger(route.deploymentBlock) || route.deploymentBlock < 0)
       || ids.has(route.id) || !same(route.reality, SEPOLIA_REALITY)
       || !same(route.arbitrator, SEPOLIA_KLEROS)) throw Error('Invalid oracle route');
     const event = route.pool.toLowerCase() + ':' + route.eventIndex;
@@ -111,6 +113,7 @@ export function oracleCatalog(value) {
       || routes.some(route => route.publication.events.length !== routes.length
         || !same(route.rulesHash, first.rulesHash) || !same(route.resolver, first.resolver)
         || !same(route.relay, first.relay) || !same(route.pool, first.pool)
+        || route.deploymentBlock !== first.deploymentBlock
         || !Number.isInteger(route.eventIndex) || route.eventIndex >= routes.length))
       throw Error('Incomplete oracle pool routes');
   }
@@ -139,8 +142,106 @@ export function oracleService({ catalog, source, market, evidence = null }) {
   const read = (client, address, abi, functionName, args = []) =>
     client.readContract({ address: getAddress(address), abi, functionName, args });
   const routePublic = route => ({ id: route.id, pool: route.pool, eventIndex: route.eventIndex,
-    question: route.publication.events[route.eventIndex].question, closesAt: route.publication.closesAt,
+    poolTitle: route.publication.title, question: route.publication.events[route.eventIndex].question, closesAt: route.publication.closesAt,
     observationEndsAt: route.publication.events[route.eventIndex].observationEndsAt });
+  async function marketSummary(id) {
+    const route = routeFor(id);
+    if (await market.getChainId() !== 10143) throw Error('Oracle RPC chain mismatch');
+    const [block, funded, resolved] = await Promise.all([
+      market.getBlock(),
+      read(market, route.pool, poolAbi, 'funded'),
+      read(market, route.pool, poolAbi, 'resolved'),
+    ]);
+    const marketNow = Number(block.timestamp);
+    if (!time(marketNow)) throw Error('Oracle chain time unavailable');
+    let yes = null, no = null;
+    if (funded && !resolved && marketNow < route.publication.closesAt) {
+      const scope = (1 << route.eventIndex) >>> 0;
+      const quotes = await Promise.allSettled([
+        read(market, route.pool, poolAbi, 'quoteBuy', [scope, 2n, 1_000_000n]),
+        read(market, route.pool, poolAbi, 'quoteBuy', [scope, 1n, 1_000_000n]),
+      ]);
+      if (quotes[0].status === 'fulfilled') yes = BigInt(quotes[0].value).toString();
+      if (quotes[1].status === 'fulfilled') no = BigInt(quotes[1].value).toString();
+    }
+    return { schema: 'flurbo.oracle-market.v1', id, pool: route.pool, marketNow, funded, resolved,
+      prices: { yes, no } };
+  }
+  function noticePools(command) {
+    if (!command) return [];
+    const pools = new Map();
+    for (const route of routes.values()) {
+      const key = route.pool.toLowerCase();
+      if (!pools.has(key)) pools.set(key, []);
+      pools.get(key).push(route);
+    }
+    return [...pools].filter(([, group]) => group.every(route => Number.isSafeInteger(route.deploymentBlock))).map(([pool, group]) => {
+      const first = group[0], resolver = first.resolver.toLowerCase(), deploymentBlock = first.deploymentBlock;
+      let indexPromise = null;
+      async function refresh() {
+        if (!indexPromise) indexPromise = market.getBlock({ blockNumber: BigInt(deploymentBlock) }).then(block => {
+          if (!block?.hash) throw Error('Oracle deployment block unavailable');
+          return pilotIndex({ manifest: { pool, resolver, verifiedBlock: deploymentBlock,
+            verifiedBlockHash: block.hash.toLowerCase() }, command,
+          maxBlocks: 10_000, initialWindowSize: 1000,
+          rpc: async (method, params) => {
+            try { return await market.request({ method, params }); }
+            catch (error) {
+              if (method === 'eth_getLogs' && /block range|range.{0,40}(limit|large|exceed)|limit.{0,40}range|too many (results|logs)|response size/i.test(String(error?.message || '')))
+                throw Object.assign(Error('Oracle log range rejected'), { code: 'LOG_RANGE_LIMIT' });
+              throw error;
+            }
+          } });
+        }).catch(error => { indexPromise = null; throw error; });
+        return (await indexPromise).refresh();
+      }
+      const sorted = [...group].sort((a, b) => a.eventIndex - b.eventIndex);
+      const service = {
+        manifest: { pool, publication: { draft: { closesAt: first.publication.closesAt,
+          events: sorted.map(route => ({ question: route.publication.events[route.eventIndex].question })) } } },
+        index: { refresh },
+        eventHref: event => `/markets/oracle/${sorted[event].id}`,
+        payoutHref: `/markets/oracle/${sorted[0].id}`,
+        async status() {
+          const [sourceBlock, resolved] = await Promise.all([
+            source.getBlock({ blockTag: 'finalized' }), read(market, pool, poolAbi, 'resolved'),
+          ]);
+          const cases = await Promise.all(sorted.map(async route => {
+            const args = [route.questionId], sourceRead = functionName => source.readContract({
+              address: getAddress(route.reality), abi: realityAbi, functionName, args,
+              blockNumber: sourceBlock.number,
+            });
+            const [bond, answer, finalizesAt, pending, finalized] = await Promise.all([
+              sourceRead('getBond'), sourceRead('getBestAnswer'), sourceRead('getFinalizeTS'),
+              sourceRead('isPendingArbitration'), sourceRead('isFinalized'),
+            ]);
+            const proposal = answer === answerHex('no') ? 1 : answer === answerHex('yes') ? 2
+              : answer?.toLowerCase() === answerHex('void') ? 3 : 0;
+            const challengeUntil = Number(finalizesAt);
+            return { phase: BigInt(bond) > 0n && !pending && !finalized && proposal > 0
+              && challengeUntil > Number(sourceBlock.timestamp) ? 1 : 0, proposal, challengeUntil };
+          }));
+          return { resolved, delivered: resolved, cases };
+        },
+        async positions(wallet, claims) {
+          const resolved = await read(market, pool, poolAbi, 'resolved');
+          const rows = await Promise.all(claims.map(async claim => {
+            const quantity = BigInt(await read(market, pool, poolAbi, 'holdings',
+              [getAddress(wallet), claim.scope, BigInt(claim.mask)]));
+            let payoutAtoms = null;
+            if (resolved && quantity > 0n) {
+              const [num, den] = await read(market, pool, poolAbi, 'payoutFraction',
+                [claim.scope, BigInt(claim.mask)]);
+              payoutAtoms = (quantity * BigInt(num) / BigInt(den)).toString();
+            }
+            return { ...claim, quantity: quantity.toString(), payoutAtoms };
+          }));
+          return { rows };
+        },
+      };
+      return { namespace: `oracle:${pool}`, label: first.publication.title, service };
+    });
+  }
   async function snapshot(id, owner = null) {
     const route = routeFor(id), q = route.questionId, bit = route.eventIndex;
     if (owner !== null && !address(owner)) throw Error('Invalid wallet address');
@@ -427,7 +528,7 @@ export function oracleService({ catalog, source, market, evidence = null }) {
     }
     throw Error('Unsupported oracle action');
   }
-  return { list: () => [...routes.values()].map(routePublic), routeFor, snapshot, prepare };
+  return { list: () => [...routes.values()].map(routePublic), routeFor, marketSummary, noticePools, snapshot, prepare };
 }
 
 export function oracleEvidence(command, origin) {

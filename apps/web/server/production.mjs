@@ -79,7 +79,7 @@ export function productionServer(config, store, staticRoot = dist) {
         }
         // Serve agent deep links on direct visits too; API session and invite gates still protect data.
         const agentPage = /^\/agents(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(pathname);
-        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/(?:pilot|practice-[0-9a-f]{40})\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/evidence', '/metrics'].includes(pathname);
+        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/oracle\/[a-z0-9-]{1,64}$/.test(pathname) || /^\/markets\/(?:pilot|practice-[0-9a-f]{40})\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/evidence', '/metrics'].includes(pathname);
         const brandAsset=/^\/brand\/(?:flurbo-icon-512\.png|flurbo-profile-2026\.png|flurbo-logo\.svg|flurbo-social-(?:landscape|portrait|banner|banner-v2)\.png)$/.test(pathname);
         const publicationAsset=pathname==='/technical_litepaper.pdf';
         if (!page && !brandAsset && !publicationAsset && !/^\/(?:assets\/[a-zA-Z0-9_.-]+|favicon(?:-contour)?\.svg|robots\.txt)$/.test(pathname)) { await notFound(pathname); return; }

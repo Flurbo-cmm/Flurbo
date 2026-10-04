@@ -48,6 +48,8 @@ test('registration checks each Reality creation receipt and live pool binding', 
     } };
   const market = { getChainId: async () => 10143,
     getBlock: async () => ({ timestamp: BigInt(now), number: 600n }),
+    getBlockNumber: async () => 600n,
+    getBytecode: async ({ blockNumber }: any) => blockNumber >= 420n ? '0x6000' : undefined,
     readContract: async ({ functionName, args }: any) => ({ protocolVersion: 3,
       collateral: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc',
       resolver, settlementRulesHash: rulesHash, eventCount: 2,
@@ -60,6 +62,7 @@ test('registration checks each Reality creation receipt and live pool binding', 
   const candidate = await registerOraclePool(props);
   assert.equal(candidate.routes.length, 2);
   assert.equal(candidate.routes[1].eventIndex, 1);
+  assert.equal(candidate.routes[0].deploymentBlock, 420);
   await assert.rejects(registerOraclePool({ ...props, prepared: { ...prepared,
     publication: { ...publication, events: [{ ...publication.events[0],
       question: 'A substituted question?' }, publication.events[1]] } } }), /commitments changed|creation receipt mismatch|Reality question/);

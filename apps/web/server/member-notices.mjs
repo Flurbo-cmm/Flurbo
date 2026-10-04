@@ -95,12 +95,13 @@ export function memberNotices({ command, pools, applications = null, links = nul
     status.cases.forEach((c, event) => {
       if (Number(c.phase) === 1 && Number(c.challengeUntil) > t + 600)
         stages.push({ kind: 'challenge', id: `challenge:${m.pool}:${event}:${c.challengeUntil}`, market: label, namespace, event,
-          question: events[event].question, proposal: OUTCOME[Number(c.proposal)] || 'an answer', until: Number(c.challengeUntil) });
+          question: events[event].question, proposal: OUTCOME[Number(c.proposal)] || 'an answer', until: Number(c.challengeUntil),
+          href: service.eventHref?.(event) });
     });
     if (status.delivered && status.resolved) {
-      stages.push({ kind: 'payout', id: `payout:${m.pool}`, market: label, namespace });
+      stages.push({ kind: 'payout', id: `payout:${m.pool}`, market: label, namespace, href: service.payoutHref, eventHref: service.eventHref });
       const first = Number(await command('GET', PREFIX + 'done:payout:' + m.pool) || 0);
-      if (first && t - first >= REMINDER_AFTER) stages.push({ kind: 'reminder', id: `reminder:${m.pool}`, market: label, namespace });
+      if (first && t - first >= REMINDER_AFTER) stages.push({ kind: 'reminder', id: `reminder:${m.pool}`, market: label, namespace, href: service.payoutHref, eventHref: service.eventHref });
     }
     const open = [];
     for (const stage of stages) if (await command('GET', PREFIX + 'done:' + stage.id) === null) open.push(stage);
@@ -110,7 +111,14 @@ export function memberNotices({ command, pools, applications = null, links = nul
   function relevant(stage, rows) {
     if (stage.kind === 'payout' || stage.kind === 'reminder') {
       const total = rows.reduce((sum, r) => sum + BigInt(r.payoutAtoms || 0), 0n);
-      return total > 0n ? { payoutAtoms: String(total) } : null;
+      if (total <= 0n) return null;
+      const winning = rows.find(r => BigInt(r.payoutAtoms || 0) > 0n);
+      let event = 0;
+      if (winning) {
+        const scope = BigInt(winning.scope);
+        while (event < 32 && !(scope & (1n << BigInt(event)))) event++;
+      }
+      return { payoutAtoms: String(total), href: event < 32 ? stage.eventHref?.(event) : null };
     }
     if (stage.kind === 'challenge') return rows.some(r => Number(r.scope) & (1 << stage.event)) ? {} : null;
     return rows.length ? {} : null;
@@ -120,8 +128,8 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const url = origin.replace(/\/$/, '');
     const unsubscribeUrl = `${url}/api/notifications/unsubscribe/${unsubscribeToken(secret, account)}`;
     const parts = items.map(({ stage, detail }) => {
-      if (stage.kind === 'payout' || stage.kind === 'reminder') return `${stage.kind === 'reminder' ? 'Reminder: ' : ''}results are final for ${stage.market}. You have about ${ausd(detail.payoutAtoms)} test AUSD to collect. Payouts are not sent automatically: open Portfolio and collect with the MetaMask wallet that holds the shares.\n${url}/portfolio`;
-      if (stage.kind === 'challenge') return `An answer was proposed for a question you hold in ${stage.market}:\n"${stage.question}"\nProposed answer: ${stage.proposal}. It can be challenged until ${utc(stage.until)}. If it is right, you do not need to do anything. If it is wrong, review the evidence and challenge it from the market page before the deadline.\n${url}/markets/${stage.namespace}/${stage.event}`;
+      if (stage.kind === 'payout' || stage.kind === 'reminder') return `${stage.kind === 'reminder' ? 'Reminder: ' : ''}results are final for ${stage.market}. You have about ${ausd(detail.payoutAtoms)} test AUSD to collect. Payouts are not sent automatically: open ${detail.href || stage.href ? 'the market page' : 'Portfolio'} and collect with the MetaMask wallet that holds the shares.\n${url}${detail.href || stage.href || '/portfolio'}`;
+      if (stage.kind === 'challenge') return `An answer was proposed for a question you hold in ${stage.market}:\n"${stage.question}"\nProposed answer: ${stage.proposal}. It can be challenged until ${utc(stage.until)}. If it is right, you do not need to do anything. If it is wrong, review the evidence and challenge it from the market page before the deadline.\n${url}${stage.href || `/markets/${stage.namespace}/${stage.event}`}`;
       return `Trading in ${stage.market} closes at ${utc(stage.closesAt)}, in about 2 hours. After that you can no longer buy or sell there.\n${url}/markets`;
     });
     const kinds = new Set(items.map(i => i.stage.kind === 'reminder' ? 'payout' : i.stage.kind));
@@ -140,10 +148,15 @@ export function memberNotices({ command, pools, applications = null, links = nul
     if (env.FLURBO_NOTIFY_ENABLED !== 'true') return 'disabled';
     if (!applications?.contacts || !secret || !send) return 'not_configured';
     const t = now(), pending = new Map(), stageAccounts = new Map();
+    let indexing = false, unavailable = false;
     for (const pool of pools()) {
       let stages, held;
-      try { stages = await dueStages(pool, t); if (!stages.length) continue; held = await holdings(pool.service); }
-      catch { continue; }
+      try { if (pool.namespace.startsWith('oracle:')) {
+          const progress = await pool.service.index.refresh();
+          if (progress?.complete === false) indexing = true;
+        }
+        stages = await dueStages(pool, t); if (!stages.length) continue; held = await holdings(pool.service); }
+      catch { unavailable = true; continue; }
       if (!held) continue;
       for (const stage of stages) {
         const accounts = [];
@@ -157,7 +170,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
         stageAccounts.set(stage.id, accounts);
       }
     }
-    if (!stageAccounts.size) return 'idle';
+    if (!stageAccounts.size) return unavailable ? 'pool unavailable' : indexing ? 'indexing' : 'idle';
     const contacts = pending.size ? await applications.contacts([...pending.keys()]) : {};
     const handled = new Set();
     let sent = 0, capped = false;
@@ -182,7 +195,8 @@ export function memberNotices({ command, pools, applications = null, links = nul
     // A stage is finished once every account it concerns was emailed, opted out or has no verified email.
     for (const [id, accounts] of stageAccounts)
       if (accounts.every(a => handled.has(`${PREFIX}sent:${id}:${a}`))) await command('SET', PREFIX + 'done:' + id, String(t), 'NX', 'EX', SENT_TTL);
-    return capped ? `sent ${sent}; daily limit reached` : `sent ${sent}`;
+    return capped ? `sent ${sent}; daily limit reached` : unavailable ? `sent ${sent}; pool unavailable`
+      : indexing ? `sent ${sent}; indexing` : `sent ${sent}`;
   }
 
   return { preferences, setPreferences, unsubscribe, tick };
