@@ -1,5 +1,7 @@
 # Flurbo project reference
 
+This is the 3 October 2026 migration snapshot. For the newer Reality.eth and hybrid testnet deployments, current repository layout, Render variable inventory, and pending work, read [the current handoff](HANDOFF.md).
+
 Snapshot: 3 October 2026. The company site is reported deployed at `flurbopm.singu.online`; this checkout has not independently queried its Render environment. The one-pool isolation changes in this working tree require an operator commit, merge and redeploy before they are live. The company repository starts from personal-repository `main` commit `8443469`; its first company commit is `6d144cc`. The company remote is `Flurbo-cmm/Flurbo`. Treat values described as "reported" as handoff records and verify them in the service dashboards.
 
 Public `/healthz` reads on 3 October showed the company site still exposing the old pilot plus six copied pools with its bot disabled; the hackathon site exposed the same pool set and reported its own monitor healthy with its bot enabled. These are liveness snapshots, not on-chain settlement verification. The company-only code below has not been deployed yet.

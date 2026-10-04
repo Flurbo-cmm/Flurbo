@@ -1,6 +1,6 @@
 # Settlement routing and mechanical reader plan
 
-Status: design for new testnet pools. The deployed Monad activity pool and the deployed Reality.eth pool retain their existing contracts and rules. This document does not imply that a reader, Kleros adapter, or bridge listed below has been deployed.
+Status update, 5 October 2026: the first hybrid mechanical test pool and Sepolia Kleros adapter have been deployed. The broader reader families and authenticated bridge below remain a plan. See [the current handoff](HANDOFF.md) for the actual contracts, worker settings, and open verification. The existing activity and earlier Reality pools retain their contracts and rules.
 
 ## Decision
 
