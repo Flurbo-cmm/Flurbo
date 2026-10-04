@@ -228,6 +228,7 @@ export default function App() {
       <Route path="/oracle" component={LegacyOracleRoute} />
       <Route path="/oracle/:id" component={LegacyOracleRoute} />
       <Route path="/markets/oracle/:id" component={AccountRoute} />
+      <Route path="/markets/hybrid/:poolId/:event" component={AccountRoute} />
       <Route path="/markets/:collection/:event" component={AccountRoute} />
       <Route path="/markets/:collection/:event/thesis" component={AccountRoute} />
       <Route path="/fund" component={AccountRoute} />

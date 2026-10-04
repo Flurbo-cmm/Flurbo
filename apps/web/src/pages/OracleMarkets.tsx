@@ -236,19 +236,21 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
   const hasAnswer = snapshot && !zero(snapshot.bondWei);
   const closed = snapshot ? snapshot.marketNow >= snapshot.closesAt : market ? Date.now() / 1000 >= market.closesAt : false;
   const statusKind: StatusKind = snapshot?.resolved ? 'collect' : snapshot?.pendingArbitration ? 'disputed'
-    : canArbitrate ? 'challenge' : snapshot?.finalized || snapshot?.phase === 1 ? 'waiting'
+    : canArbitrate ? 'challenge' : snapshot?.finalized || snapshot?.phase === 1 || canAnswer ? 'waiting'
       : closed ? 'closed' : 'open';
   const statusLabel = snapshot?.resolved ? 'Ready to collect' : snapshot?.pendingArbitration ? 'Kleros review'
     : canArbitrate ? 'Answer open for challenge' : snapshot?.finalized ? 'Final answer, awaiting relay'
-      : snapshot?.phase === 1 ? 'Result received, preparing payouts' : closed ? 'Trading closed' : 'Open for predictions';
+      : snapshot?.phase === 1 ? 'Result received, preparing payouts'
+        : canAnswer && !hasAnswer ? 'Awaiting bonded answer' : closed ? 'Trading closed' : 'Open for predictions';
   const stage = snapshot?.resolved ? 6 : snapshot?.phase === 1 ? 5 : snapshot?.finalized ? 5
     : snapshot?.pendingArbitration ? 4 : hasAnswer ? 3 : snapshot && snapshot.sourceNow >= snapshot.opensAt ? 2 : closed ? 1 : 0;
   const step = (key: string, title: string, meta: string, index: number): Step => ({ key, title, meta,
     state: index < stage ? 'done' : index === stage ? 'current' : 'upcoming' });
   const steps: Step[] = [
     step('trading', 'Trading', `Closes ${market ? date(market.closesAt) : ''}`, 0),
-    step('observed', 'Event observed', `Source opens ${market ? date(market.observationEndsAt) : ''}`, 1),
-    step('answer', 'Answer proposed', 'A bonded answer is posted on Reality.eth', 2),
+    step('observed', 'Source window', `Opens ${market ? date(market.observationEndsAt) : ''}`, 1),
+    step('answer', hasAnswer ? 'Answer proposed' : 'Awaiting bonded answer',
+      hasAnswer ? 'A bonded answer was posted on Reality.eth' : 'Waiting for the first bonded answer on Reality.eth', 2),
     step('challenge', 'Challenge window', 'Another answer or a Kleros challenge can be submitted', 3),
     ...(snapshot?.pendingArbitration || snapshot?.dispute ? [step('review', 'Kleros review', 'Jurors review public evidence and may hear an appeal', 4)] : []),
     step('final', 'Final answer', 'Reality.eth finalizes the answer, then the relay reports it to Monad', 5),
@@ -276,7 +278,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
         {snapshot && <>
           {others.length > 0 && <details className="detail-panel detail-connect"><summary>Explore how these markets connect</summary><p className="market-caption">These questions share one pool. Select up to two more outcomes in the prediction ticket to trade a combination. Every selected answer must be correct.</p><ul>{others.map(other => <li key={other.id}><Link href={`/markets/oracle/${other.id}`} className="text-link">{other.question}</Link></li>)}</ul></details>}
           <section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={statusKind}>{statusLabel}</StatusBadge></div>
-            <p>Your shares stay in your wallet while the event runs. Reality.eth handles answers and Kleros hears disputed answers.</p><Stepper steps={steps} label="Settlement steps"/>
+            <p>Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers, Kleros hears disputes, and Flurbo relays final answers to Monad.</p><Stepper steps={steps} label="Settlement steps"/>
             {(hasAnswer || snapshot.phase === 1) && <div className="detail-challenge"><p>Proposed answer: <strong>{snapshot.answerLabel || 'Awaiting Reality.eth'}</strong></p>{snapshot.finalizesAt > 0 && !snapshot.finalized && <p className="market-caption">Current answer may finalize {date(snapshot.finalizesAt)}. A new answer resets the countdown.</p>}</div>}
             <details className="disclosure"><summary>Settlement details</summary><dl className="oracle-facts"><div><dt>Reality.eth</dt><dd>{snapshot.finalized ? 'Final' : snapshot.pendingArbitration ? 'Kleros review' : hasAnswer ? 'Bonded answer open' : 'Waiting for an answer'}</dd></div>
               {hasAnswer && <div><dt>Highest answer bond</dt><dd>{eth(snapshot.bondWei)} Sepolia ETH</dd></div>}
@@ -285,7 +287,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
             <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRefresh(n => n + 1)}><RefreshCw size={15}/>Refresh status</button>
             {snapshot.dispute && <p className="market-caption">Kleros case #{snapshot.dispute.disputeId}: {['none', 'requested', 'created', 'ruled', 'relayed'][snapshot.dispute.status] || 'status updating'}.</p>}
 
-          {canAnswer && !hasAnswer && <div className="oracle-settlement-action"><h3>Submit an answer</h3><p>Propose the first answer on Reality.eth with a Sepolia ETH bond. MetaMask stays on Flurbo throughout.</p>
+          {canAnswer && !hasAnswer && <div className="oracle-settlement-action"><h3>Submit an answer</h3><p>Anyone can propose the first answer with a Sepolia ETH bond. Connect a wallet, review the answer, then sign the Reality.eth transaction in MetaMask.</p>
             <div className="oracle-fields"><label>Answer<select value={answer} onChange={e => setAnswer(e.target.value as typeof answer)}><option value="yes">Yes</option><option value="no">No</option><option value="void">Void or invalid</option></select></label>
               <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)} /></label></div>
             <p className="market-caption">Minimum right now: {eth(snapshot.nextBondWei)} ETH. If another answer arrives first, the transaction may revert instead of paying a stale bond.</p>

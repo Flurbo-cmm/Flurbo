@@ -5,11 +5,12 @@ import {formatUnits} from 'viem';
 import {useAuth} from '../auth/context';
 import {appFetch} from '../platform-fetch';
 import {pilotRequest,type PilotNamespace} from '../pilot';
-import {loadMarketDirectory,marketStatus,type MarketGroup,type MarketSnapshot,type OracleMarket,type OracleMarketSummary,type MarketDirectory as MarketDirectoryData} from '../market-directory';
+import {loadMarketDirectory,marketStatus,type MarketGroup,type MarketSnapshot,type OracleMarket,type OracleMarketSummary,type HybridMarket,type HybridMarketSummary,type MarketDirectory as MarketDirectoryData} from '../market-directory';
 import {marketHref} from '../market-detail';
 import {marketQuestion} from '../showcase-copy';
 import MarketDetail from './MarketDetail';
 import OracleMarketDetail from './OracleMarkets';
+import HybridMarketDetail from './HybridMarket';
 import ThesisExplorer from './ThesisExplorer';
 import AccountPortfolio from './AccountPortfolio';
 import PageHeader from '../components/PageHeader';
@@ -30,7 +31,11 @@ export default function Markets(){
     {error?<div className="state-block" role="alert"><h2>Markets could not load</h2><p>{error}</p><button className="btn btn-primary" onClick={()=>setAttempt(x=>x+1)}>Retry</button></div>
       :<>{!gate.covered&&<span className="progress-line" aria-hidden="true"/>}<p role="status" className={gate.covered?'sr-only':'busy-text'}>Loading markets...</p><MarketSkeleton/></>}
   </main>;
-  const {groups,oracleMarkets}=directory;
+  const {groups,oracleMarkets,hybridMarkets}=directory;
+  const hybridId=location.match(/^\/markets\/hybrid\/(0x[0-9a-f]{40})\/([0-9]|[12][0-9]|3[01])$/i);
+  if(hybridId){const id=`${hybridId[1]}-${Number(hybridId[2])}`;return hybridMarkets.some(m=>m.id.toLowerCase()===id.toLowerCase())
+    ?<HybridMarketDetail key={id} id={hybridMarkets.find(m=>m.id.toLowerCase()===id.toLowerCase())!.id} markets={hybridMarkets}/>
+    :<main id="main" tabIndex={-1} className="page page-task"><div className="state-block"><Inbox aria-hidden="true" strokeWidth={1.75}/><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div></main>;}
   const oracleId=location.match(/^\/markets\/oracle\/([a-z0-9-]{1,64})$/)?.[1];
   if(oracleId)return oracleMarkets.some(m=>m.id===oracleId)
     ?<OracleMarketDetail key={oracleId} id={oracleId} markets={oracleMarkets}/>
@@ -44,7 +49,7 @@ export default function Markets(){
     <PageHeader title="Your portfolio." lead="All your linked wallet positions. Results and payouts in one place."/>
     {auth.address&&<AccountPortfolio account={auth.address} namespace="all" groups={groups}/>}
   </main>;
-  return <MarketDirectory groups={groups} oracleMarkets={oracleMarkets}/>;
+  return <MarketDirectory groups={groups} oracleMarkets={oracleMarkets} hybridMarkets={hybridMarkets}/>;
 }
 
 function MarketSkeleton({rows=5}:{rows?:number}){
@@ -55,17 +60,17 @@ type Row={key:string;groupKey:string;groupLabel:string;category:string;question:
 const statusKind=(status:string,closesAt:number,now:number):[StatusKind,string]=>status==='Open'?(closesAt-now<CLOSING_SOON_SECONDS?['closing','Closing soon']:['open','Open']):status==='Closed'?['closed','Closed']:status==='Settled'?['settled','Settled']:['unavailable','Unavailable'];
 const category=(value:MarketSnapshot)=>value.manifest.publication.mode==='rehearsal'?'Practice':value.manifest.publication.mode==='ethereum-activity'?'Ethereum':'Ecosystem';
 
-function MarketDirectory({groups,oracleMarkets}:{groups:MarketGroup[];oracleMarkets:OracleMarket[]}){
-  const [data,setData]=useState<Record<string,MarketSnapshot>>({}),[oracleData,setOracleData]=useState<Record<string,OracleMarketSummary>>({}),[failed,setFailed]=useState<string[]>([]),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
+function MarketDirectory({groups,oracleMarkets,hybridMarkets}:{groups:MarketGroup[];oracleMarkets:OracleMarket[];hybridMarkets:HybridMarket[]}){
+  const [data,setData]=useState<Record<string,MarketSnapshot>>({}),[oracleData,setOracleData]=useState<Record<string,OracleMarketSummary>>({}),[hybridData,setHybridData]=useState<Record<string,HybridMarketSummary>>({}),[failed,setFailed]=useState<string[]>([]),[loading,setLoading]=useState(true),[revision,setRevision]=useState(0);
   const [query,setQuery]=useState(''),[filter,setFilter]=useState('Open'),[sort,setSort]=useState('closing'),[now,setNow]=useState(Date.now());
   const [firstAt,setFirstAt]=useState<number|null>(null),[updatedAt,setUpdatedAt]=useState<number|null>(null);
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
   useEffect(()=>{const timer=setInterval(()=>{if(!document.hidden&&!loading)setRevision(n=>n+1);},45000);return()=>clearInterval(timer);},[loading]);
   useEffect(()=>{
-    const c=new AbortController(),queue:[string,MarketGroup|OracleMarket][]= [...groups.map(g=>['pilot',g] as [string,MarketGroup]),...oracleMarkets.map(m=>['oracle',m] as [string,OracleMarket])];setLoading(true);setFailed([]);
+    const c=new AbortController(),queue:[string,MarketGroup|OracleMarket|HybridMarket][]= [...groups.map(g=>['pilot',g] as [string,MarketGroup]),...oracleMarkets.map(m=>['oracle',m] as [string,OracleMarket]),...hybridMarkets.map(m=>['hybrid',m] as [string,HybridMarket])];setLoading(true);setFailed([]);
     // Two pools at a time. One unavailable pool never hides the others.
     void Promise.all(Array.from({length:Math.min(2,queue.length)},async()=>{
-      while(queue.length&&!c.signal.aborted){const [kind,item]=queue.shift()!,key=kind==='oracle'?`oracle:${(item as OracleMarket).id}`:(item as MarketGroup).namespace;
+      while(queue.length&&!c.signal.aborted){const [kind,item]=queue.shift()!,key=kind==='oracle'?`oracle:${(item as OracleMarket).id}`:kind==='hybrid'?`hybrid:${(item as HybridMarket).id}`:(item as MarketGroup).namespace;
         try{
           if(kind==='oracle'){
             const market=item as OracleMarket;
@@ -74,20 +79,28 @@ function MarketDirectory({groups,oracleMarkets}:{groups:MarketGroup[];oracleMark
             const value=await response.json() as OracleMarketSummary;
             if(value.schema!=='flurbo.oracle-market.v1'||value.id!==market.id||typeof value.pool!=='string'||value.pool.toLowerCase()!==market.pool.toLowerCase()||!Number.isSafeInteger(value.marketNow)||typeof value.funded!=='boolean'||typeof value.resolved!=='boolean'||!value.prices||[value.prices.yes,value.prices.no].some(p=>p!==null&&(typeof p!=='string'||!/^\d+$/.test(p))))throw Error('Wrong oracle market');
             if(!c.signal.aborted){setOracleData(old=>({...old,[market.id]:value}));setFirstAt(old=>old??Date.now());}
+          }else if(kind==='hybrid'){
+            const market=item as HybridMarket;
+            const response=await appFetch(`/api/hybrid/${market.id}/market`,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.any([c.signal,AbortSignal.timeout(20000)])});
+            if(!response.ok)throw Error('Market quote unavailable');
+            const value=await response.json() as HybridMarketSummary;
+            if(value.schema!=='flurbo.hybrid-market.v1'||value.id.toLowerCase()!==market.id.toLowerCase()||value.pool.toLowerCase()!==market.pool.toLowerCase()||!Number.isSafeInteger(value.marketNow)||typeof value.funded!=='boolean'||typeof value.resolved!=='boolean'||!value.prices||[value.prices.yes,value.prices.no].some(p=>p!==null&&(typeof p!=='string'||!/^\d+$/.test(p))))throw Error('Wrong market');
+            if(!c.signal.aborted){setHybridData(old=>({...old,[market.id]:value}));setFirstAt(old=>old??Date.now());}
           }else{
             const group=item as MarketGroup,value=await pilotRequest<MarketSnapshot>('markets',undefined,group.namespace,c.signal);
             if(value.manifest.pool!==group.pool)throw Error('Wrong market');
             if(!c.signal.aborted){setData(old=>({...old,[group.namespace]:value}));setFirstAt(old=>old??Date.now());}
           }
-        }catch{if(!c.signal.aborted){if(kind==='oracle'){const id=(item as OracleMarket).id;setOracleData(old=>{const next={...old};delete next[id];return next;});}else{const namespace=(item as MarketGroup).namespace;setData(old=>{const next={...old};delete next[namespace];return next;});}setFailed(old=>[...old,key]);}}
+        }catch{if(!c.signal.aborted){if(kind==='oracle'){const id=(item as OracleMarket).id;setOracleData(old=>{const next={...old};delete next[id];return next;});}else if(kind==='hybrid'){const id=(item as HybridMarket).id;setHybridData(old=>{const next={...old};delete next[id];return next;});}else{const namespace=(item as MarketGroup).namespace;setData(old=>{const next={...old};delete next[namespace];return next;});}setFailed(old=>[...old,key]);}}
       }
     })).finally(()=>{if(!c.signal.aborted){setLoading(false);setUpdatedAt(Date.now());}});return()=>c.abort();
-  },[groups,oracleMarkets,revision]);
+  },[groups,oracleMarkets,hybridMarkets,revision]);
   // The first visit waits under the loader until pools settle (or three seconds after the first
   // arrives), so late pools do not reorder a list the visitor has started reading.
   useLoadGate('directory-prices',{pending:loading&&!(firstAt!==null&&now-firstAt>3000),label:'Loading prices'});
   const eventCount=useMemo(()=>Object.fromEntries(Object.entries(data).map(([ns,v])=>[ns,v.manifest.publication.draft.events.length])),[data]);
   const oracleCount=useMemo(()=>oracleMarkets.reduce<Record<string,number>>((counts,m)=>{const key=m.pool.toLowerCase();counts[key]=(counts[key]||0)+1;return counts;},{}),[oracleMarkets]);
+  const hybridCount=useMemo(()=>hybridMarkets.reduce<Record<string,number>>((counts,m)=>{const key=m.pool.toLowerCase();counts[key]=(counts[key]||0)+1;return counts;},{}),[hybridMarkets]);
   const all:Row[]=[
     ...groups.flatMap(group=>data[group.namespace]?data[group.namespace].manifest.publication.draft.events.map((event,index)=>{
       const value=data[group.namespace],quote=value.prices.find(p=>p.event===index);
@@ -96,13 +109,16 @@ function MarketDirectory({groups,oracleMarkets}:{groups:MarketGroup[];oracleMark
     ...oracleMarkets.map(m=>{const value=oracleData[m.id],closed=now/1000>=m.closesAt;
       return {key:`oracle:${m.id}`,groupKey:`oracle:${m.pool.toLowerCase()}`,groupLabel:m.poolTitle,category:'Reality.eth + Kleros',question:m.question,closesAt:m.closesAt,status:value?.resolved?'Settled':closed?'Closed':value?.funded===false?'Unavailable':'Open',prices:value?.prices??null,priceAt:value?.marketNow??null,href:(yes?:boolean)=>`/markets/oracle/${m.id}${yes===undefined?'':`?answer=${yes?'yes':'no'}`}`,combinable:oracleCount[m.pool.toLowerCase()]>1,payoutNote:'Results available. Open this market to collect eligible payouts.'};
     }),
+    ...hybridMarkets.map(m=>{const value=hybridData[m.id],closed=now/1000>=m.closesAt;
+      return {key:`hybrid:${m.id}`,groupKey:`hybrid:${m.pool.toLowerCase()}`,groupLabel:m.poolTitle,category:m.route==='mechanical'?'Source verified · Kleros challenge':'Reality.eth + Kleros',question:m.question,closesAt:m.closesAt,status:value?.resolved?'Settled':closed?'Closed':value?.funded===false?'Unavailable':'Open',prices:value?.prices??null,priceAt:value?.marketNow??null,href:(yes?:boolean)=>`/markets/hybrid/${m.pool}/${m.eventIndex}${yes===undefined?'':`?answer=${yes?'yes':'no'}`}`,combinable:hybridCount[m.pool.toLowerCase()]>1,payoutNote:'Results available. Open this market to collect eligible payouts.'};
+    }),
   ];
   const rows=all.filter(r=>(filter==='All'||r.status===filter)&&r.question.toLowerCase().includes(query.toLowerCase())).sort((a,b)=>{
     const rank=(status:string)=>status==='Open'?0:status==='Closed'?1:2;
     const difference=rank(a.status)-rank(b.status);if(difference)return difference;
     return sort==='name'?a.question.localeCompare(b.question):a.closesAt-b.closesAt;
   });
-  const pendingPools=loading?groups.filter(g=>!data[g.namespace]&&!failed.includes(g.namespace)).length+oracleMarkets.filter(m=>!oracleData[m.id]&&!failed.includes(`oracle:${m.id}`)).length:0;
+  const pendingPools=loading?groups.filter(g=>!data[g.namespace]&&!failed.includes(g.namespace)).length+oracleMarkets.filter(m=>!oracleData[m.id]&&!failed.includes(`oracle:${m.id}`)).length+hybridMarkets.filter(m=>!hybridData[m.id]&&!failed.includes(`hybrid:${m.id}`)).length:0;
   const grouped=sort==='closing';
   return <main id="main" tabIndex={-1} className="page markets-page">
     <PageHeader title="What happens next?" lead="Choose a question. Take a view. Explore how it connects." actions={<Link href="/fund" className="text-link">Get test funds <ArrowUpRight strokeWidth={1.75}/></Link>}/>

@@ -568,6 +568,58 @@ export function oracleEvidence(command, origin) {
       if (await get(hash) !== evidenceJson) throw Error('Relay evidence persistence failed');
       return origin + EVIDENCE_PATH + hash;
     },
+    async putHybridCase({ pool, resolver, eventIndex, eventHash, requestId, question,
+      proposal, counter, proposalEvidenceURI, counterEvidenceURI }) {
+      if (![pool, resolver].every(address) || ![eventHash, requestId].every(hex32)
+        || !Number.isSafeInteger(eventIndex) || eventIndex < 0 || eventIndex > 31
+        || typeof question !== 'string' || question.length < 8 || question.length > 1000
+        || ![1, 2, 3].includes(proposal) || ![1, 2, 3].includes(counter) || proposal === counter
+        || !publicUrl(proposalEvidenceURI) || !publicUrl(counterEvidenceURI))
+        throw Error('Invalid hybrid case evidence');
+      const body = JSON.stringify({ schema: 'flurbo.kleros-evidence.v1', name: `Flurbo question ${eventIndex + 1} challenge`,
+        description: `${question}\n\nProposed: ${['', 'No', 'Yes', 'Void'][proposal]}. Source evidence: ${proposalEvidenceURI}\n\nChallenged with: ${['', 'No', 'Yes', 'Void'][counter]}. Counterevidence: ${counterEvidenceURI}\n\nRequest ID: ${requestId}`,
+        fileURI: proposalEvidenceURI, pool, resolver, eventIndex, eventHash, requestId });
+      if (body.length > 12000) throw Error('Hybrid case evidence too large');
+      const hash = keccak256(toHex(body));
+      await command('SET', key(hash), body, 'NX');
+      if (await get(hash) !== body) throw Error('Hybrid case evidence persistence failed');
+      return { hash, uri: origin + EVIDENCE_PATH + hash };
+    },
+    async putHybridRuling({ pool, resolver, eventIndex, eventHash, requestId, sourceCaseId,
+      adapter, disputeId, ruling, sourceBlockHash }) {
+      if (![pool, resolver, adapter].every(address) || ![eventHash, requestId, sourceCaseId, sourceBlockHash].every(hex32)
+        || !Number.isSafeInteger(eventIndex) || eventIndex < 0 || eventIndex > 31
+        || !/^(0|[1-9][0-9]*)$/.test(disputeId) || ![1, 2, 3].includes(ruling))
+        throw Error('Invalid hybrid ruling evidence');
+      const body = JSON.stringify({ schema: 'flurbo.hybrid-ruling-evidence.v1', pool, resolver,
+        eventIndex, eventHash, requestId, sourceChainId: 11155111, adapter,
+        disputeId, sourceCaseId, ruling, sourceBlockHash });
+      const hash = keccak256(toHex(body));
+      await command('SET', key(hash), body, 'NX');
+      if (await get(hash) !== body) throw Error('Hybrid ruling evidence persistence failed');
+      return { hash, uri: origin + EVIDENCE_PATH + hash };
+    },
+    async putHybridChallenge(route, account, input) {
+      if (![route.pool, route.resolver, account].every(address) || !hex32(route.eventHash)
+        || !Number.isSafeInteger(route.eventIndex) || route.eventIndex < 0 || route.eventIndex > 31
+        || typeof input?.name !== 'string' || input.name.trim().length < 4 || input.name.length > 120
+        || typeof input.description !== 'string' || input.description.trim().length < 20
+        || input.description.length > 8000 || !publicUrl(input.sourceURL))
+        throw Error('Provide a title, public explanation, and HTTPS source URL');
+      const body = JSON.stringify({ schema: 'flurbo.hybrid-challenge-evidence.v1',
+        name: input.name.trim(), description: input.description.trim(), fileURI: input.sourceURL,
+        pool: route.pool, resolver: route.resolver, eventIndex: route.eventIndex,
+        eventHash: route.eventHash, uploader: account });
+      const hash = keccak256(toHex(body));
+      if (await command('GET', key(hash)) !== body) {
+        const hour = Math.floor(Date.now() / 3_600_000);
+        const count = Number(await command('EVAL', quota, 1, `flurbo:oracle:evidence-quota:${hour}:${account}`));
+        if (!Number.isSafeInteger(count) || count > 20) throw Error('Evidence upload limit reached');
+        await command('SET', key(hash), body, 'NX');
+        if (await get(hash) !== body) throw Error('Evidence persistence failed');
+      }
+      return { hash, uri: origin + EVIDENCE_PATH + hash };
+    },
     uriFor: async (route, hash) => {
       const body = JSON.parse(await get(hash));
       if (!same(body.questionId, route.questionId) || !same(body.pool, route.pool))

@@ -23,7 +23,7 @@ import { EVIDENCE_PATH } from './oracle-integration.mjs';
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null } = {}) {
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
   const links = walletLinks({command:store.command,isReserved:wallet=>agents?agents.isAgentWallet(wallet):false,reservedKey:store.command?agentWalletKey:null});
@@ -42,6 +42,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   const authorizeHolder=holderAuthorizer(challengeOptions);
   const priceArchives=new WeakMap();
   const oraclePriceArchives=new Map();
+  const hybridPriceArchives=new Map();
   // Agents: account-isolated profiles, paper trading and user-approved proposals. Never a signer.
   const agents=(()=>{try{return agentApi({command:store.command||null,hosted,links,localCounters:!sharedLimits,rpc:agentRpc(rpcUrl,{hosted}),previewAllows,reservedWallets,
     serviceFor:namespace=>namespace==='pilot'?publishedPilot:practiceCollections?.services.get(namespace)||null});}catch{return null;}})();
@@ -54,7 +55,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   const metrics=userMetrics({command:store.command||null,origin:publicOrigin||`http://${hosts[0]}`,links,applications,operatorAccount:testingOperatorAccount,funding,
     openAccess:!previewAllows,reservedWallets,rpcUrl,pools:listedPools});
   // Email notices to members about their own positions and settlement stages.
-  const notices=memberNotices({command:store.command||null,pools:()=>[...listedPools(),...oracleNoticePools],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
+  const notices=memberNotices({command:store.command||null,pools:()=>[...listedPools(),...oracleNoticePools,...hybridNotices],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
     send:applications?.noticeEmail?noticeDelivery(applications.noticeEmail):null});
   const page=(res,status,title,body)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | flurbo</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#14271d;background:#f5f4ec;line-height:1.5"><h1 style="font-size:1.5rem">${title}</h1>${body}</body></html>`);};
@@ -246,7 +247,8 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         const entries=[...(practiceCollections?.catalog?.collections||[])];
         if(publishedPilot&&!entries.some(row=>row.pool===publishedPilot.manifest.pool))entries.push({namespace:'pilot',label:'Release milestones',pool:publishedPilot.manifest.pool,closesAt:publishedPilot.manifest.publication.draft.closesAt});
         const oracleMarkets=oracle&&(!previewAllows||await previewAllows(login.address))?oracle.list():[];
-        return send(res,200,{schema:'flurbo.market-directory.v1',markets:entries,oracleMarkets});
+        const hybridMarkets=hybrid&&(!previewAllows||await previewAllows(login.address))?hybrid.list():[];
+        return send(res,200,{schema:'flurbo.market-directory.v1',markets:entries,oracleMarkets,hybridMarkets});
       }
       if (url.pathname === '/api/evidence-beta' || url.pathname.startsWith('/api/learning/')) {
         const login = await getLogin();
@@ -375,6 +377,56 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         } catch (error) {
           return send(res, 400, { error: error instanceof Error && /^(Invalid |Reality |Oracle |Duplicate |Enter |Select |Bond |Arbitration |Evidence |Appeal |No |Trading |Shares |Fund |Approval |Unsupported |Insufficient |Kleros |Outside |New pool |RPC chain)/.test(error.message)
             ? error.message : 'Oracle request unavailable. Refresh and retry.' });
+        }
+      }
+      if (/^\/api\/hybrid\/0x[0-9a-f]{40}-(?:[0-9]|[12][0-9]|3[01])(?:\/(?:market|action|evidence|price-history))?$/i.test(url.pathname)) {
+        const login = await getLogin();
+        if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
+        if (previewAllows && !await previewAllows(login.address)) return send(res, 403, { error: 'Account approval required.' });
+        if (!hybrid) return send(res, 503, { error: 'Hybrid markets are unavailable.' });
+        const parts = url.pathname.split('/'), id = parts[3], op = parts[4] || '';
+        try {
+          if (op === 'market' && req.method === 'GET' && !url.search)
+            return send(res, 200, await hybrid.marketSummary(id));
+          if (op === 'price-history' && req.method === 'GET' && !url.search) {
+            if (!store.command) return send(res, 503, { error: 'Price history storage is unavailable.' });
+            if (!hybridPriceArchives.has(id)) {
+              const route = hybrid.routeFor(id);
+              const manifest = { chainId: 10143, pool: route.pool, rulesHash: route.eventHash,
+                publication: { draft: { events: [{}] } } };
+              hybridPriceArchives.set(id, priceHistory({ command: store.command,
+                maxQuoteAtoms: 1_000_000_000_000n,
+                service: { manifest, async markets() {
+                  const value = await hybrid.marketSummary(id);
+                  return { manifest, open: value.funded && !value.resolved
+                    && value.marketNow < route.record.prepared.draft.closesAt,
+                    snapshot: { timestamp: value.marketNow, blockNumber: value.blockNumber, blockHash: value.blockHash },
+                    prices: [{ event: 0, yes: value.prices.yes, no: value.prices.no }] };
+                } } }));
+            }
+            return send(res, 200, await hybridPriceArchives.get(id).read());
+          }
+          if (op === '' && req.method === 'GET') {
+            const wallet = url.searchParams.get('wallet');
+            if ([...url.searchParams.keys()].some(key => key !== 'wallet'))
+              return send(res, 400, { error: 'Unexpected parameter.' });
+            return send(res, 200, await hybrid.snapshot(id, wallet));
+          }
+          if (url.search || req.method !== 'POST') return send(res, 405, { error: 'POST without parameters required.' });
+          const input = await body(req);
+          if (op === 'evidence') {
+            if (!oracleEvidenceStore) return send(res, 503, { error: 'Evidence storage unavailable.' });
+            const route = hybrid.routeFor(id);
+            return send(res, 200, route.event.route === 'mechanical'
+              ? await oracleEvidenceStore.putHybridChallenge(route, login.address, input)
+              : await oracleEvidenceStore.put({ id, questionId: route.event.source.questionId,
+                  pool: route.pool, eventIndex: route.eventIndex }, login.address, input));
+          }
+          if (op === 'action') return send(res, 200, await hybrid.prepare(id, input.action, input.input || {}, input.owner));
+          return send(res, 404, { error: 'Hybrid action unavailable.' });
+        } catch (error) {
+          return send(res, 400, { error: error instanceof Error && /^(Invalid |Hybrid |Challenge |Enter |Select |Choose |Wallet |Shares |Trading |Fund |Approval |Allow |No bond |Insufficient |Reality |Provide )/.test(error.message)
+            ? error.message : 'Market request unavailable. Refresh and retry.' });
         }
       }
       if(url.pathname==='/api/practice-collections'){
