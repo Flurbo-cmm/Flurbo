@@ -1,13 +1,15 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createPublicClient, decodeEventLog, getAddress, http, parseAbi, parseAbiItem } from 'viem';
-import { SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
+import { hybridArbitrator, SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 
 const event = parseAbiItem('event LogNewQuestion(bytes32 indexed question_id,address indexed user,uint256 template_id,string question,bytes32 indexed content_hash,address arbitrator,uint32 timeout,uint32 opening_ts,uint256 nonce,uint256 created)');
 const getters = parseAbi(['function getMinBond(bytes32) view returns (uint256)',
   'function getTimeout(bytes32) view returns (uint32)']);
 
-export async function inspectRealityQuestion(client, { txHash, creator, questionText, opening, minTimeout = 3600 }) {
+export async function inspectRealityQuestion(client, { txHash, creator, questionText, opening, minTimeout = 3600,
+  arbitrator = SEPOLIA_KLEROS }) {
+  if (!hybridArbitrator(arbitrator)) throw Error('Unsupported Reality arbitrator');
   if (await client.getChainId() !== 11155111) throw Error('Sepolia RPC required');
   const receipt = await client.getTransactionReceipt({ hash: txHash });
   if (receipt.status !== 'success') throw Error('Question transaction failed');
@@ -18,7 +20,7 @@ export async function inspectRealityQuestion(client, { txHash, creator, question
       const decoded = decodeEventLog({ abi: [event], data: log.data, topics: log.topics });
       if (decoded.eventName === 'LogNewQuestion' && decoded.args.template_id === 0n
         && decoded.args.user.toLowerCase() === creator.toLowerCase()
-        && decoded.args.arbitrator.toLowerCase() === SEPOLIA_KLEROS.toLowerCase()
+        && decoded.args.arbitrator.toLowerCase() === arbitrator.toLowerCase()
         && decoded.args.question === questionText
         && Number(decoded.args.opening_ts) === Number(opening)) question = decoded.args;
     } catch {}
@@ -32,7 +34,7 @@ export async function inspectRealityQuestion(client, { txHash, creator, question
   ]);
   if (minBond < 1n || Number(timeout) < minTimeout) throw Error('Question minimum bond or timeout too small');
   return { kind: 'reality-sepolia', chainId: 11155111, reality: SEPOLIA_REALITY,
-    arbitrator: SEPOLIA_KLEROS, questionId: question.question_id,
+    arbitrator, questionId: question.question_id,
     contentHash: question.content_hash, questionTxHash: txHash, questionText: question.question,
     minTimeout: Number(timeout), minBond: minBond.toString(), openingAt: Number(opening) };
 }

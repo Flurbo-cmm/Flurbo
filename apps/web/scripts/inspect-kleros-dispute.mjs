@@ -1,27 +1,30 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createPublicClient, getAddress, http } from 'viem';
-import { klerosCourtSnapshot } from '../server/hybrid-reality.mjs';
-import { courtAbi, proxyAbi, SEPOLIA_KLEROS } from '../server/oracle-integration.mjs';
+import { castVoteCommand, klerosCourtSnapshot } from '../server/hybrid-reality.mjs';
+import { courtAbi, hybridArbitrator, proxyAbi, realityAbi, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 const statusLabel = ['none', 'disputed', 'ruled', 'reported'];
 
-export async function klerosDisputeReport(client, { questionId, juror }) {
-  const request = await client.readContract({ address: getAddress(SEPOLIA_KLEROS), abi: proxyAbi,
+export async function klerosDisputeReport(client, { questionId, juror, reality = SEPOLIA_REALITY }) {
+  const proxy = await client.readContract({ address: getAddress(reality), abi: realityAbi,
+    functionName: 'getArbitrator', args: [questionId] });
+  if (!hybridArbitrator(proxy)) throw Error('Question arbitrator is not a supported Kleros proxy');
+  const request = await client.readContract({ address: getAddress(proxy), abi: proxyAbi,
     functionName: 'arbitrationRequests', args: [BigInt(questionId)] });
   const proxyStatus = Number(request[0]);
   if (proxyStatus === 0) return { status: 'none' };
-  const court = await klerosCourtSnapshot(client, SEPOLIA_KLEROS, request[2]);
+  const court = await klerosCourtSnapshot(client, proxy, request[2]);
   const voteIds = [];
   for (let id = 0; id < court.votesNeeded; id++) {
     const vote = await client.readContract({ address: court.court, abi: courtAbi, functionName: 'getVote',
       args: [BigInt(court.disputeId), BigInt(court.rounds - 1), BigInt(id)] });
     if (same(vote[0], juror)) voteIds.push(id);
   }
-  return { status: statusLabel[proxyStatus], proxyStatus, disputeId: court.disputeId, period: court.periodLabel,
-    voteIds, choices: { No: 1, Yes: 2, Void: 0 },
-    castVoteCommand: `cast send ${court.court} 'castVote(uint256,uint256[],uint256,uint256)' ${court.disputeId} '[${voteIds.join(',')}]' <CHOICE> 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror` };
+  return { status: statusLabel[proxyStatus], proxyStatus, proxy: getAddress(proxy), subcourtId: court.subcourtId,
+    disputeId: court.disputeId, period: court.periodLabel, voteIds, choices: { No: 1, Yes: 2, Void: 0 },
+    castVoteCommand: castVoteCommand(court.court, court.disputeId, voteIds) };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

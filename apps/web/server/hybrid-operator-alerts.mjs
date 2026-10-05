@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { hybridRealitySnapshot } from './hybrid-reality.mjs';
+import { castVoteCommand, hybridRealitySnapshot } from './hybrid-reality.mjs';
 import { readHybridSnapshot } from './hybrid-settlement-worker.mjs';
 
 const PREFIX = 'flurbo:hybrid-alert:v1:';
@@ -9,12 +9,21 @@ const label = ['Waiting', 'No', 'Yes', 'Void'];
 const utc = seconds => new Date(seconds * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const eth = wei => (Number(wei) / 1e18).toFixed(4);
 
-export async function readPoolForAlerts(record, market, source) {
+export async function readPoolForAlerts(record, market, source, juror = null) {
   const snapshot = await readHybridSnapshot(record, market);
   const events = await Promise.all(record.prepared.draft.events.map(async (item, index) => ({
     phase: Number(snapshot.states[index].phase), result: Number(snapshot.states[index].result),
-    reality: item.route === 'reality' ? await hybridRealitySnapshot(source, item, null) : null })));
+    reality: item.route === 'reality' ? await hybridRealitySnapshot(source, item, null, { juror }) : null })));
   return { delivered: snapshot.delivered, resolved: snapshot.resolved, events };
+}
+
+function voteInstruction(r) {
+  const seats = r.court.jurorPendingVoteIds;
+  if (Array.isArray(seats) && seats.length)
+    return `Cast it now with choice 2 (Yes), 1 (No) or 0 (Void):\n${castVoteCommand(r.court.court, r.disputeId, seats)}`;
+  if (Array.isArray(seats))
+    return `The configured juror holds no unvoted seat in this round. Check the draw with node apps/web/scripts/inspect-kleros-dispute.mjs ${r.questionId} <juror address> before the keeper passes the vote period.`;
+  return `Find your vote IDs: node apps/web/scripts/inspect-kleros-dispute.mjs ${r.questionId} <juror address>\nThen run the printed castVoteCommand with choice 2 (Yes), 1 (No) or 0 (Void).`;
 }
 
 export function hybridAlertsFor(record, state, origin) {
@@ -33,7 +42,7 @@ export function hybridAlertsFor(record, state, origin) {
           `${head}Kleros arbitration was requested. Case #${r.disputeId}.\n${url}`);
       if (r.court && r.court.period === 2 && !r.court.ruled)
         add(`vote:${pool}:${index}:${r.disputeId}:${r.court.rounds}`, `Cast the juror vote for case #${r.disputeId}`,
-          `${head}The Kleros case #${r.disputeId} is in the vote period (${r.court.votesCast} of ${r.court.votesNeeded} votes cast). The juror vote is the one manual step.\nFind your vote IDs: node apps/web/scripts/inspect-kleros-dispute.mjs ${r.questionId} <juror address>\nThen run the printed castVoteCommand with choice 2 (Yes), 1 (No) or 0 (Void).\n${url}`, true);
+          `${head}The Kleros case #${r.disputeId} is in the vote period (${r.court.votesCast} of ${r.court.votesNeeded} votes cast). The juror vote is the one manual step.\n${voteInstruction(r)}\n${url}`, true);
       if (r.disputeStatus >= 2)
         add(`ruled:${pool}:${index}:${r.disputeId}`, `Kleros ruled on case #${r.disputeId}`,
           `${head}The court has ruled. The keeper reports it to Reality.eth next.\n${url}`);

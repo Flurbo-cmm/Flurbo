@@ -141,6 +141,7 @@ async function main() {
     };
     const [source, market] = oracleClients(process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com', config.rpcUrl);
     config.oracleEvidence = oracleEvidence(store.command, config.origin);
+    const juror = /^0x[0-9a-fA-F]{40}$/.test(process.env.FLURBO_HYBRID_JUROR_ADDRESS || '') ? process.env.FLURBO_HYBRID_JUROR_ADDRESS : null;
     const hybridIndexes = hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
       fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : pilotRpc('https://testnet-rpc.monad.xyz') });
     config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command, indexes: hybridIndexes });
@@ -186,13 +187,13 @@ async function main() {
       if (courtPools.length) config.hybridCourt = hybridCourtKeeper({ pools: courtPools, source, command: store.command,
         evidence: config.oracleEvidence, rpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
         privateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
-        maxDisputeFeeWei: BigInt(process.env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000') });
+        maxDisputeFeeWei: BigInt(process.env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000'), juror });
     }
     if (process.env.FLURBO_HYBRID_ALERTS_ENABLED === 'true' && hybrid.pools.length) {
       try {
         const mail = emailConfig(process.env);
         config.hybridAlerts = hybridOperatorAlerts({ pools: hybrid.pools, command: store.command,
-          readPool: record => readPoolForAlerts(record, market, source), deliver: resendDelivery(mail),
+          readPool: record => readPoolForAlerts(record, market, source, juror), deliver: resendDelivery(mail),
           from: mail.from, to: mail.to, origin: config.origin,
           workers: () => ({ hybrid_settlement: config.hybridSettlement?.status(),
             hybrid_arbitration: config.hybridArbitration?.status(), hybrid_court: config.hybridCourt?.status() }),

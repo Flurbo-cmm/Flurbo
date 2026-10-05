@@ -6,7 +6,8 @@ import { createPublicClient, getAddress, http, parseAbi } from 'viem';
 import { hybridRulesHash } from './prepare-hybrid-pilot.mjs';
 import { inspectRealityQuestion } from './inspect-reality-question.mjs';
 import { hybridSettlementCatalog, readHybridSnapshot } from '../server/hybrid-settlement-worker.mjs';
-import { SEPOLIA_KLEROS } from '../server/oracle-integration.mjs';
+import { verifyKlerosProxy } from '../server/hybrid-reality.mjs';
+import { KLEROS_PROXY_CODE_HASH, SEPOLIA_KLEROS } from '../server/oracle-integration.mjs';
 
 const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '');
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
@@ -17,7 +18,7 @@ const proxyAbi = parseAbi(['function arbitrator() view returns (address)',
   'function arbitratorExtraData() view returns (bytes)']);
 
 export async function verifyHybridDeployment({ id, prepared, unverified, adapter = null, manager = null,
-  answerer = null, keeper = null, market, source }) {
+  answerer = null, keeper = null, market, source, proxyCodeHash = KLEROS_PROXY_CODE_HASH }) {
   const events = prepared?.draft?.events || [];
   const mechanical = events.some(event => event.route === 'mechanical');
   const reality = events.some(event => event.route === 'reality');
@@ -43,10 +44,13 @@ export async function verifyHybridDeployment({ id, prepared, unverified, adapter
     const s = event.source;
     const found = await inspectRealityQuestion(source, { txHash: s.questionTxHash,
       creator: prepared.creator, questionText: s.questionText, opening: event.observationEndsAt,
-      minTimeout: s.minTimeout });
+      minTimeout: s.minTimeout, arbitrator: s.arbitrator });
     if (!same(found.questionId, s.questionId) || !same(found.contentHash, s.contentHash)
       || found.minBond !== s.minBond) throw Error('Reality question differs from the publication');
   }
+  const arbitrators = [...new Set(events.filter(event => event.route === 'reality')
+    .map(event => event.source.arbitrator.toLowerCase()))];
+  for (const proxy of arbitrators) await verifyKlerosProxy(source, proxy, proxyCodeHash);
   const block = await market.getBlock();
   if (mechanical) {
     const [court, proxyCourt, extraData, proxyExtraData, caseManager, fee, code] = await Promise.all([
@@ -95,5 +99,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   await writeFile(output, JSON.stringify(candidate, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify({ status: 'verified_hybrid_candidate', pool: record.pool,
     resolver: record.resolver, adapter: record.adapter ?? null, keeper: record.keeper ?? null,
-    answerer: record.answerer ?? null, events: record.prepared.draft.events.length, output }));
+    answerer: record.answerer ?? null, events: record.prepared.draft.events.length,
+    arbitrators: [...new Set(record.prepared.draft.events.filter(event => event.route === 'reality')
+      .map(event => event.source.arbitrator.toLowerCase()))], output }));
 }

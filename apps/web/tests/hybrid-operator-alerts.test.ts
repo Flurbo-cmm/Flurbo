@@ -74,6 +74,22 @@ test('the vote period asks the operator to act, once per round', async () => {
   assert.equal(h.sent.length, before);
 });
 
+const voting = (jurorPendingVoteIds: number[]) => pool([{ phase: 0, result: 0, reality: reality({ bondWei: '200000000000000',
+  answerLabel: 'No', disputeStatus: 1, disputeId: '7', questionId: `0x${'a'.repeat(64)}`,
+  court: { court: '0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879', period: 2, ruled: false, rounds: 1, votesCast: 0,
+    votesNeeded: 1, jurorPendingVoteIds } }) }, open()]);
+
+test("the vote alert carries the juror's command", () => {
+  const alert = hybridAlertsFor(record, voting([0]), origin).find(item => item.id.startsWith('vote:'))!;
+  assert.equal(alert.action, true);
+  assert.ok(alert.text.includes("'castVote(uint256,uint256[],uint256,uint256)' 7 '[0]'"));
+});
+
+test('the vote alert reports a configured juror without a seat', () => {
+  const alert = hybridAlertsFor(record, voting([]), origin).find(item => item.id.startsWith('vote:'))!;
+  assert.ok(alert.text.includes('The configured juror holds no unvoted seat'));
+});
+
 test('several new alerts go out in one email', async () => {
   const h = fixture(pool([open(), open()]));
   await h.alerts.tick();

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { decodeAbiParameters, encodeAbiParameters, keccak256, parseAbiParameters, toHex } from 'viem';
 import { canonical, settlementRuleHash, validateSettlementRule } from '../server/settlement-rules.mjs';
-import { SEPOLIA_KLEROS, SEPOLIA_REALITY, TEST_AUSD } from '../server/oracle-integration.mjs';
+import { hybridArbitrator, SEPOLIA_REALITY, TEST_AUSD } from '../server/oracle-integration.mjs';
 
 const configAbi = parseAbiParameters('(address collateral,bytes32 draftHash,uint64 closesAt,bytes32[] eventHashes,uint64[] observationEnds,uint8[] routes,address proposer,address relay,uint128 bond,uint32 assertionPeriod,uint32 challengePeriod,uint32 reportPeriod,uint32 arbitrationPeriod) config');
 const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '') && !/^0x0{40}$/i.test(value);
@@ -63,7 +63,7 @@ export function prepareHybridPilot(input) {
     } else {
       if (event.source?.kind !== 'reality-sepolia'
         || event.source.chainId !== 11155111 || !same(event.source.reality || '', SEPOLIA_REALITY)
-        || !same(event.source.arbitrator || '', SEPOLIA_KLEROS)
+        || !hybridArbitrator(event.source.arbitrator)
         || !hash(event.source.questionId) || !hash(event.source.contentHash)
         || !hash(event.source.questionTxHash)
         || !duration(event.source.minTimeout, 3600, 30 * 86400)

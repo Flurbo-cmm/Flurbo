@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeFunctionData } from 'viem';
 import { wideCommitments } from '../scripts/prepare-wide-pilot.mjs';
-import { oracleCatalog, oracleService, proxyAbi, realityAbi, poolAbi,
-  SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
+import { oracleCatalog, oracleService, proxyAbi, realityAbi, poolAbi, courtAbi, hybridArbitrator,
+  HYBRID_ARBITRATORS, KLEROS_PROXY_CODE_HASH, SEPOLIA_KLEROS, SEPOLIA_KLEROS_LIQUID, SEPOLIA_KLEROS_SUBCOURT3,
+  SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 
 const h = (x: string) => `0x${x.repeat(64)}`;
 const a = (x: string) => `0x${x.repeat(40)}`;
@@ -58,6 +59,20 @@ function fixture(overrides: Record<string, unknown> = {}) {
 test('catalog accepts only the pinned Reality and Kleros contracts', () => {
   assert.equal(oracleCatalog(catalog).routes.length, 2);
   assert.throws(() => oracleCatalog({ ...catalog, routes: [{ ...route, arbitrator: a('2') }, secondRoute] }), /binding mismatch/);
+});
+
+test('hybrid arbitrators are the official proxy and the subcourt 3 copy', () => {
+  assert.deepEqual(HYBRID_ARBITRATORS.map((x: string) => x.toLowerCase()),
+    ['0x05b942faecfb3924970e3a28e0f230910cedff45', '0x9e05da51d17bcd4b796e4505fceed9135bd99964']);
+  assert.equal(hybridArbitrator('0x05B942FAECFB3924970E3A28E0F230910CEDFF45'), true);
+  assert.equal(hybridArbitrator(SEPOLIA_KLEROS_SUBCOURT3.toLowerCase()), true);
+  assert.equal(hybridArbitrator(SEPOLIA_KLEROS_LIQUID), false);
+  assert.equal(hybridArbitrator('0x' + '0'.repeat(40)), false);
+  assert.equal(hybridArbitrator(undefined), false);
+  assert.equal(KLEROS_PROXY_CODE_HASH, '0x41e678fa0e8ad73d464dbaa431d4b61a3f275f5079d75ed8e24b12ac53e4e5ad');
+  const fn = (name: string) => (courtAbi as any[]).find(item => item.type === 'function' && item.name === name);
+  assert.equal(fn('execute').inputs.length, 3);
+  for (const name of ['courts', 'jurors', 'arbitrationCost']) assert.ok(fn(name), name);
 });
 
 test('market directory quote reads only the Monad pool', async () => {

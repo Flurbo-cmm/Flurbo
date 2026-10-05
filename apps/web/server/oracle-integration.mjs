@@ -4,12 +4,17 @@ import { pilotIndex } from './pilot-index.mjs';
 
 export const SEPOLIA_REALITY = '0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA';
 export const SEPOLIA_KLEROS = '0x05b942faecfb3924970e3a28e0f230910cedff45';
+export const SEPOLIA_KLEROS_LIQUID = '0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879';
+export const SEPOLIA_KLEROS_SUBCOURT3 = '0x9E05da51D17bCd4B796E4505FCEED9135bd99964';
+export const HYBRID_ARBITRATORS = Object.freeze([SEPOLIA_KLEROS, SEPOLIA_KLEROS_SUBCOURT3]);
+export const KLEROS_PROXY_CODE_HASH = '0x41e678fa0e8ad73d464dbaa431d4b61a3f275f5079d75ed8e24b12ac53e4e5ad';
 export const EVIDENCE_PATH = '/api/oracle/evidence/';
 export const ARBITRATION_STATUS = Object.freeze({ None: 0, Disputed: 1, Ruled: 2, Reported: 3 });
 export const TEST_AUSD = '0xa9012a055bd4e0edff8ce09f960291c09d5322dc';
 const ZERO = `0x${'0'.repeat(64)}`;
 const address = value => typeof value === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value);
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
+export const hybridArbitrator = value => typeof value === 'string' && HYBRID_ARBITRATORS.some(item => same(item, value));
 const hex32 = value => typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value);
 const time = value => Number.isSafeInteger(value) && value > 0;
 const publicUrl = value => {
@@ -74,6 +79,10 @@ export const courtAbi = parseAbi([
   'function executeDelayedSetStakes(uint256)',
   'function executeRuling(uint256)',
   'function castVote(uint256,uint256[],uint256,uint256)',
+  'function execute(uint256,uint256,uint256)',
+  'function courts(uint256) view returns (uint96 parent,bool hiddenVotes,uint256 minStake,uint256 alpha,uint256 feeForJuror,uint256 jurorsForCourtJump)',
+  'function jurors(address) view returns (uint256 stakedTokens,uint256 lockedTokens)',
+  'function arbitrationCost(bytes) view returns (uint256)',
 ]);
 export const poolAbi = parseAbi([
   'function protocolVersion() pure returns (uint8)',

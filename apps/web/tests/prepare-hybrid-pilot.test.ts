@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { prepareHybridPilot, realityQuestionText } from '../scripts/prepare-hybrid-pilot.mjs';
 import { settlementRuleHash } from '../server/settlement-rules.mjs';
 import { hybridSettlementCatalog } from '../server/hybrid-settlement-worker.mjs';
-import { SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
+import { SEPOLIA_KLEROS, SEPOLIA_KLEROS_LIQUID, SEPOLIA_KLEROS_SUBCOURT3, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { createHybridEvmPilot } from '../scripts/create-hybrid-evm-pilot.mjs';
 
 const T = 1_800_000_000;
@@ -88,6 +88,17 @@ test('reality event with an answer rule commits both rule and source', () => {
   changed.events[0].source.ruleURI = `https://flurbopm.singu.online/api/hybrid/rules/0x${settlementRuleHash(changed.events[0].rule)}`;
   changed.events[0].source.questionText = realityQuestionText(changed.events[0].question, changed.events[0].source.ruleURI);
   assert.notEqual(prepareHybridPilot(changed).eventHashes[0], prepared.eventHashes[0]);
+});
+
+test('reality source accepts only the official proxy and the subcourt 3 copy', () => {
+  const input = (arbitrator: string) => {
+    const base = realityPublication();
+    return { ...base, events: base.events.map(event => ({ ...event, source: { ...event.source, arbitrator } })) };
+  };
+  assert.doesNotThrow(() => prepareHybridPilot(input(SEPOLIA_KLEROS_SUBCOURT3)));
+  assert.doesNotThrow(() => prepareHybridPilot(input(SEPOLIA_KLEROS)));
+  assert.throws(() => prepareHybridPilot(input(`0x${'1'.repeat(40)}`)), /Invalid Reality source/);
+  assert.throws(() => prepareHybridPilot(input(SEPOLIA_KLEROS_LIQUID)), /Invalid Reality source/);
 });
 
 test('reality question text must embed the rule URI', () => {

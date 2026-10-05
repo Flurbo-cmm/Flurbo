@@ -1,9 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRealityObservation, hybridSettlementCatalog, hybridSettlementWorker, nextHybridAction,
-  nextHybridActions, planRealityAnswer, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
+import { buildRealityObservation, hybridRealityOutcome, hybridSettlementCatalog, hybridSettlementWorker,
+  nextHybridAction, nextHybridActions, planRealityAnswer, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
+import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
+import { SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { pilotEvidence } from '../server/pilot.mjs';
 import { digest } from '../server/settlement-rules.mjs';
+import { keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 import { at, account, catalog, pool, realityCatalog, resolver } from './hybrid-catalog-fixture.ts';
@@ -131,9 +134,12 @@ test('missing capture after the cutoff freezes a Void observation', async () => 
 const keys = { proposer: `0x${'11'.repeat(32)}`, relay: `0x${'22'.repeat(32)}`, answerer: `0x${'33'.repeat(32)}` };
 const actor = (name: keyof typeof keys) => privateKeyToAccount(keys[name] as `0x${string}`).address;
 
-function workerFixture({ failChain = false } = {}) {
-  const pools = catalog(['reality', 'reality'], { proposer: actor('proposer'), relay: actor('relay'),
-    answerer: actor('answerer') }).pools;
+function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = false, finalAtBlock = false,
+  finalAnswer = `0x${'0'.repeat(64)}`, realityBalance = 0n, secondPool = false, failFirstPool = false } = {}) {
+  const first = catalog(['reality', 'reality'], { proposer: actor('proposer'), relay: actor('relay'),
+    answerer: actor('answerer') }).pools[0];
+  const pools = secondPool ? [first, { ...first, id: 'objective-test-2', pool: account('6'), resolver: account('7'),
+    rulesHash: hybridRulesHash(first.prepared, account('7')) }] : [first];
   const events: any[] = pools[0].prepared.draft.events;
   const redis = memory();
   const archive = pilotEvidence(redis.command, origin);
@@ -141,13 +147,18 @@ function workerFixture({ failChain = false } = {}) {
   const market = {
     getChainId: async () => 10143,
     getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at + 3700) }),
+    simulateContract: async (request: any) => ({ request }),
+    getTransactionReceipt: async () => null,
     readContract: async ({ address, functionName, args = [] }: any) => {
-      const isPool = address.toLowerCase() === pool.toLowerCase();
-      const prepared = pools[0].prepared;
+      const record = pools.find(item => [item.pool, item.resolver].some(value => value.toLowerCase() === address.toLowerCase()))!;
+      if (failFirstPool && record === pools[0] && address.toLowerCase() === record.resolver.toLowerCase())
+        throw Error('request to https://secret.example/abc failed');
+      const isPool = address.toLowerCase() === record.pool.toLowerCase();
+      const prepared = record.prepared;
       const values: Record<string, unknown> = {
-        protocolVersion: isPool ? 3n : 4n, rulesHash: pools[0].rulesHash, draftHash: prepared.draftHash,
-        pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n, eventCount: 2n,
-        resolver, settlementRulesHash: pools[0].rulesHash, funded: true, resolved: false, delivered: false,
+        protocolVersion: isPool ? 3n : 4n, rulesHash: record.rulesHash, draftHash: prepared.draftHash,
+        pool: record.pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n, eventCount: 2n,
+        resolver: record.resolver, settlementRulesHash: record.rulesHash, funded: true, resolved: false, delivered: false,
         collateral: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc', routes: 1n,
         eventHashes: prepared.eventHashes[Number(args[0])], observationEnds: BigInt(at + 3600),
         caseState: { phase: 0n, challengeUntil: 0n, arbitrationUntil: 0n, sourceCaseId: `0x${'0'.repeat(64)}` } };
@@ -161,14 +172,15 @@ function workerFixture({ failChain = false } = {}) {
     getBalance: async () => 10n ** 18n,
     getTransactionReceipt: async () => { const error = Error('pending'); error.name = 'TransactionReceiptNotFoundError'; throw error; },
     simulateContract: async (request: any) => ({ request }),
-    readContract: async ({ functionName, args = [] }: any) => {
+    readContract: async ({ functionName, args = [], blockNumber }: any) => {
       const index = args[0] === questionOf(1) ? 1 : 0, item = events[index].source;
       const values: Record<string, unknown> = {
         getContentHash: item.contentHash, getArbitrator: item.arbitrator, getOpeningTS: BigInt(at + 3600),
-        getTimeout: 3600n, getMinBond: bond, getBond: 0n, getFinalizeTS: 0n,
+        getTimeout: 3600n, getMinBond: bond, getBond: answeredBond, getFinalizeTS: 0n,
         getBestAnswer: `0x${'0'.repeat(64)}`, getHistoryHash: `0x${'0'.repeat(64)}`,
-        isPendingArbitration: false, isFinalized: false, getDisputeFee: 10n ** 16n,
-        realitio: item.reality, arbitrationRequests: [0n, account('1'), 0n, 0n], balanceOf: 0n };
+        isPendingArbitration: false, isFinalized: blockNumber === undefined ? finalAtLatest : finalAtBlock,
+        getFinalAnswerIfMatches: finalAnswer, getDisputeFee: 10n ** 16n,
+        realitio: item.reality, arbitrationRequests: [0n, account('1'), 0n, 0n], balanceOf: realityBalance };
       return values[functionName];
     },
   };
@@ -179,10 +191,12 @@ function workerFixture({ failChain = false } = {}) {
   const answererWallet = { writeContract: async (request: any) => {
     writes.push(request); return `0x${String(writes.length).repeat(64)}`; } };
   const build = () => hybridSettlementWorker({ pools, market, source, command: redis.command, archive,
-    captureStore, packetStore, oracleEvidence: { putRelay: async () => '' }, origin,
+    captureStore, packetStore, origin,
+    oracleEvidence: { putRelay: async (evidence: string) => `${origin}/api/oracle/evidence/${keccak256(toHex(evidence))}` },
     marketRpcUrl: 'https://market.example', sourceRpcUrl: 'https://source.example',
     proposerPrivateKey: keys.proposer, relayPrivateKey: keys.relay, answererPrivateKey: keys.answerer,
-    answererWallet, proposerWallet: {}, relayWallet: {}, request: publicRequest(archive),
+    answererWallet, proposerWallet: {}, request: publicRequest(archive),
+    relayWallet: { writeContract: async (request: any) => { writes.push(request); return `0x${String(writes.length).repeat(64)}`; } },
     now: () => at + 3700 });
   return { build, writes, redis, bond };
 }
@@ -209,5 +223,48 @@ test('worker errors are masked', async () => {
   const { build } = workerFixture({ failChain: true });
   const worker = build();
   await worker.tick();
-  assert.equal(worker.status().lastError, 'Hybrid settlement source or transaction request failed');
+  assert.equal(worker.status().lastError, 'objective-test: Hybrid settlement source or transaction request failed');
+});
+
+test('non-boolean final Reality answers deliver as Void', () => {
+  assert.equal(hybridRealityOutcome(`0x${'0'.repeat(64)}`), 1);
+  assert.equal(hybridRealityOutcome(`0x${'0'.repeat(63)}1`), 2);
+  assert.equal(hybridRealityOutcome(`0x${'f'.repeat(64)}`), 3);
+  assert.equal(hybridRealityOutcome(`0x${'0'.repeat(63)}2`), 3);
+  assert.throws(() => hybridRealityOutcome('0x01'), /Reality answer is malformed/);
+});
+
+test('relay waits for the finalized Sepolia block before reporting', async () => {
+  const yes = `0x${'0'.repeat(63)}1`;
+  const waiting = workerFixture({ answeredBond: 10n ** 14n, finalAtLatest: true, finalAtBlock: false, finalAnswer: yes });
+  const worker = waiting.build();
+  await worker.tick();
+  assert.equal(waiting.writes.some(call => call.functionName === 'reportReality'), false);
+  assert.equal(worker.status().lastError, null);
+  const ready = workerFixture({ answeredBond: 10n ** 14n, finalAtLatest: true, finalAtBlock: true, finalAnswer: yes });
+  await ready.build().tick();
+  const report = ready.writes.find(call => call.functionName === 'reportReality');
+  assert.equal(report.args[0], 0);
+  assert.equal(report.args[1], 2);
+  assert.match(report.args[3], /\/api\/oracle\/evidence\/0x[0-9a-f]{64}$/);
+});
+
+test('one failing pool does not stop the next pool', async () => {
+  const { build, writes } = workerFixture({ secondPool: true, failFirstPool: true });
+  const worker = build();
+  await worker.tick();
+  assert.equal(writes.filter(call => call.functionName === 'submitAnswer').length, 2);
+  assert.equal(worker.status().lastError, 'objective-test: Hybrid settlement source or transaction request failed');
+});
+
+test('answerer withdraws its Reality credit once', async () => {
+  const funded = workerFixture({ realityBalance: 10n ** 14n });
+  await funded.build().tick();
+  await funded.build().tick();
+  const withdrawals = funded.writes.filter(call => call.functionName === 'withdraw');
+  assert.equal(withdrawals.length, 1);
+  assert.equal(withdrawals[0].address.toLowerCase(), SEPOLIA_REALITY.toLowerCase());
+  const dust = workerFixture({ realityBalance: 10n ** 14n - 1n });
+  await dust.build().tick();
+  assert.equal(dust.writes.some(call => call.functionName === 'withdraw'), false);
 });

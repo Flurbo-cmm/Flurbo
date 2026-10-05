@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { encodeAbiParameters, keccak256, parseAbiParameters, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { courtAction, hybridCourtKeeper } from '../server/hybrid-court-keeper.mjs';
-import { SEPOLIA_KLEROS } from '../server/oracle-integration.mjs';
+import { SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { at, catalog } from './hybrid-catalog-fixture.ts';
 
 const COURT = '0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879';
@@ -77,7 +78,8 @@ function fixture(over: Record<string, any> = {}) {
   const { sourceNow = at + 3700, status = 0, best = zero, bondWei = bond, courtValues = {},
     observation = { questionId, outcome: 2, answer: yes, evidenceURI: 'https://flurbopm.singu.online/api/pilot/evidence/0x1',
       evidenceHash: `0x${'1'.repeat(64)}` }, finalizeTs = at + 3600 + 3600, proxyFee = fee,
-    logs = [], balance = 10n ** 18n, chainId = 11155111 } = over;
+    logs = [], balance = 10n ** 18n, chainId = 11155111, finalized = false, history = `0x${'4'.repeat(64)}`,
+    realityBalance = 0n, code = '0x6080', votes = [] } = over;
   const pools = catalog(['reality', 'reality'], { keeper }).pools;
   const events: any[] = pools[0].prepared.draft.events;
   const values = new Map<string, string>();
@@ -103,21 +105,24 @@ function fixture(over: Record<string, any> = {}) {
     getBlock: async () => ({ timestamp: BigInt(sourceNow), number: 50n, hash: `0x${'8'.repeat(64)}` }),
     getBalance: async () => balance,
     getBlockNumber: async () => 120n,
-    getTransactionReceipt: async ({ hash }: any) => hash === events[0].source.questionTxHash
+    getBytecode: async () => code,
+    getTransactionReceipt: async ({ hash }: any) => hash === events[0].source.questionTxHash || hash === events[1].source.questionTxHash
       ? { status: 'success', to: events[0].source.reality, blockNumber: 100n } : { status: 'success' },
     getLogs: async () => logs,
     simulateContract: async (request: any) => ({ request }),
     readContract: async ({ functionName, args = [] }: any) => {
+      if (functionName === 'getVote') return votes[Number(args[2])] ?? [zeroAddress, zero, 0n, false];
       const second = `0x${'b'.repeat(64)}`;
       const item = events[args[0] === second || args[0] === BigInt(second) ? 1 : 0].source;
       const table: Record<string, unknown> = {
         getContentHash: item.contentHash, getArbitrator: item.arbitrator, getOpeningTS: BigInt(at + 3600),
         getTimeout: 3600n, getMinBond: 100000000000000n, getBond: bondWei, getFinalizeTS: BigInt(finalizeTs),
-        getBestAnswer: best, getHistoryHash: `0x${'4'.repeat(64)}`,
-        isPendingArbitration: status > 0 && item === events[0].source, isFinalized: false, getDisputeFee: proxyFee,
-        realitio: item.reality, balanceOf: 0n,
+        getBestAnswer: best, getHistoryHash: history,
+        isPendingArbitration: status > 0 && item === events[0].source, isFinalized: finalized, getDisputeFee: proxyFee,
+        realitio: item.reality, balanceOf: realityBalance,
         arbitrationRequests: [item === events[0].source ? BigInt(status) : 0n, keeper, 7n, 0n],
-        arbitrator: COURT, arbitratorExtraData: '0x', getMultipliers: [3000n, 7000n, 5000n, 10000n], ...dispute };
+        arbitrator: COURT, arbitratorExtraData: encodeAbiParameters(parseAbiParameters('uint256,uint256'), [0n, 1n]),
+        getMultipliers: [3000n, 7000n, 5000n, 10000n], ...dispute };
       return table[functionName];
     },
   };
@@ -129,7 +134,7 @@ function fixture(over: Record<string, any> = {}) {
     return { hash: `0x${'7'.repeat(64)}`, uri: 'https://flurbopm.singu.online/api/oracle/evidence/0x' + '7'.repeat(64) };
   } };
   const build = (extra: Record<string, unknown> = {}) => hybridCourtKeeper({ pools, source, command, evidence,
-    rpcUrl: 'https://source.example', privateKey: keeperKey, keeperWallet, ...extra });
+    rpcUrl: 'https://source.example', privateKey: keeperKey, keeperWallet, proxyCodeHash: keccak256('0x6080'), ...extra });
   return { build, writes, puts, values, events, source };
 }
 
@@ -214,4 +219,65 @@ test('status masks errors', async () => {
   assert.equal(other.status().lastError?.includes('secret'), false);
   assert.equal(other.status().lastError?.includes('Hybrid court keeper source or transaction request failed'), true);
   assert.equal(other.status().keeper, keeper);
+});
+
+const rulingLogs = [
+  { args: { answer: zero, history_hash: `0x${'5'.repeat(64)}`, user: keeper, bond: 100000000000000n } },
+  { args: { answer: yes, history_hash: `0x${'4'.repeat(64)}`, user: keeper, bond } },
+];
+
+test('refuses a proxy whose code differs from the verified Kleros proxy', async () => {
+  const { build, writes } = fixture({ code: '0x6081' });
+  const worker = build();
+  await worker.tick();
+  assert.deepEqual(writes, []);
+  assert.match(worker.status().lastError || '', /Reality arbitrator is not a verified Kleros proxy/);
+});
+
+test('executes each court round after the ruling, then claims bonds', async () => {
+  const { build, writes } = fixture({ status: 3, finalized: true, logs: rulingLogs,
+    courtValues: { disputes: [3n, SEPOLIA_KLEROS, 2n ** 256n - 1n, 4n, 1000n, 3n, 0n, true],
+      getDispute: [[1n, 3n], [0n, 0n], [0n, 0n], [1n, 3n], [2n, 0n], [0n, 0n]] } });
+  await build().tick();
+  assert.deepEqual(names(writes), ['execute', 'claimWinnings']);
+  assert.equal(writes[0].address.toLowerCase(), COURT.toLowerCase());
+  assert.deepEqual(writes[0].args, [7n, 1n, 6n]);
+  assert.equal(writes[1].address.toLowerCase(), SEPOLIA_REALITY.toLowerCase());
+  assert.equal(writes[1].args[0], `0x${'b'.repeat(64)}`);
+  await build().tick();
+  assert.deepEqual(names(writes), ['execute', 'claimWinnings', 'claimWinnings']);
+  assert.equal(writes[2].args[0], questionId);
+});
+
+test('a final unchallenged question claims bonds once', async () => {
+  const { build, writes } = fixture({ status: 0, finalized: true,
+    logs: [{ args: { answer: yes, history_hash: `0x${'4'.repeat(64)}`, user: keeper, bond: 100000000000000n } }] });
+  const worker = build();
+  await worker.tick();
+  assert.deepEqual(names(writes), ['claimWinnings', 'claimWinnings']);
+  await worker.tick();
+  assert.equal(writes.length, 2);
+});
+
+test('withdraws keeper Reality credit at the minimum', async () => {
+  const funded = fixture({ realityBalance: 10n ** 14n });
+  await funded.build().tick();
+  assert.deepEqual(names(funded.writes), ['requestArbitration', 'withdraw']);
+  assert.equal(funded.writes[1].address.toLowerCase(), SEPOLIA_REALITY.toLowerCase());
+  const dust = fixture({ realityBalance: 10n ** 14n - 1n });
+  await dust.build().tick();
+  assert.deepEqual(names(dust.writes), ['requestArbitration']);
+});
+
+test("status shows the juror's unvoted seats in the vote period", async () => {
+  const juror = `0x${'66'.repeat(20)}`;
+  const { build, values } = fixture({ status: 1, sourceNow: 1100,
+    courtValues: { disputes: [0n, SEPOLIA_KLEROS, 2n ** 256n - 1n, 2n, 1000n, 1n, 0n, false] },
+    votes: [[juror, zero, 0n, false]] });
+  values.set(`flurbo:hybrid-court:v1:${questionId}:7:evidence`, `0x${'9'.repeat(64)}`);
+  const worker = build({ juror });
+  await worker.tick();
+  assert.equal(worker.status().juror, juror);
+  const key = Object.keys(worker.status().cases)[0];
+  assert.deepEqual(worker.status().cases[key].jurorVoteIds, [0]);
 });
