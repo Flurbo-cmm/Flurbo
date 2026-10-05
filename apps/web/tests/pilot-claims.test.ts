@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { decodeFunctionData, encodeFunctionResult } from 'viem';
-import { portfolioClaims, rememberedClaims, rememberConfirmedClaim } from '../src/pilot-claims.ts';
+import { portfolioClaims, rememberClaimHint, rememberedClaims, rememberConfirmedClaim } from '../src/pilot-claims.ts';
 import { pilotFixture, owner, pool, hash } from './pilot-fixture.ts';
 import { pilotService } from '../server/pilot.mjs';
 import { pilotPoolAbi } from '../shared/pilot.mjs';
@@ -54,6 +54,20 @@ test('account discovers scopes at its verified block without attributing them to
   const result=await pilotService({manifest:f.manifest,rpc}).account(owner);
   assert.deepEqual(result.claimScopes,[3]);assert.equal(calls[0][1],'0x64');
   assert.equal(result.rows,undefined);assert.equal(result.wallet.address,owner);
+});
+
+test('claim hints are kept per hybrid pool and owner', () => {
+  const db = new Map<string, string>(), previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => db.get(key) ?? null, setItem: (key: string, value: string) => db.set(key, value) } });
+  const hybridPool = '0x' + '44'.repeat(20), namespace = ('hybrid-' + hybridPool) as `hybrid-0x${string}`;
+  try {
+    rememberClaimHint(namespace, hybridPool, owner, 2, { scope: 3, mask: '8' });
+    assert.deepEqual(rememberedClaims(namespace, hybridPool, owner, 2), [{ scope: 3, mask: '8' }]);
+    rememberClaimHint(namespace, hybridPool, owner, 2, { scope: 4, mask: '2' });
+    rememberClaimHint(namespace, hybridPool, owner, 2, { scope: 3, mask: '8' });
+    assert.deepEqual(rememberedClaims(namespace, hybridPool, owner, 2), [{ scope: 3, mask: '8' }]);
+    assert.deepEqual(rememberedClaims(namespace, hybridPool, '0x' + '99'.repeat(20), 2), []);
+  } finally { if (previous) Object.defineProperty(globalThis, 'localStorage', previous); else delete (globalThis as any).localStorage; }
 });
 
 test('price impact compares the average price of a size with one share of the same claim', async () => {

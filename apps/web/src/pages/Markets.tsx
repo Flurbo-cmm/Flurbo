@@ -7,6 +7,7 @@ import {appFetch} from '../platform-fetch';
 import {pilotRequest,type PilotNamespace} from '../pilot';
 import {loadMarketDirectory,marketStatus,type MarketGroup,type MarketSnapshot,type OracleMarket,type OracleMarketSummary,type HybridMarket,type HybridMarketSummary,type MarketDirectory as MarketDirectoryData} from '../market-directory';
 import {marketHref} from '../market-detail';
+import {hybridPortfolioGroups} from '../portfolio-groups';
 import {marketQuestion} from '../showcase-copy';
 import MarketDetail from './MarketDetail';
 import OracleMarketDetail from './OracleMarkets';
@@ -27,6 +28,7 @@ export default function Markets(){
   const [directory,setDirectory]=useState<MarketDirectoryData|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
   useEffect(()=>{const c=new AbortController();setError('');void loadMarketDirectory(c.signal).then(setDirectory).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[attempt]);
   const gate=useLoadGate('directory',{pending:!directory&&!error,label:'Loading markets'});
+  const portfolioGroups=useMemo(()=>directory?[...directory.groups,...hybridPortfolioGroups(directory.hybridMarkets)]:[],[directory]);
   if(!directory)return <main id="main" tabIndex={-1} className="page markets-page" aria-busy={!error}>
     <PageHeader title={location==='/portfolio'?<>Your portfolio.</>:'What happens next?'} lead={location==='/portfolio'?'All your linked wallet positions. Results and payouts in one place.':'Choose a question. Take a view. Explore how it connects.'}/>
     {error?<div className="state-block" role="alert"><h2>Markets could not load</h2><p>{error}</p><button className="btn btn-primary" onClick={()=>setAttempt(x=>x+1)}>Retry</button></div>
@@ -48,7 +50,7 @@ export default function Markets(){
   }
   if(location==='/portfolio')return <main id="main" tabIndex={-1} className="page markets-page portfolio-page">
     <PageHeader title="Your portfolio." lead="All your linked wallet positions. Results and payouts in one place."/>
-    {auth.address&&<AccountPortfolio account={auth.address} namespace="all" groups={groups}/>}
+    {auth.address&&<AccountPortfolio account={auth.address} namespace="all" groups={portfolioGroups}/>}
   </main>;
   return <MarketDirectory groups={groups} oracleMarkets={oracleMarkets} hybridMarkets={hybridMarkets}/>;
 }

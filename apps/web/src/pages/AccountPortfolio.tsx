@@ -4,10 +4,10 @@ import {forgetPortfolioSources,portfolioSources,type PortfolioSources} from '../
 import {discoverWallets,type BrowserWallet} from '../auth/wallet-choice';
 import AccountHoldings from './AccountHoldings';
 import PortfolioDashboard from './PortfolioDashboard';
-import type {MarketGroup} from '../market-directory';
+import type {PortfolioGroup} from '../portfolio-groups';
 import {useLoadGate} from '../loading/gates';
 
-export default function AccountPortfolio({account,namespace,groups}:{account:string;namespace:string;groups?:MarketGroup[]}) {
+export default function AccountPortfolio({account,namespace,groups}:{account:string;namespace:string;groups?:PortfolioGroup[]}) {
   const [wallets,setWallets]=useState<string[]|null>(null),[error,setError]=useState(''),[tick,setTick]=useState(0),[busy,setBusy]=useState(false);
   const [sources,setSources]=useState<PortfolioSources|null>(null);
   const currentAccount=useRef(account);currentAccount.current=account;

@@ -37,7 +37,7 @@ export function describeClaimAnswers(scope: number, mask: number) {
   return formatClaim(scope, mask, (_event, yes) => yes ? 'Yes' : 'No');
 }
 function formatClaim(scope: number, mask: number, label: (event: number, yes: boolean) => string) {
-  const events = Array.from({ length: 8 }, (_, i) => i).filter(i => scope & (1 << i));
+  const events = Array.from({ length: 32 }, (_, i) => i).filter(i => Math.floor(scope / 2 ** i) % 2 === 1);
   const count = 1 << events.length;
   const leg = (state: number, i: number) => label(events[i], Boolean(state & (1 << i)));
   const winners = Array.from({ length: count }, (_, i) => i).filter(i => mask & (1 << i));
@@ -47,7 +47,7 @@ function formatClaim(scope: number, mask: number, label: (event: number, yes: bo
     return events.map((_, i) => leg(loser ^ (count - 1), i)).join(' OR ');
   }
   try {
-    const named=decodeClaim(scope,mask);
+    const named=decodeClaim(scope,mask,32);
     if(named && ['EXACTLY_ONE','AT_LEAST_TWO'].includes(named.rule)) return `${named.rule==='EXACTLY_ONE'?'Exactly one':'At least two'} of: `+named.legs.map(l=>label(l.event,l.yes)).join(' / ');
   } catch { /* Legacy shapes keep their explicit truth-table description. */ }
   return winners.map(state => '(' + events.map((_, i) => leg(state, i)).join(' AND ') + ')').join(' OR ');

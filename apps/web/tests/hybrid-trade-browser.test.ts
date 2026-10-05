@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { encodeFunctionData, parseAbi } from 'viem';
 
 test('hybrid market simulates quote, approval, reload, purchase, and confirmation in the trade ticket',
   { skip: !process.env.FLURBO_TEST_PLAYWRIGHT }, async () => {
@@ -79,9 +80,11 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
             buyAtoms: cost.toString(), maxCostAtoms: maximum.toString(), sellAtoms: null,
             minProceedsAtoms: null, cashAtoms: '10000000', allowanceAtoms: allowance, holdingsAtoms: '0' } });
           if (action === 'approve') allowance = maximum.toString();
+          const data = action === 'buy' ? encodeFunctionData({ abi: parseAbi(['function buy(uint32,uint256,uint128,uint128,uint256) returns (uint128)']),
+            functionName: 'buy', args: [1, 2n, 5_000_000n, maximum, BigInt(now + 120)] }) : '0x1234';
           return route.fulfill({ json: { action, amountAtoms: maximum.toString(),
             maxCostAtoms: maximum.toString(), reason: `${action} five shares`, transaction: {
-              chainId: 10143, from: owner, to: pool, data: '0x1234', value: '0x0' } } });
+              chainId: 10143, from: owner, to: pool, data, value: '0x0' } } });
         }
         if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unavailable fixture' } });
         const relative = path.startsWith('/assets/') ? path.slice(1) : 'index.html';
@@ -118,6 +121,8 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       await ticket.getByRole('heading', { name: 'Purchase complete' }).waitFor();
       assert.equal(await page.evaluate(() => sessionStorage.getItem('hybrid.sends')), '2');
       assert.equal(await page.evaluate(() => sessionStorage.getItem('flurbo.hybrid.pending.v1')), null);
+      assert.equal(await page.evaluate((key: string) => localStorage.getItem(key),
+        `flurbo.claims.v1:10143:hybrid-${pool}:${pool}:${owner.toLowerCase()}`), '[{"scope":1,"mask":"2"}]');
       await page.evaluate(() => {
         sessionStorage.setItem('hybrid.selectedWallet', '0x' + '33'.repeat(20));
         (window as any).walletEvent('accountsChanged');

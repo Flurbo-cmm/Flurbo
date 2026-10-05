@@ -20,10 +20,11 @@ import {userMetrics} from './user-metrics.mjs';
 import {memberNotices,noticeDelivery} from './member-notices.mjs';
 import {handleAlchemyWebhook, getAlchemyActivities} from './alchemy-webhook.mjs';
 import { EVIDENCE_PATH } from './oracle-integration.mjs';
+import { HYBRID_PORTFOLIO_INPUT_ERRORS } from './hybrid-portfolio.mjs';
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null } = {}) {
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
   const links = walletLinks({command:store.command,isReserved:wallet=>agents?agents.isAgentWallet(wallet):false,reservedKey:store.command?agentWalletKey:null});
@@ -387,6 +388,35 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         } catch (error) {
           return send(res, 400, { error: error instanceof Error && /^(Invalid |Reality |Oracle |Duplicate |Enter |Select |Bond |Arbitration |Evidence |Appeal |No |Trading |Shares |Fund |Approval |Unsupported |Insufficient |Kleros |Outside |New pool |RPC chain)/.test(error.message)
             ? error.message : 'Oracle request unavailable. Refresh and retry.' });
+        }
+      }
+      if (/^\/api\/hybrid\/pool\/0x[0-9a-f]{40}\/(?:account|positions|history|collected-payouts)$/i.test(url.pathname)) {
+        const login = await getLogin();
+        if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
+        if (previewAllows && !await previewAllows(login.address)) return send(res, 403, { error: 'Account approval required.' });
+        if (!hybridPortfolio) return send(res, 503, { error: 'Hybrid markets are unavailable.' });
+        if (url.search) return send(res, 400, { error: 'Unexpected parameter.' });
+        const [, , , , pool, op] = url.pathname.split('/'), method = op === 'account' ? 'GET' : 'POST';
+        if (req.method !== method) return send(res, 405, { error: `${method} without parameters required.` });
+        const input = method === 'POST' ? await body(req) : null;
+        if (op === 'history' || op === 'collected-payouts') {
+          if (!input || typeof input !== 'object' || Object.keys(input).length) return send(res, 400, { error: 'Unexpected input.' });
+          try { return send(res, 200, op === 'history' ? await hybridPortfolio.history(pool) : await hybridPortfolio.payouts(pool)); }
+          catch (error) {
+            if (HYBRID_PORTFOLIO_INPUT_ERRORS.has(error?.message)) return send(res, 400, { error: error.message });
+            console.warn(JSON.stringify({ status: op === 'history' ? 'hybrid_history_failed' : 'hybrid_payout_read_failed', pool: pool.toLowerCase() }));
+            return send(res, 503, op === 'history'
+              ? { error: 'Trade history is temporarily unavailable. Your on-chain holdings are loaded separately. Retry shortly.' }
+              : { code: error?.code === 'PAYOUT_ARCHIVE_UNAVAILABLE' ? 'PAYOUT_ARCHIVE_UNAVAILABLE' : 'PAYOUT_READ_FAILED',
+                error: 'Collected payouts could not be checked. Your current holdings are separate.' });
+          }
+        }
+        try {
+          return send(res, 200, op === 'account' ? await hybridPortfolio.account(pool)
+            : await hybridPortfolio.positions(pool, input?.owner, input?.claims));
+        } catch (error) {
+          return HYBRID_PORTFOLIO_INPUT_ERRORS.has(error?.message) ? send(res, 400, { error: error.message })
+            : send(res, 503, { error: 'Hybrid holdings are temporarily unavailable. Refresh and retry.' });
         }
       }
       if (/^\/api\/hybrid\/0x[0-9a-f]{40}-(?:[0-9]|[12][0-9]|3[01])(?:\/(?:market|action|analysis|evidence|price-history))?$/i.test(url.pathname)) {

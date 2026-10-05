@@ -1,25 +1,19 @@
 import { getAddress, parseAbi } from 'viem';
-import { pilotIndex } from './pilot-index.mjs';
+import { hybridPoolIndexes } from './hybrid-portfolio.mjs';
 import { readHybridSnapshot } from './hybrid-settlement-worker.mjs';
 import { hybridRealitySnapshot } from './hybrid-reality.mjs';
 
 const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
   'function payoutFraction(uint32,uint256) view returns (uint256 numerator,uint256 denominator)']);
 
-export function hybridNoticePools({ pools, market, source, command }) {
+export function hybridNoticePools({ pools, market, source, command,
+  indexes = hybridPoolIndexes({ pools, market, command }) }) {
   if (!command || !pools?.length) return [];
   return pools.map(record => {
-    let indexPromise = null;
     async function refresh() {
-      if (!indexPromise) indexPromise = market.getBlock({ blockNumber: BigInt(record.deploymentBlock) })
-        .then(block => {
-          if (!block?.hash) throw Error('Hybrid verification block unavailable');
-          return pilotIndex({ manifest: { pool: record.pool.toLowerCase(),
-            resolver: record.resolver.toLowerCase(), verifiedBlock: record.deploymentBlock,
-            verifiedBlockHash: block.hash.toLowerCase() }, command, maxBlocks: 10_000,
-          initialWindowSize: 1000, rpc: (method, params) => market.request({ method, params }) });
-        }).catch(error => { indexPromise = null; throw error; });
-      return (await indexPromise).refresh();
+      const index = indexes.get(record.pool.toLowerCase());
+      if (!index) throw Error('Hybrid history unavailable');
+      return index.history.refresh();
     }
     const href = event => `/markets/hybrid/${record.pool}/${event}`;
     return { namespace: `hybrid:${record.pool.toLowerCase()}`,
