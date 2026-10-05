@@ -136,7 +136,7 @@ test('a foreign collateral blocks the market and selling checks holdings', async
 
 test('appeal contributions are simulated on the pinned proxy and rewards can be claimed', async () => {
   const service = fixture({ source: { isPendingArbitration: true,
-    arbitrationRequests: [2, owner, 4n, 0n] } });
+    arbitrationRequests: [1, owner, 4n, 0n] } });
   const plan = await service.prepare(route.id, 'appeal', { ruling: 2, amountEth: '0.01' }, owner);
   assert.equal(plan.transaction.to.toLowerCase(), SEPOLIA_KLEROS.toLowerCase());
   assert.equal(decodeFunctionData({ abi: proxyAbi, data: plan.transaction.data as `0x${string}` }).functionName, 'fundAppeal');
@@ -149,12 +149,18 @@ test('appeal contributions are simulated on the pinned proxy and rewards can be 
 
 test('a Kleros ruling can be finalized from verified Reality answer history', async () => {
   const service = fixture({ source: { isPendingArbitration: true,
-    arbitrationRequests: [3, owner, 4n, 1n] } });
+    arbitrationRequests: [2, owner, 4n, 1n] } });
   const plan = await service.prepare(route.id, 'finalizeArbitration', {}, owner);
   const decoded = decodeFunctionData({ abi: proxyAbi, data: plan.transaction.data as `0x${string}` });
   assert.equal(decoded.functionName, 'reportAnswer');
   assert.equal(decoded.args?.[1], h('0'));
   assert.equal(plan.transaction.to.toLowerCase(), SEPOLIA_KLEROS.toLowerCase());
+});
+
+test('finalizeArbitration refuses a Reported request', async () => {
+  const service = fixture({ source: { isPendingArbitration: true,
+    arbitrationRequests: [3, owner, 4n, 2n] } });
+  await assert.rejects(service.prepare(route.id, 'finalizeArbitration', {}, owner), /Kleros ruling is not ready to report/);
 });
 
 test('Kleros ruling report uses the previous hash after a bond challenge', async () => {
@@ -163,7 +169,7 @@ test('Kleros ruling report uses the previous hash after a bond challenge', async
     { args: { answer: h('1'), history_hash: h('e'), user: owner, bond: 2000n } },
   ];
   const service = fixture({ source: { isPendingArbitration: true, getHistoryHash: h('e'),
-    getBond: 2000n, arbitrationRequests: [3, owner, 4n, 2n] }, logs });
+    getBond: 2000n, arbitrationRequests: [2, owner, 4n, 2n] }, logs });
   const plan = await service.prepare(route.id, 'finalizeArbitration', {}, owner);
   const decoded = decodeFunctionData({ abi: proxyAbi, data: plan.transaction.data as `0x${string}` });
   assert.equal(decoded.args?.[1], h('f'));

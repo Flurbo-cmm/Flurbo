@@ -17,6 +17,8 @@ import './market-detail.css';
 import './pilot.css';
 import './oracle.css';
 
+const arbitration = { disputed: 1, ruled: 2 } as const;
+
 type Market = { id: string; pool: string; poolTitle: string; eventIndex: number;
   question: string; route: 'mechanical' | 'reality'; closesAt: number; observationEndsAt: number };
 type Snapshot = Market & { schema: string; resolver: string; eventHash: string; rulesHash: string;
@@ -30,9 +32,17 @@ type Snapshot = Market & { schema: string; resolver: string; eventHash: string; 
     sourceNow: number; opensAt: number; finalizesAt: number; bondWei: string;
     nextBondWei: string; disputeFeeWei: string; pendingArbitration: boolean;
     finalized: boolean; creditedEthWei: string; answerLabel: string | null;
-    historyHash: string; disputeStatus: number; disputeId: string };
+    historyHash: string; disputeStatus: number; disputeId: string;
+    court: null | { court: string; disputeId: string; period: number; periodLabel: string;
+      periodEndsAt: number | null; rounds: number; drawn: number; votesNeeded: number; votesCast: number;
+      ruled: boolean; currentRuling: number | null;
+      appeal: null | { start: number; end: number; loserEnd: number; costWei: string;
+        winnerTotalWei: string; loserTotalWei: string } };
+    links: { questionTx: string | null; reality: string; courtContract: string | null } };
   user: null | { wallet: string; noShares: string; yesShares: string; cashAtoms: string;
-    allowanceAtoms: string; bondAllowanceAtoms: string; bondCreditsAtoms: string } };
+    allowanceAtoms: string; bondAllowanceAtoms: string; bondCreditsAtoms: string };
+  ruleURI?: string | null;
+  automaticAnswer?: { outcome: number; evidenceURI: string; observedAt: number } | null };
 type Plan = { action: string; reason: string; amountAtoms?: string; maxCostAtoms?: string;
   expiresAt?: number;
   minimumReceivedAtoms?: string; transaction: { chainId: number; from: string;
@@ -365,23 +375,31 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     : snapshot?.phase === 2 ? 'Kleros review'
     : snapshot?.phase === 1 ? 'Answer open for challenge' : snapshot?.phase === 3 ? 'Result final, awaiting pool'
       : closed ? 'Trading closed' : 'Open for predictions';
-  const courtActive = !!reality?.pendingArbitration || snapshot?.phase === 2;
+  const disputed = !!reality && reality.disputeStatus > 0;
+  const courtActive = disputed || snapshot?.phase === 2;
   const finalIndex = courtActive ? 5 : 4;
-  const payoutIndex = courtActive ? 6 : 5;
-  const stage = snapshot?.resolved ? payoutIndex : snapshot?.phase === 3 || reality?.finalized ? finalIndex
-    : reality?.pendingArbitration ? 4 : canArbitrate ? 3 : reality && reality.sourceNow >= reality.opensAt ? 2
+  const relayIndex = finalIndex + 1;
+  const payoutIndex = reality ? finalIndex + 2 : courtActive ? 6 : 5;
+  const stage = reality ? snapshot?.resolved || snapshot?.phase === 3 ? payoutIndex : reality.finalized ? relayIndex
+    : disputed ? 4 : hasRealityAnswer ? 3 : reality.sourceNow >= reality.opensAt ? 2 : closed ? 1 : 0
+    : snapshot?.resolved ? payoutIndex : snapshot?.phase === 3 ? finalIndex
     : snapshot?.phase === 2 ? 4
     : snapshot?.phase === 1 ? 3 : snapshot && snapshot.marketNow >= snapshot.observationEndsAt ? 2 : closed ? 1 : 0;
   const step = (key: string, title: string, meta: string, index: number): Step => ({ key, title, meta,
     state: index < stage ? 'done' : index === stage ? 'current' : 'upcoming' });
+  const readerLabel = snapshot?.automaticAnswer ? labels[snapshot.automaticAnswer.outcome] : null;
   const steps: Step[] = reality ? [
     step('trading', 'Trading', market ? `Closes ${date(market.closesAt)}` : '', 0),
-    step('source', 'Source opens', `Reality.eth opens ${date(reality.opensAt)}`, 1),
-    step('proposal', hasRealityAnswer ? 'Answer proposed' : 'Awaiting bonded answer',
-      hasRealityAnswer ? 'A bonded answer was posted on Reality.eth' : 'An answerer must post a Sepolia ETH bond', 2),
-    step('challenge', 'Challenge window', 'Another answer or a Kleros challenge can be submitted', 3),
-    ...(reality.pendingArbitration ? [step('court', 'Kleros review', 'Jurors review the disputed answer', 4)] : []),
-    step('final', 'Final answer', 'Reality.eth finalizes, then the relay reports to Monad', finalIndex),
+    step('source', 'Source observed', market ? `Reader window ends ${date(market.observationEndsAt)}` : '', 1),
+    step('proposal', hasRealityAnswer ? 'Answer posted' : 'Awaiting answer',
+      readerLabel ? `Flurbo reader answered ${readerLabel}` : hasRealityAnswer
+        ? 'A bonded answer was posted on Reality.eth' : 'An answerer must post a Sepolia ETH bond', 2),
+    step('challenge', 'Challenge window', reality.finalizesAt > 0 ? `Until ${date(reality.finalizesAt)}`
+      : 'Opens when the first answer is posted', 3),
+    ...(disputed ? [step('court', 'Kleros review', reality.court
+      ? `Case #${reality.court.disputeId}: ${reality.court.periodLabel}` : 'Jurors review the disputed answer', 4)] : []),
+    step('final', 'Final on Reality.eth', 'Reality.eth finalizes the answer on Sepolia', finalIndex),
+    step('relay', 'Reported to Monad', 'The relay delivers the final answer to this pool', relayIndex),
     step('payout', 'Payouts', 'Available when every question in this pool is final', payoutIndex),
   ] : [
     step('trading', 'Trading', market ? `Closes ${date(market.closesAt)}` : '', 0),
@@ -414,6 +432,13 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         {snapshot && <><section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={status}>{statusText}</StatusBadge></div>
           <p>{reality ? 'Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers and Kleros hears disputes.'
             : 'Your shares stay in your wallet while the event runs. The source rule fixes the answer. Kleros hears a challenged answer.'}</p><Stepper steps={steps} label="Settlement steps"/>
+          {reality?.court && <p className="market-caption">Kleros case #{reality.court.disputeId}: {reality.court.periodLabel}.
+            {reality.court.periodEndsAt ? ` Ends ${date(reality.court.periodEndsAt)}.` : ''}
+            {reality.court.period === 2 && reality.court.votesCast < reality.court.votesNeeded ? ' Waiting for the juror vote.' : ''}</p>}
+          {reality && <p className="market-caption">
+            <a className="text-link" href={reality.links.reality} target="_blank" rel="noreferrer">Reality.eth question <ArrowUpRight size={14}/></a>
+            {reality.links.courtContract && <> · <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court contract on Etherscan <ArrowUpRight size={14}/></a></>}
+            {reality.links.questionTx && <> · <a className="text-link" href={reality.links.questionTx} target="_blank" rel="noreferrer">Question transaction <ArrowUpRight size={14}/></a></>}</p>}
           {reality && hasRealityAnswer && <p>Current Reality.eth answer: <strong>{reality.answerLabel}</strong>. {canArbitrate ? `Challenge before ${date(reality.finalizesAt)}.` : ''}</p>}
           {reality?.pendingArbitration && <p>The answer is under Kleros review. Payout waits for the final Reality.eth result.</p>}
           {snapshot.phase === 1 && <p>Proposed answer: <strong>{labels[snapshot.proposal]}</strong>. Challenge before {date(snapshot.challengeUntil)}.</p>}
@@ -425,9 +450,11 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         </section>
         <section className="detail-panel"><h2>What decides the answer?</h2><p>{reality ? 'The published Reality.eth question receives bonded answers. Kleros can rule on a challenged answer.'
           : 'The published source and exact rule for this question determine the provisional answer.'}</p>
+          {reality && snapshot.ruleURI && <p><a className="text-link" href={snapshot.ruleURI} target="_blank" rel="noreferrer">Published rule <ArrowUpRight size={14}/></a></p>}
           {snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
           <dl className="facts"><dt>Reader</dt><dd>{snapshot.source?.adapter || 'Reality.eth'}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
-            <dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></dl>
+            {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : 'Not recorded yet'}</dd></>
+            : <><dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></>}</dl>
           {reality && <p className="market-caption">Question ID: {reality.questionId}. A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted.</p>}
         </section>{others.length > 0 && <section className="detail-panel detail-thesis"><h2>Build your thesis</h2><p>Put your estimates beside the pool's joint outcomes and current combined-share quotes.</p><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Explore your view</Link></section>}</>}
       </div><aside className="detail-sidebar">
@@ -527,30 +554,30 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
             { counter, evidenceHash: challengeEvidence.hash, evidenceURI: challengeEvidence.uri }))}>Review challenge</button></>}
         </section>}
         {canAnswer && <section className="detail-panel"><h2>{hasRealityAnswer ? 'Post another answer' : 'Submit an answer'}</h2>
-          <p>Reality.eth accepts a bonded answer on Sepolia. A different answer needs a larger bond and restarts the answer window.</p>
+          <p>Reality.eth accepts a bonded answer on Sepolia. A different answer must at least double the current bond. If it contradicts Flurbo's published source reading, Flurbo requests Kleros arbitration automatically; you can also request it yourself. Needs Sepolia ETH for the bond and gas.</p>
           <label>Answer<select value={realityAnswer} onChange={e => setRealityAnswer(e.target.value as 'yes'|'no'|'void')}><option value="yes">Yes</option><option value="no">No</option><option value="void">Void</option></select></label>
           <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)}/></label>
           <p className="market-caption">Minimum now: {formatEther(BigInt(reality!.nextBondWei))} Sepolia ETH. If another answer arrives first, your transaction may revert.</p>
           <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('answer', { answer: realityAnswer, bondEth }))}>Review answer and bond</button>
         </section>}
-        {canArbitrate && <section className="detail-panel"><h2>Challenge this answer</h2><p>Request Kleros arbitration within the Reality.eth answer window. The fee is {formatEther(BigInt(reality!.disputeFeeWei))} Sepolia ETH.</p>
+        {canArbitrate && <section className="detail-panel"><h2>Challenge this answer</h2><p>Request Kleros arbitration within the Reality.eth answer window. The fee is {formatEther(BigInt(reality!.disputeFeeWei))} Sepolia ETH. Needs Sepolia ETH for the fee and gas.</p>
           <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('arbitrate'))}>Review Kleros challenge fee</button>
         </section>}
-        {reality?.pendingArbitration && reality.disputeStatus === 3 && <section className="detail-panel"><h2>Complete the Kleros ruling</h2><p>Kleros has ruled. Report its result to Reality.eth from your wallet so the answer can finalize.</p>
+        {reality?.pendingArbitration && reality.disputeStatus === arbitration.ruled && <section className="detail-panel"><h2>Complete the Kleros ruling</h2><p>Kleros has ruled. Report its result to Reality.eth from your wallet so the answer can finalize.</p>
           <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></section>}
-        {reality?.pendingArbitration && <section className="detail-panel"><h2>Submit evidence to Kleros</h2><p>Evidence is public and can be read by jurors. Court case #{reality.disputeId}.</p>
+        {reality?.pendingArbitration && <section className="detail-panel"><h2>Submit evidence to Kleros</h2><p>Evidence is public and can be read by jurors. {reality.links.courtContract ? <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court case #{reality.disputeId}</a> : <>Court case #{reality.disputeId}</>}.</p>
           <label>Evidence title<input value={challenge.name} onChange={e => setChallenge(old => ({ ...old, name: e.target.value }))}/></label>
           <label>What does this show?<textarea value={challenge.description} onChange={e => setChallenge(old => ({ ...old, description: e.target.value }))}/></label>
           <label>Public source URL<input type="url" value={challenge.sourceURL} onChange={e => setChallenge(old => ({ ...old, sourceURL: e.target.value }))}/></label>
           <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(saveChallengeEvidence)}>Save evidence</button>
           {challengeEvidence && <><a href={challengeEvidence.uri} target="_blank" rel="noreferrer">Read saved evidence</a><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('evidence', { hash: challengeEvidence.hash }))}>Review evidence submission</button></>}
         </section>}
-        {reality?.pendingArbitration && reality.disputeStatus === 2 && <section className="detail-panel"><h2>Kleros appeal</h2><p>Contributions are paid in Sepolia ETH. The live court determines whether this appeal can still be funded.</p>
+        {reality?.pendingArbitration && reality.disputeStatus === arbitration.disputed && reality.court?.appeal && <section className="detail-panel"><h2>Kleros appeal</h2><p>Contributions are paid in Sepolia ETH. Current ruling: <strong>{['Refuse to rule (Void)', 'No', 'Yes'][reality.court.currentRuling ?? 0]}</strong>. Full funding: {formatEther(BigInt(reality.court.appeal.winnerTotalWei))} ETH for the current ruling, {formatEther(BigInt(reality.court.appeal.loserTotalWei))} ETH for another ruling (until {date(reality.court.appeal.loserEnd)}).</p>
           <label>Ruling<select value={appealRuling} onChange={e => setAppealRuling(Number(e.target.value))}><option value={0}>Refuse to rule</option><option value={1}>No</option><option value={2}>Yes</option></select></label>
           <label>Contribution in Sepolia ETH<input inputMode="decimal" value={appealEth} onChange={e => setAppealEth(e.target.value)}/></label>
           <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('appeal', { ruling: appealRuling, amountEth: appealEth }))}>Review appeal contribution</button>
         </section>}
-        {reality && reality.disputeStatus >= 2 && <section className="detail-panel"><h2>Appeal rewards</h2><p>If you funded an appeal, claim eligible rewards after the court permits withdrawal.</p>
+        {reality && reality.disputeStatus >= arbitration.ruled && <section className="detail-panel"><h2>Appeal rewards</h2><p>If you funded an appeal, claim eligible rewards after the court permits withdrawal.</p>
           <label>Ruling<select value={appealRuling} onChange={e => setAppealRuling(Number(e.target.value))}><option value={0}>Refuse to rule</option><option value={1}>No</option><option value={2}>Yes</option></select></label>
           <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling: appealRuling }))}>Check appeal rewards</button>
         </section>}

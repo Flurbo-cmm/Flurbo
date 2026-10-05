@@ -96,6 +96,16 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
       } catch { send(res, 404, { error: 'Evidence unavailable' }); }
       return;
     }
+    if (req.method === 'GET' && /^\/api\/hybrid\/rules\/0x[0-9a-f]{64}$/.test(req.url || '')) {
+      try {
+        limits.localTake('hybrid-public-rules', 120);
+        if (!hybrid) throw Error('Rule unavailable');
+        const value = hybrid.ruleFor(req.url.slice('/api/hybrid/rules/'.length));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+        res.end(value);
+      } catch { send(res, 404, { error: 'Rule unavailable' }); }
+      return;
+    }
     if (req.url === '/api/alchemy/webhook') {
       if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
       let text = '';
@@ -426,7 +436,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
           if (op === 'action') return send(res, 200, await hybrid.prepare(id, input.action, input.input || {}, input.owner));
           return send(res, 404, { error: 'Hybrid action unavailable.' });
         } catch (error) {
-          return send(res, 400, { error: error instanceof Error && /^(Invalid |Hybrid |Challenge |Enter |Select |Choose |Wallet |Shares |Trading |Fund |Approval |Allow |No bond |Insufficient |Reality |Provide )/.test(error.message)
+          return send(res, 400, { error: error instanceof Error && /^(Invalid |Hybrid |Challenge |Enter |Select |Choose |Wallet |Shares |Trading |Fund |Approval |Allow |Insufficient |Reality |Provide |Kleros |Bond |Evidence |Appeal |No |This |Sepolia )/.test(error.message)
             ? error.message : 'Market request unavailable. Refresh and retry.' });
         }
       }

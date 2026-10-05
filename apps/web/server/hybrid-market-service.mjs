@@ -5,6 +5,7 @@ import { hybridRealityAction, hybridRealityAppealAction, hybridRealityClaimActio
 import { certifiedClaim, certifiedPair, pairInput } from './pair-math.mjs';
 import { runPairModel } from './pair-analytics.mjs';
 import { simulatePairPurchase } from './pair-sensitivity.mjs';
+import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { encodeClaim } from '../shared/claims.mjs';
 
 const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
@@ -46,7 +47,7 @@ function claimFor(record, eventIndex, input) {
   return { scope: BigInt(encoded.scope), mask: BigInt(encoded.mask), chosen: ordered };
 }
 
-export function hybridMarketService({ catalog, market, source, evidence, origin, pairModel = runPairModel }) {
+export function hybridMarketService({ catalog, market, source, evidence, origin, pairModel = runPairModel, command = null }) {
   const pools = hybridSettlementCatalog(catalog).pools;
   const routes = new Map(pools.flatMap(record => record.prepared.draft.events.map((event, eventIndex) => {
     const id = `${record.pool}-${eventIndex}`;
@@ -160,6 +161,14 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       wallet: getAddress(owner), noShares: no.toString(), yesShares: yes.toString(),
       cashAtoms: cash.toString(), allowanceAtoms: tradeAllowance.toString(),
       bondAllowanceAtoms: bondAllowance.toString(), bondCreditsAtoms: credits.toString() }));
+    let automaticAnswer = null;
+    if (reality && command) {
+      const saved = await command('GET', `flurbo:hybrid-answer:v1:${route.event.source.questionId.toLowerCase()}:observation`);
+      if (saved) {
+        const { outcome, evidenceURI, observedAt } = JSON.parse(saved);
+        automaticAnswer = { outcome, evidenceURI, observedAt };
+      }
+    }
     return { schema: 'flurbo.hybrid-snapshot.v1', ...list().find(item => item.id === route.id),
       resolver: route.resolver, eventHash: route.eventHash,
       rulesHash: route.record.rulesHash, adapter: route.record.adapter,
@@ -177,7 +186,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       sourceCaseId: state.sourceCaseId, proposalEvidenceHash: state.evidenceHash,
       proposalEvidenceURI: state.evidenceHash && !/^0x0{64}$/i.test(state.evidenceHash)
         ? `${origin}/api/pilot/evidence/${state.evidenceHash}` : null,
-      reality, user };
+      ruleURI: route.event.source?.ruleURI ?? null, automaticAnswer, reality, user };
   }
 
   async function prepare(id, action, input, owner) {
@@ -303,5 +312,10 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
         encodeFunctionData({ abi: poolAbi, functionName: 'buy',
           args: [scope, mask, quantity, maximum, BigInt(snap.marketNow + 120)] })) };
   }
-  return { list, routeFor, marketSummary, snapshot, analysis, prepare };
+  function ruleFor(ruleHash) {
+    for (const { event } of routes.values())
+      if (event.rule && `0x${settlementRuleHash(event.rule)}` === ruleHash) return canonical(event.rule);
+    throw Error('Hybrid rule not found');
+  }
+  return { list, routeFor, ruleFor, marketSummary, snapshot, analysis, prepare };
 }

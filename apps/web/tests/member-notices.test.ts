@@ -241,3 +241,39 @@ test('settings need the signed-in member; the unsubscribe link works without sig
     assert.equal((await call('POST', `/api/notifications/unsubscribe/${A}.${'0'.repeat(64)}`, '', undefined, false)).status, 400);
   } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
 });
+
+test('arbitration and ruling notices reach holders of the disputed question', async () => {
+  const redis = fakeRedis(), pool = addr(0x73), sent: any[] = [];
+  let court: { disputeId: string; status: number } | null = { disputeId: '7', status: 1 };
+  redis.hashes.set(LINKS, new Map([[WA, JSON.stringify({ account: A, at: 1 })], [WB, JSON.stringify({ account: B, at: 1 })]]));
+  redis.kv.set(`flurbo:pilot:index:v1:${pool}`, JSON.stringify({ through: 100, target: 100,
+    logs: [{ name: 'Traded', args: { trader: WA, scope: 1, mask: '2', isBuy: true } },
+      { name: 'Traded', args: { trader: WB, scope: 2, mask: '2', isBuy: true } }] }));
+  const service = {
+    manifest: { pool, publication: { draft: { closesAt: NOW - 8 * 3600,
+      events: [{ question: 'Will the block be even?', observationEndsAt: NOW - 7 * 3600 },
+        { question: 'Will the block be odd?', observationEndsAt: NOW - 7 * 3600 }] } } },
+    index: { refresh: async () => ({ complete: true }) },
+    eventHref: (event: number) => `/markets/hybrid/${pool}/${event}`,
+    status: async () => ({ resolved: false, delivered: false, cases: [
+      { phase: 0, proposal: 0, challengeUntil: 0, court }, { phase: 0, proposal: 0, challengeUntil: 0, court: null }] }),
+    positions: async (wallet: string, claims: any[]) => ({ rows: claims.map(c => ({ ...c,
+      quantity: '1000000', payoutAtoms: null })) }),
+  };
+  const notices = memberNotices({ command: redis.command, origin: 'https://flurbopm.singu.online', now: () => NOW,
+    env: { FLURBO_NOTIFY_ENABLED: 'true' }, pools: () => [{ namespace: 'hybrid:' + pool, label: 'Hybrid fixture', service }],
+    applications: { noticeSecret: SECRET, contacts: async () => ({ [A]: 'a@example.com', [B]: 'b@example.com' }) },
+    send: async (message: any) => { sent.push(message); } })!;
+  await notices.setPreferences(B, { challenges: false });
+  assert.equal(await notices.tick(), 'sent 1');
+  assert.deepEqual(sent.map(message => message.to), [['a@example.com']]);
+  assert.match(sent[0].subject, /Kleros case was opened/);
+  assert.match(sent[0].text, /Kleros case \(#7\)/);
+  assert.match(sent[0].text, new RegExp(`/markets/hybrid/${pool}/0`));
+  assert.equal(await notices.tick(), 'idle');
+  court = { disputeId: '7', status: 2 };
+  assert.equal(await notices.tick(), 'sent 1');
+  assert.match(sent[1].subject, /Kleros ruled/);
+  assert.match(sent[1].text, /reported to Reality\.eth/);
+  assert.equal(await notices.tick(), 'idle');
+});
