@@ -294,6 +294,167 @@
         "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dc04127a7a2a71055ee39143147a5449d5df922f4540d4c0fb775373465b9b1c7e000000000000000000000000000000000000000000000000000000006ac3630500000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000260000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e10000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000076a7000000000000000000000000000000000000000000000000000000000000000002277c43e75a1556e5ad680160c46cce22f5405f3aeebd67d1c962f16074efc68e35709a7590ac998b98355aefe80a12318c0ece707481265a57ebba694bcf845b0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000006ac36c65000000000000000000000000000000000000000000000000000000006ac36c65000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
         "liquidityAtoms": "10000000"
       }
+    },
+    {
+      "id": "hybrid-reality-2",
+      "pool": "0x0fc7a9634f52DD5bF91c252587f912d5e121d528",
+      "resolver": "0x89cD737382efC35eb88137008Ca66d4794546B26",
+      "rulesHash": "0x54ec131927a063785eff54a751bd33e8f8eb704172c7adf4088f7f7270f6bff1",
+      "deploymentBlock": 68448779,
+      "keeper": "0x771fE7003FA20737C933c39B89386d78cbc36370",
+      "answerer": "0x7CaD88C893b9d28178F4Ae5c6F25171823FC9352",
+      "prepared": {
+        "schema": "flurbo.hybrid-prepared.v4",
+        "chainId": 10143,
+        "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+        "proposer": "0xa45c95f673580132F2E6f75372808162Ea069d49",
+        "relay": "0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1",
+        "draft": {
+          "schema": "flurbo.hybrid-publication.v4",
+          "chainId": 10143,
+          "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+          "title": "Monad testnet Kleros challenge pool",
+          "closesAt": 1791227787,
+          "assertionPeriod": 3600,
+          "challengePeriod": 3600,
+          "reportPeriod": 7776000,
+          "arbitrationPeriod": 7776000,
+          "bondAtoms": "1000000",
+          "liquidityAtoms": "10000000",
+          "events": [
+            {
+              "id": "monad-block-transactions",
+              "question": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z contain at least one transaction, as read from the public Monad RPC?",
+              "observationEndsAt": 1791230187,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "monad-block-transactions",
+                "question": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z contain at least one transaction, as read from the public Monad RPC?",
+                "source": {
+                  "id": "monad-testnet-first-block",
+                  "publisher": "Monad testnet RPC",
+                  "urls": [
+                    "https://testnet-rpc.monad.xyz/"
+                  ],
+                  "adapter": "evm-rpc.v1",
+                  "reader": {
+                    "chainId": 10143,
+                    "at": 1791228387,
+                    "metric": "block-field",
+                    "field": "transactions",
+                    "finalitySeconds": 60
+                  }
+                },
+                "observation": {
+                  "series": "monad-block-transactions",
+                  "period": "2026-10-05T19:26:27Z",
+                  "unit": "transactions"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "1"
+                },
+                "timing": {
+                  "scheduledAt": 1791228507,
+                  "publicationCutoff": 1791230187,
+                  "correctionCutoff": 1791230187,
+                  "observationEndsAt": 1791230187,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 3600
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xd4024b64bb3da631b1aea7bd313b147fccd9d85d443b18cbbe632c4ed6893548",
+                "questionText": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z contain at least one transaction, as read from the public Monad RPC? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xd4024b64bb3da631b1aea7bd313b147fccd9d85d443b18cbbe632c4ed6893548. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1791230187,
+                "questionId": "0x179d65e4d6abfc2430453bc443bcab37accb863c36bf1b7553d1ea5531089515",
+                "contentHash": "0xec10cf2d569eb4b10e4d9a999bd34cd4fc6dfb4b80b18e90a0cb0f6ffebe513c",
+                "questionTxHash": "0xcdd6ab390a4ef93ae12f32ee1ddb0b27b6adc979d5bb2775236913a982107862"
+              }
+            },
+            {
+              "id": "monad-block-gas",
+              "question": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z use at least 1000000 gas units, as read from the public Monad RPC?",
+              "observationEndsAt": 1791230187,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "monad-block-gas",
+                "question": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z use at least 1000000 gas units, as read from the public Monad RPC?",
+                "source": {
+                  "id": "monad-testnet-first-block",
+                  "publisher": "Monad testnet RPC",
+                  "urls": [
+                    "https://testnet-rpc.monad.xyz/"
+                  ],
+                  "adapter": "evm-rpc.v1",
+                  "reader": {
+                    "chainId": 10143,
+                    "at": 1791228387,
+                    "metric": "block-field",
+                    "field": "gasUsed",
+                    "finalitySeconds": 60
+                  }
+                },
+                "observation": {
+                  "series": "monad-block-gas",
+                  "period": "2026-10-05T19:26:27Z",
+                  "unit": "gas"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "1000000"
+                },
+                "timing": {
+                  "scheduledAt": 1791228507,
+                  "publicationCutoff": 1791230187,
+                  "correctionCutoff": 1791230187,
+                  "observationEndsAt": 1791230187,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 3600
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x22a72ca5f4a4050d8e6f324564d18a4e94bebd97741abcf29157f7415aaae114",
+                "questionText": "Will the first Monad testnet block at or after 2026-10-05T19:26:27Z use at least 1000000 gas units, as read from the public Monad RPC? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x22a72ca5f4a4050d8e6f324564d18a4e94bebd97741abcf29157f7415aaae114. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1791230187,
+                "questionId": "0x671da36da09d6bbce68d2d24987e2d3ce6eab948704c38515fa2fccd0c675ad8",
+                "contentHash": "0xdab83b6dc5fc7353468dc14d560f6b11cf8ed5b00d41f7b76b72e1c08d76f1c2",
+                "questionTxHash": "0x9db38eafe7e73250ab209b24b3f56fffda5eb42f56ee76dc13beea6c330ad1f4"
+              }
+            }
+          ]
+        },
+        "draftHash": "0x0a9544a2ccc5f4f7734609b14cb34df938d29f65865f6213e3a03e7c89c7cbf2",
+        "eventHashes": [
+          "0x7cf97bf29fbadadeadaa6d030b6efea6cb55651df7c0d99adf851d7265597f5c",
+          "0x76435b71eb88e3f6adb3726f0716bb14dddcd15cc8c758518a72a93a83f8b503"
+        ],
+        "configHash": "0xecc819bacc436e07f672d02e0319a00c809bf71aaeb99fbb14c26153f6e1f03b",
+        "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dc0a9544a2ccc5f4f7734609b14cb34df938d29f65865f6213e3a03e7c89c7cbf2000000000000000000000000000000000000000000000000000000006ac3f78b00000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000260000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e10000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000076a70000000000000000000000000000000000000000000000000000000000000000027cf97bf29fbadadeadaa6d030b6efea6cb55651df7c0d99adf851d7265597f5c76435b71eb88e3f6adb3726f0716bb14dddcd15cc8c758518a72a93a83f8b5030000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000006ac400eb000000000000000000000000000000000000000000000000000000006ac400eb000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "liquidityAtoms": "10000000"
+      }
     }
   ]
 }
