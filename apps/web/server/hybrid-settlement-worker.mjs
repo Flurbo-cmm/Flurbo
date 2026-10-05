@@ -5,10 +5,13 @@ import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { archiveSettlementProposal, evaluateSettlement, parseSettlementCapture, retrieveSettlementCapture } from './settlement-evidence.mjs';
 import { verifyPublicSettlementEvidence } from './deterministic-evidence.mjs';
 import { realityOutcome } from './reality-relay.mjs';
-import { SEPOLIA_REALITY, TEST_AUSD } from './oracle-integration.mjs';
+import { realityAbi as fullRealityAbi, SEPOLIA_REALITY, TEST_AUSD } from './oracle-integration.mjs';
+import { hybridRealitySnapshot, REALITY_ANSWERS } from './hybrid-reality.mjs';
 
 const monad = defineChain({ id: 10143, name: 'Monad Testnet', nativeCurrency: {
   name: 'MON', symbol: 'MON', decimals: 18 }, rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } } });
+const sepolia = defineChain({ id: 11155111, name: 'Sepolia', nativeCurrency: {
+  name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: ['https://ethereum-sepolia-rpc.publicnode.com'] } } });
 const resolverAbi = parseAbi([
   'function protocolVersion() pure returns (uint8)', 'function rulesHash() view returns (bytes32)',
   'function draftHash() view returns (bytes32)', 'function pool() view returns (address)',
@@ -32,6 +35,19 @@ const realityAbi = parseAbi(['function isFinalized(bytes32) view returns (bool)'
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '');
 const hash32 = value => /^0x[0-9a-fA-F]{64}$/.test(value || '');
+export const realityAnswerBytes = Object.freeze({ 1: REALITY_ANSWERS.no, 2: REALITY_ANSWERS.yes, 3: REALITY_ANSWERS.void });
+const publicErrors = new Set(['Hybrid settlement transaction reverted', 'Hybrid settlement transaction hash invalid',
+  'Hybrid proposer needs test AUSD bond', 'Hybrid Reality RPC chain mismatch', 'Hybrid Reality evidence URI mismatch',
+  'Hybrid market RPC chain mismatch', 'Hybrid pool differs from verified catalog',
+  'Hybrid event differs from verified catalog', 'Hybrid case count mismatch',
+  'Automatic answer observation conflict', 'Invalid automatic answer transaction record',
+  'Sepolia answer transaction reverted; manual review required',
+  'Confirmed Sepolia answer has no bond; manual review required',
+  'Sepolia answer transaction missing; manual review required', 'Reality answer bond mismatch',
+  'Sepolia answer signer needs ETH for bond and gas',
+  'Sepolia answer submission uncertain; inspect the signer before retrying']);
+const safeError = error => publicErrors.has(error?.message) ? error.message
+  : 'Hybrid settlement source or transaction request failed';
 const key = (pool, action, event) => `flurbo:hybrid-settlement:v1:${pool.toLowerCase()}:${action}:${event}`;
 
 export function hybridSettlementCatalog(value) {
@@ -43,6 +59,8 @@ export function hybridSettlementCatalog(value) {
       || !address(pool.pool) || !address(pool.resolver) || !hash32(pool.rulesHash)
       || (pool.prepared?.draft?.events?.some(event => event.route === 'mechanical')
         && (!address(pool.adapter) || !address(pool.manager)))
+      || (pool.prepared?.draft?.events?.some(event => event.route === 'reality') && !address(pool.keeper))
+      || (pool.prepared?.draft?.events?.some(event => event.route === 'reality' && event.rule) && !address(pool.answerer))
       || !Number.isSafeInteger(pool.deploymentBlock) || pool.deploymentBlock < 1
       || ids.has(pool.id) || addresses.has(pool.pool.toLowerCase())) throw Error('Invalid hybrid pool');
     const prepared = pool.prepared;
@@ -56,29 +74,64 @@ export function hybridSettlementCatalog(value) {
   return value;
 }
 
-export function nextHybridAction(snapshot) {
-  if (snapshot.delivered || snapshot.resolved) return null;
+export function nextHybridActions(snapshot) {
+  if (snapshot.delivered || snapshot.resolved) return [];
   const { states, now, prepared } = snapshot;
   if (states.length !== prepared.draft.events.length) throw Error('Hybrid case count mismatch');
-  if (states.every(state => Number(state.phase) === 3)) return { kind: 'deliver' };
+  if (states.every(state => Number(state.phase) === 3)) return [{ kind: 'deliver' }];
+  const actions = [];
   for (let event = 0; event < states.length; event++) {
     const state = states[event], publication = prepared.draft.events[event];
     if (Number(state.phase) === 0) {
       const deadline = publication.observationEndsAt + (publication.route === 'mechanical'
         ? prepared.draft.assertionPeriod : prepared.draft.reportPeriod);
-      if (now >= deadline) return { kind: 'finalize', event };
+      if (now >= deadline) actions.push({ kind: 'finalize', event });
     } else if (Number(state.phase) === 1 && now >= Number(state.challengeUntil))
-      return { kind: 'finalize', event };
+      actions.push({ kind: 'finalize', event });
     else if (Number(state.phase) === 2 && /^0x0{64}$/i.test(state.sourceCaseId)
-      && now >= Number(state.arbitrationUntil))
-      return { kind: 'finalize', event };
+      && now >= Number(state.arbitrationUntil)) actions.push({ kind: 'finalize', event });
   }
   for (let event = 0; event < states.length; event++) {
     const publication = prepared.draft.events[event];
-    if (Number(states[event].phase) === 0 && now >= publication.observationEndsAt)
-      return { kind: publication.route === 'mechanical' ? 'propose' : 'reality', event };
+    if (Number(states[event].phase) === 0 && now >= publication.observationEndsAt
+      && !actions.some(action => action.event === event))
+      actions.push({ kind: publication.route === 'mechanical' ? 'propose' : 'reality', event });
   }
-  return null;
+  return actions;
+}
+
+export function nextHybridAction(snapshot) { return nextHybridActions(snapshot)[0] ?? null; }
+
+export function planRealityAnswer({ now, opensAt, bondWei, finalized, pendingArbitration, observation }) {
+  if (now < opensAt) return 'waiting_open';
+  if (finalized || pendingArbitration || BigInt(bondWei || 0) > 0n) return 'already_answered';
+  return observation ? 'answer' : 'waiting_source';
+}
+
+export async function buildRealityObservation({ rule, questionId, captures, attempt, now, archive,
+  packetStore, owner, draftHash, origin, request = fetch }) {
+  const ruleHash = settlementRuleHash(rule), t = rule.timing;
+  const evaluatedAt = Math.min(now, t.observationEndsAt + t.assertionPeriod - 1);
+  const fresh = rule.vintage === 'first-observed-snapshot'
+    || (attempt?.ok && attempt.at <= now && now - attempt.at <= 900);
+  let archived = null;
+  if (captures.length && fresh && now >= t.observationEndsAt)
+    archived = await archiveSettlementProposal({ rule, expectedRuleHash: ruleHash, captures,
+      now: evaluatedAt, archive, owner, draftHash, packetStore });
+  let outcome, evidence;
+  if (archived?.evidence) {
+    await verifyPublicSettlementEvidence(archived.evidence, archive, { origin, request });
+    outcome = archived.evidence.outcome; evidence = archived.evidence;
+  } else if (now > t.publicationCutoff && now >= t.observationEndsAt) {
+    outcome = 3;
+    evidence = await archive.put({ eventId: rule.eventId, outcome,
+      statement: `${rule.question} No valid source capture was recorded before the publication cutoff; the published rule result is VOID.`,
+      sourceURL: rule.source.urls[0], attachment: JSON.stringify({ schema: 'flurbo.missing-capture.v1',
+        ruleHash: `0x${ruleHash}`, attempt: attempt || null }) }, owner, draftHash);
+  } else return null;
+  return { schema: 'flurbo.hybrid-answer-observation.v1', questionId, outcome,
+    answer: realityAnswerBytes[outcome], evidenceHash: evidence.hash, evidenceURI: evidence.uri,
+    observedAt: now };
 }
 
 export async function readHybridSnapshot(record, market) {
@@ -122,6 +175,7 @@ export async function readHybridSnapshot(record, market) {
 export function hybridSettlementWorker({ pools, market, source, command, archive, captureStore,
   packetStore, oracleEvidence, origin, marketRpcUrl, proposerPrivateKey, relayPrivateKey,
   proposerWallet = null, relayWallet = null, relaySend = task => task(), request = fetch,
+  answererPrivateKey = null, answererWallet = null, sourceRpcUrl = null,
   now = () => Math.floor(Date.now() / 1000),
   intervalMs = 120_000 }) {
   hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools });
@@ -137,6 +191,21 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   if (same(proposer.address, relay.address) || pools.some(pool =>
     !same(pool.prepared.proposer, proposer.address) || !same(pool.prepared.relay, relay.address)))
     throw Error('Hybrid settlement wallet roles differ from catalog');
+  const answered = pools.some(pool => pool.prepared.draft.events.some(event =>
+    event.route === 'reality' && event.rule));
+  let answerer = null;
+  if (answered) {
+    if (!/^0x[0-9a-fA-F]{64}$/.test(answererPrivateKey || '') || !sourceRpcUrl?.startsWith('https://'))
+      throw Error('Hybrid answer wallet differs from catalog');
+    answerer = privateKeyToAccount(answererPrivateKey);
+    if (same(answerer.address, proposer.address) || same(answerer.address, relay.address)
+      || pools.some(pool => pool.prepared.draft.events.some(event => event.route === 'reality' && event.rule)
+        && !same(pool.answerer, answerer.address)))
+      throw Error('Hybrid answer wallet differs from catalog');
+  }
+  const answererClient = answerer ? answererWallet || createWalletClient({ account: answerer, chain: sepolia,
+    transport: http(sourceRpcUrl, { timeout: 20_000 }) }) : null;
+  const answers = new Map();
   const proposerClient = proposerWallet || createWalletClient({ account: proposer, chain: monad,
     transport: http(marketRpcUrl, { timeout: 20_000 }) });
   const relayClient = relayWallet || createWalletClient({ account: relay, chain: monad,
@@ -147,29 +216,29 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     const journal = key(record.pool, action, event);
     const saved = await command('GET', journal);
     if (saved) {
-      if (saved === 'preparing') return false;
+      if (saved === 'preparing') return 'pending';
       const receipt = await market.getTransactionReceipt({ hash: saved }).catch(() => null);
-      if (!receipt) return false;
+      if (!receipt) return 'pending';
       if (receipt.status !== 'success') {
         await command('DEL', journal);
         throw Error('Hybrid settlement transaction reverted');
       }
-      return true;
+      return 'confirmed';
     }
     const tx = { account, chain: monad, address: getAddress(target), abi, functionName, args };
     await market.simulateContract(tx);
-    if (await command('SET', journal, 'preparing', 'EX', 900, 'NX') !== 'OK') return false;
+    if (await command('SET', journal, 'preparing', 'EX', 900, 'NX') !== 'OK') return 'pending';
     const hash = same(account.address, relay.address)
       ? await relaySend(() => wallet.writeContract(tx)) : await wallet.writeContract(tx);
     if (!hash32(hash)) throw Error('Hybrid settlement transaction hash invalid');
     await command('SET', journal, hash, 'EX', 86400);
-    return false;
+    return 'submitted';
   }
 
   async function collect(record, snapshot) {
     for (let event = 0; event < snapshot.states.length; event++) {
       const item = record.prepared.draft.events[event];
-      if (item.route !== 'mechanical' || Number(snapshot.states[event].phase) !== 0) continue;
+      if ((item.route !== 'mechanical' && !item.rule) || Number(snapshot.states[event].phase) !== 0) continue;
       const rule = item.rule, at = now(), ruleHash = settlementRuleHash(rule);
       if (at < rule.timing.scheduledAt || at > rule.timing.publicationCutoff) continue;
       if (rule.vintage === 'first-observed-snapshot'
@@ -195,13 +264,13 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     const attempt = await captureStore.latestAttempt(ruleHash);
     const captures = await captureStore.list(ruleHash);
     if (!captures.length || (rule.vintage !== 'first-observed-snapshot'
-      && (!attempt?.ok || at - attempt.at > 900 || attempt.at > at))) return;
+      && (!attempt?.ok || at - attempt.at > 900 || attempt.at > at))) return null;
     const result = evaluateSettlement(rule, captures, { now: at });
-    if (result.status !== 'ready') return;
+    if (result.status !== 'ready') return null;
     const archived = await archiveSettlementProposal({ rule, expectedRuleHash: ruleHash,
       captures, now: at, archive, owner: proposer.address,
       draftHash: record.prepared.draftHash, packetStore });
-    if (!archived.evidence) return;
+    if (!archived.evidence) return null;
     await verifyPublicSettlementEvidence(archived.evidence, archive, { origin, request });
     const bond = BigInt(record.prepared.draft.bondAtoms);
     const [balance, allowance] = await Promise.all([
@@ -210,12 +279,10 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
         args: [proposer.address, record.resolver] }),
     ]);
     if (balance < bond) throw Error('Hybrid proposer needs test AUSD bond');
-    if (allowance < bond) {
-      await send(record, 'approve', event, proposerClient, proposer, TEST_AUSD,
+    if (allowance < bond)
+      return send(record, 'approve', event, proposerClient, proposer, TEST_AUSD,
         cashAbi, 'approve', [getAddress(record.resolver), bond]);
-      return;
-    }
-    await send(record, 'propose', event, proposerClient, proposer, record.resolver,
+    return send(record, 'propose', event, proposerClient, proposer, record.resolver,
       resolverAbi, 'propose', [event, archived.evidence.outcome, archived.evidence.hash, archived.evidence.uri]);
   }
 
@@ -224,9 +291,9 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     const item = record.prepared.draft.events[event], reality = item.source;
     const finalized = await source.readContract({ address: getAddress(reality.reality), abi: realityAbi,
       functionName: 'isFinalized', args: [reality.questionId] });
-    if (!finalized) return;
+    if (!finalized) return null;
     const block = await source.getBlock({ blockTag: 'finalized' });
-    if (!hash32(block?.hash) || typeof block.number !== 'bigint') return;
+    if (!hash32(block?.hash) || typeof block.number !== 'bigint') return null;
     const answer = await source.readContract({ address: getAddress(reality.reality), abi: realityAbi,
       functionName: 'getFinalAnswerIfMatches', args: [reality.questionId, reality.contentHash,
         getAddress(reality.arbitrator), reality.minTimeout, BigInt(reality.minBond)],
@@ -244,8 +311,77 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     const uri = await oracleEvidence.putRelay(evidence);
     if (uri !== `${origin}/api/oracle/evidence/${evidenceHash}`)
       throw Error('Hybrid Reality evidence URI mismatch');
-    await send(record, 'reality', event, relayClient, relay, record.resolver,
+    return send(record, 'reality', event, relayClient, relay, record.resolver,
       resolverAbi, 'reportReality', [event, outcome, evidenceHash, uri]);
+  }
+
+  const observationKey = question => `flurbo:hybrid-answer:v1:${question}:observation`;
+  const transactionKey = question => `flurbo:hybrid-answer:v1:${question}:transaction`;
+
+  async function answer(record, event) {
+    if (await source.getChainId() !== 11155111) throw Error('Hybrid Reality RPC chain mismatch');
+    const item = record.prepared.draft.events[event], rule = item.rule;
+    const q = item.source.questionId.toLowerCase(), clock = now();
+    let stored = await command('GET', observationKey(q));
+    if (!stored) {
+      const ruleHash = settlementRuleHash(rule);
+      const built = await buildRealityObservation({ rule, questionId: q,
+        captures: await captureStore.list(ruleHash), attempt: await captureStore.latestAttempt(ruleHash),
+        now: clock, archive, packetStore, owner: answerer.address, draftHash: record.prepared.draftHash,
+        origin, request });
+      if (built) {
+        await command('SET', observationKey(q), JSON.stringify(built), 'NX');
+        stored = await command('GET', observationKey(q));
+      }
+    }
+    const observation = stored ? JSON.parse(stored) : null;
+    if (observation && observation.questionId?.toLowerCase() !== q)
+      throw Error('Automatic answer observation conflict');
+    const state = await hybridRealitySnapshot(source, item, null);
+    const plan = planRealityAnswer({ now: state.sourceNow, opensAt: state.opensAt, bondWei: state.bondWei,
+      finalized: state.finalized, pendingArbitration: state.pendingArbitration, observation });
+    if (plan !== 'answer') { answers.set(`${record.pool}-${event}`, plan); return plan; }
+    const existing = await command('GET', transactionKey(q));
+    let result;
+    if (existing) {
+      if (existing === 'preparing') result = 'submission_uncertain';
+      else {
+        const saved = JSON.parse(existing);
+        if (!hash32(saved?.hash) || !Number.isSafeInteger(saved?.sentAt))
+          throw Error('Invalid automatic answer transaction record');
+        try {
+          const receipt = await source.getTransactionReceipt({ hash: saved.hash });
+          if (receipt.status !== 'success') throw Error('Sepolia answer transaction reverted; manual review required');
+          if (clock - saved.sentAt > 300) throw Error('Confirmed Sepolia answer has no bond; manual review required');
+          result = 'confirming';
+        } catch (error) {
+          if (error?.name !== 'TransactionReceiptNotFoundError') throw error;
+          if (clock - saved.sentAt > 1800) throw Error('Sepolia answer transaction missing; manual review required');
+          result = 'submitted';
+        }
+      }
+    } else {
+      const value = BigInt(state.nextBondWei);
+      if (value <= 0n || value !== BigInt(item.source.minBond)) throw Error('Reality answer bond mismatch');
+      const balance = await source.getBalance({ address: answerer.address });
+      if (balance <= value) throw Error('Sepolia answer signer needs ETH for bond and gas');
+      const simulated = await source.simulateContract({ address: getAddress(item.source.reality),
+        abi: fullRealityAbi, functionName: 'submitAnswer', args: [q, observation.answer, 0n], value,
+        account: answerer });
+      const lock = transactionKey(q);
+      if (await command('SET', lock, 'preparing', 'NX') !== 'OK') result = 'submission_uncertain';
+      else {
+        try {
+          const hash = await answererClient.writeContract({ ...simulated.request, account: answerer, chain: sepolia });
+          await command('SET', lock, JSON.stringify({ hash, sentAt: clock }));
+          result = 'submitted';
+        } catch (error) {
+          throw Error('Sepolia answer submission uncertain; inspect the signer before retrying', { cause: error });
+        }
+      }
+    }
+    answers.set(`${record.pool}-${event}`, result);
+    return result;
   }
 
   async function tick() {
@@ -256,17 +392,19 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
         const snapshot = await readHybridSnapshot(record, market);
         if (snapshot.delivered || snapshot.resolved) continue;
         await collect(record, snapshot);
-        const action = nextHybridAction(snapshot);
-        if (!action) continue;
-        if (action.kind === 'propose') await propose(record, action.event);
-        else if (action.kind === 'reality') await reportReality(record, action.event);
-        else await send(record, action.kind, action.event ?? 'all', relayClient, relay,
-          record.resolver, resolverAbi, action.kind, action.event === undefined ? [] : [action.event]);
-        break;
+        for (const action of nextHybridActions(snapshot)) {
+          const item = action.event === undefined ? null : record.prepared.draft.events[action.event];
+          if (action.kind === 'reality' && item.rule) await answer(record, action.event);
+          const result = action.kind === 'propose' ? await propose(record, action.event)
+            : action.kind === 'reality' ? await reportReality(record, action.event)
+              : await send(record, action.kind, action.event ?? 'all', relayClient, relay,
+                record.resolver, resolverAbi, action.kind, action.event === undefined ? [] : [action.event]);
+          if (result === 'submitted' || result === 'pending') break;
+        }
       }
       lastError = null;
     } catch (error) {
-      lastError = error instanceof Error ? error.message : 'Hybrid settlement cycle failed';
+      lastError = safeError(error);
       console.error(lastError);
     } finally { running = false; lastFinishedAt = new Date().toISOString(); }
   }
@@ -275,6 +413,7 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     start() { if (!timer) { timer = setInterval(() => { void tick(); }, intervalMs); timer.unref(); void tick(); } },
     stop() { if (timer) clearInterval(timer); timer = null; },
     status() { return { enabled: Boolean(timer), running, cycles, pools: pools.length,
-      proposer: proposer.address, relay: relay.address, lastError, lastFinishedAt }; },
+      proposer: proposer.address, relay: relay.address, answerer: answerer?.address ?? null,
+      answers: Object.fromEntries(answers), lastError, lastFinishedAt }; },
   };
 }

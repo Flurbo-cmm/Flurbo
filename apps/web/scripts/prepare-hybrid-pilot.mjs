@@ -10,6 +10,10 @@ const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '') && !/^0x0{40}$/
 const hash = value => /^0x[0-9a-fA-F]{64}$/.test(value || '') && !/^0x0{64}$/i.test(value);
 const duration = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
+export const ruleUriPattern = /^https:\/\/[a-z0-9.-]+\/api\/hybrid\/rules\/0x[0-9a-f]{64}$/;
+export function realityQuestionText(question, ruleURI) {
+  return `${question} Resolution rule: ${ruleURI}. Answer Invalid if the rule result is VOID.␟flurbo␟en`;
+}
 
 export function hybridRulesHash(prepared, resolver) {
   if (prepared?.schema !== 'flurbo.hybrid-prepared.v4' || !address(resolver))
@@ -57,7 +61,7 @@ export function prepareHybridPilot(input) {
         || rule.timing.challengePeriod !== input.challengePeriod)
         throw Error('Mechanical rule differs from its event');
     } else {
-      if (event.rule !== undefined || event.source?.kind !== 'reality-sepolia'
+      if (event.source?.kind !== 'reality-sepolia'
         || event.source.chainId !== 11155111 || !same(event.source.reality || '', SEPOLIA_REALITY)
         || !same(event.source.arbitrator || '', SEPOLIA_KLEROS)
         || !hash(event.source.questionId) || !hash(event.source.contentHash)
@@ -66,6 +70,19 @@ export function prepareHybridPilot(input) {
         || !/^[1-9]\d*$/.test(event.source.minBond || '')
         || event.source.openingAt !== event.observationEndsAt)
         throw Error('Invalid Reality source');
+      if (event.rule !== undefined) {
+        const rule = validateSettlementRule(event.rule);
+        if (rule.eventId !== event.id || rule.question !== event.question
+          || rule.timing.observationEndsAt !== event.observationEndsAt
+          || rule.timing.publicationCutoff > event.observationEndsAt
+          || rule.timing.challengePeriod !== event.source.minTimeout
+          || rule.timing.assertionPeriod !== input.assertionPeriod)
+          throw Error('Reality rule differs from its event');
+        if (!ruleUriPattern.test(event.source.ruleURI || '')
+          || !event.source.ruleURI.endsWith(`/0x${settlementRuleHash(rule)}`)
+          || event.source.questionText !== realityQuestionText(event.question, event.source.ruleURI))
+          throw Error('Invalid Reality source');
+      }
     }
   }
   const draft = { schema: input.schema, chainId: input.chainId, creator: input.creator,
@@ -78,7 +95,8 @@ export function prepareHybridPilot(input) {
     parseAbiParameters('string domain,bytes32 draftHash,uint8 eventIndex,string eventId,string route,bytes32 sourceHash'),
     ['flurbo.hybrid.event.v4', draftHash, index, event.id, event.route,
       event.route === 'mechanical' ? `0x${settlementRuleHash(event.rule)}`
-        : keccak256(toHex(canonical(event.source)))])));
+        : keccak256(toHex(canonical(event.rule === undefined ? event.source
+          : { source: event.source, rule: event.rule })))])));
   const config = { collateral: TEST_AUSD, draftHash, closesAt: BigInt(input.closesAt),
     eventHashes, observationEnds: input.events.map(event => BigInt(event.observationEndsAt)),
     routes: input.events.map(event => event.route === 'mechanical' ? 0 : 1),

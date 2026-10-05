@@ -28,6 +28,7 @@ import { oracleRelayWorker } from './oracle-relay-worker.mjs';
 import { oracleAnswerWorker } from './oracle-answer-worker.mjs';
 import { hybridSettlementCatalog, hybridSettlementWorker } from './hybrid-settlement-worker.mjs';
 import { hybridArbitrationWorker } from './hybrid-arbitration-worker.mjs';
+import { hybridCourtKeeper } from './hybrid-court-keeper.mjs';
 import { hybridNoticePools } from './hybrid-notices.mjs';
 import { hybridMarketService } from './hybrid-market-service.mjs';
 
@@ -48,7 +49,7 @@ export function productionServer(config, store, staticRoot = dist) {
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
     if (req.url === '/envio') { await envioProxy(req, res, config.envioGraphqlUrl); return; }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
@@ -139,7 +140,7 @@ async function main() {
     config.oracleEvidence = oracleEvidence(store.command, config.origin);
     config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command });
     if (hybrid.pools.length) config.hybrid = hybridMarketService({ catalog: hybrid,
-      market, source, evidence: config.oracleEvidence, origin: config.origin });
+      market, source, evidence: config.oracleEvidence, origin: config.origin, command: store.command });
     if (catalog.routes.some(route => route.evidenceOrigin !== config.origin)) throw Error('Oracle evidence origin must match this site');
     config.oracle = oracleService({ catalog, source, market, evidence: config.oracleEvidence });
     if (process.env.FLURBO_ORACLE_ANSWER_ENABLED === 'true' && catalog.routes.length) {
@@ -159,7 +160,9 @@ async function main() {
         captureStore: settlementStores.captureStore, packetStore: settlementStores.packetStore,
         oracleEvidence: config.oracleEvidence, origin: config.origin, marketRpcUrl: config.rpcUrl,
         proposerPrivateKey: process.env.FLURBO_HYBRID_PROPOSER_PRIVATE_KEY,
-        relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend });
+        relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend,
+        answererPrivateKey: process.env.FLURBO_HYBRID_ANSWER_PRIVATE_KEY || null,
+        sourceRpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com' });
     }
     if (process.env.FLURBO_HYBRID_ARBITRATION_ENABLED === 'true' && hybrid.pools.length) {
       const routes = hybrid.pools.flatMap(pool => pool.prepared.draft.events.map((event, eventIndex) =>
@@ -173,6 +176,11 @@ async function main() {
         sourceRpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
         managerPrivateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
         relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend });
+      const courtPools = hybrid.pools.filter(pool => pool.prepared.draft.events.some(event => event.route === 'reality'));
+      if (courtPools.length) config.hybridCourt = hybridCourtKeeper({ pools: courtPools, source, command: store.command,
+        evidence: config.oracleEvidence, rpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
+        privateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
+        maxDisputeFeeWei: BigInt(process.env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000') });
     }
   }
   config.practiceCollections=await configurePracticeCollections({rpcUrl:config.rpcUrl,command:store.command});
@@ -240,6 +248,7 @@ async function main() {
   config.oracleRelay?.start();
   config.hybridSettlement?.start();
   config.hybridArbitration?.start();
+  config.hybridCourt?.start();
   // Optional settlement monitor and resolution worker for hosts without a reliable free scheduler.
   // Disabled unless explicitly enabled; the separate GitHub Actions path is unchanged.
   if (process.env.FLURBO_SETTLEMENT_BOT === 'true') {
@@ -252,7 +261,7 @@ async function main() {
   }
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
     comparison.abort(); config.settlementBot?.stop(); config.oracleAnswerer?.stop(); config.oracleRelay?.stop();
-    config.hybridSettlement?.stop(); config.hybridArbitration?.stop();
+    config.hybridSettlement?.stop(); config.hybridArbitration?.stop(); config.hybridCourt?.stop();
     server.close(() => process.exit(0)); reader?.kill(); learningReader?.kill();
     setTimeout(() => process.exit(0), 5000).unref();
   });

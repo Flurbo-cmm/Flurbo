@@ -1,10 +1,12 @@
 # Settlement routing and mechanical reader plan
 
+Status update, 5 October 2026: every new question now commits to Reality.eth v3 on Sepolia with the official Kleros proxy as its arbitrator. A mechanical reader no longer posts to the Flurbo optimistic resolver. It acts as the automatic bonded answerer on Reality.eth, so an unchallenged question settles about one Reality timeout after its observation window. A keeper escalates a contradicting answer to Kleros and drives the court through every permissionless step. Only the juror vote is manual on this testnet. The Sepolia-to-Monad relay stays trusted. `MechanicalKlerosCase` and its worker remain as legacy code for `hybrid-reader-1`. The runbook section "Reality reader pools" in [the hybrid runbook](HYBRID_TESTNET_RUNBOOK.md) has the procedure.
+
 Status update, 5 October 2026: the first hybrid mechanical test pool and Sepolia Kleros adapter have been deployed. The broader reader families and authenticated bridge below remain a plan. See [the current handoff](HANDOFF.md) for the actual contracts, worker settings, and open verification. The existing activity and earlier Reality pools retain their contracts and rules.
 
 ## Decision
 
-Flurbo keeps its own market, pricing, share, and payout contracts. Every question commits to one resolution route before trading. Objective questions use a mechanical reader and a Flurbo optimistic resolver. A challenge to that resolver invokes Kleros. Questions that require human interpretation use Reality.eth for bonded answers, with Kleros as the Reality arbitrator. A question does not switch routes after trading begins.
+Flurbo keeps its own market, pricing, share, and payout contracts. Every question commits to one resolution route before trading. New questions commit to Reality.eth with Kleros as the Reality arbitrator. Objective questions carry a published rule, and a mechanical reader posts the first bonded answer automatically. Questions that require human interpretation need a human answerer. A challenge goes to Kleros through the proxy, with evidence, appeal funding and ruling delivery on Sepolia. The earlier mechanical route with a Flurbo optimistic resolver and the `MechanicalKlerosCase` adapter is legacy and is used only by `hybrid-reader-1`. A question does not switch routes after trading begins.
 
 “Contested” describes what happens after a proposal is challenged. It is not a source type. A sports score can be contested because the reader selected the wrong match; it remains a mechanical-source question and goes to Kleros with its source evidence. A subjective question needs a named answerer or an open answer incentive on Reality.eth. Reality.eth does not produce an answer automatically.
 

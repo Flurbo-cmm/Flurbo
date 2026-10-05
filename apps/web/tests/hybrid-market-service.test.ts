@@ -94,3 +94,47 @@ test('settled combined shares can be read and redeemed from either market', asyn
   assert.deepEqual(alternatives.outcomes.map(item => item.probability), [750, 750, 750, 750]);
   assert.deepEqual(alternatives.outcomes.map(item => item.scenarioProbability), [250, 250, 250, 250]);
 });
+
+test('reality snapshot includes rule URI and the automatic answer', async () => {
+  const { at: base, catalog: build, pool: poolAddress, resolver: resolverAddress } = await import('./hybrid-catalog-fixture.ts');
+  const catalog = build(['reality', 'reality']);
+  const record = catalog.pools[0], events: any[] = record.prepared.draft.events;
+  const stored = JSON.stringify({ outcome: 2, evidenceURI: 'https://example.org/evidence/0x1', observedAt: base + 3700,
+    answer: `0x${'0'.repeat(63)}1`, questionId: events[0].source.questionId, extra: 'ignored' });
+  const reads: string[] = [];
+  const market = { getChainId: async () => 10143,
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(base + 3700) }),
+    readContract: async ({ address, functionName, args = [] }: any) => {
+      const isPool = address.toLowerCase() === poolAddress.toLowerCase();
+      const values: Record<string, unknown> = { protocolVersion: isPool ? 3n : 4n, rulesHash: record.rulesHash,
+        draftHash: record.prepared.draftHash, pool: poolAddress, proposer: record.prepared.proposer,
+        relay: record.prepared.relay, bond: 1000000n, eventCount: 2n, resolver: resolverAddress,
+        settlementRulesHash: record.rulesHash, collateral: TEST_AUSD, funded: true, resolved: false,
+        delivered: false, routes: 1n, eventHashes: record.prepared.eventHashes[Number(args[0])],
+        observationEnds: BigInt(base + 3600),
+        caseState: { phase: 0n, proposal: 0n, counter: 0n, result: 0n, challengeUntil: 0n,
+          arbitrationUntil: 0n, requestId: `0x${'0'.repeat(64)}`, sourceCaseId: `0x${'0'.repeat(64)}` } };
+      return values[functionName];
+    } };
+  const source = { getChainId: async () => 11155111, getBlock: async () => ({ timestamp: BigInt(base + 3700) }),
+    readContract: async ({ functionName, args = [] }: any) => {
+      const item = events[args[0] === events[1].source.questionId ? 1 : 0].source;
+      const values: Record<string, unknown> = { getContentHash: item.contentHash, getArbitrator: item.arbitrator,
+        getOpeningTS: BigInt(base + 3600), getTimeout: 3600n, getMinBond: 100000000000000n, getBond: 0n,
+        getFinalizeTS: 0n, getBestAnswer: `0x${'0'.repeat(64)}`, getHistoryHash: `0x${'0'.repeat(64)}`,
+        isPendingArbitration: false, isFinalized: false, getDisputeFee: 10n ** 16n, realitio: item.reality,
+        arbitrationRequests: [0n, resolverAddress, 0n, 0n], balanceOf: 0n };
+      return values[functionName];
+    } };
+  const command = async (op: string, name: string) => {
+    reads.push(name);
+    return name === `flurbo:hybrid-answer:v1:${events[0].source.questionId}:observation` ? stored : null;
+  };
+  const service = hybridMarketService({ catalog, market, source, evidence: {}, origin: 'https://example.org', command });
+  const first = await service.snapshot(`${poolAddress}-0`);
+  assert.equal(first.automaticAnswer.outcome, 2);
+  assert.deepEqual(Object.keys(first.automaticAnswer).sort(), ['evidenceURI', 'observedAt', 'outcome']);
+  assert.equal(first.ruleURI, events[0].source.ruleURI);
+  const second = await service.snapshot(`${poolAddress}-1`);
+  assert.equal(second.automaticAnswer, null);
+});

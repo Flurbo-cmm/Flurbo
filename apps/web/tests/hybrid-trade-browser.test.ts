@@ -127,3 +127,64 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       assert.deepEqual(errors, []);
     } finally { await browser.close(); }
   });
+
+test('reality market shows the Kleros case, the juror wait and Sepolia links',
+  { skip: !process.env.FLURBO_TEST_PLAYWRIGHT }, async () => {
+    const { chromium } = await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
+    const browser = await chromium.launch({ headless: true, executablePath: process.env.FLURBO_TEST_BROWSER });
+    const pool = '0x' + '44'.repeat(20), account = '0x' + '22'.repeat(20), id = `${pool}-0`;
+    const now = Math.floor(Date.now() / 1000), zero = '0x' + '00'.repeat(32);
+    const market = { id, pool, poolTitle: 'Reality pool', eventIndex: 0,
+      question: 'Will the test block contain a transaction?', route: 'reality',
+      closesAt: now - 7200, observationEndsAt: now - 3600 };
+    const errors: string[] = [];
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+      page.on('pageerror', (error: Error) => errors.push(error.message));
+      await page.route('**/*', async (route: any) => {
+        const url = new URL(route.request().url()), path = url.pathname;
+        if (path === '/api/auth/session') return route.fulfill({ json: { session: {
+          address: account, method: 'passkey', expiresAt: Date.now() + 3600_000 } } });
+        if (path === '/api/account/access') return route.fulfill({ json: { approved: true, testingTools: false } });
+        if (path === '/api/account/wallets') return route.fulfill({ json: { account, wallets: [] } });
+        if (path === '/api/account/portfolio-sources') return route.fulfill({ json: { account, wallets: [], agentWallets: [] } });
+        if (path === '/api/market-directory') return route.fulfill({ json: {
+          schema: 'flurbo.market-directory.v1', markets: [], oracleMarkets: [], hybridMarkets: [market] } });
+        if (path === `/api/hybrid/${id}/market`) return route.fulfill({ json: {
+          prices: { yes: null, no: null }, marketNow: now, funded: true, resolved: false } });
+        if (path === `/api/hybrid/${id}/price-history`) return route.fulfill({ json: {
+          pool, sampling: 'current', points: [{ timestamp: now, blockNumber: '1',
+            prices: [{ event: 0, yes: '500000', no: '500000' }] }] } });
+        if (path === `/api/hybrid/${id}`) return route.fulfill({ json: { ...market,
+          schema: 'flurbo.hybrid-snapshot.v1', resolver: pool, eventHash: '0x' + '33'.repeat(32),
+          rulesHash: '0x' + '55'.repeat(32), adapter: pool, source: { kind: 'reality-sepolia' },
+          marketNow: now, funded: true, resolved: false, delivered: false,
+          assertionDeadline: now + 14400, reportDeadline: now + 86400, bondAtoms: '1000000',
+          phase: 0, proposal: 0, counter: 0, result: 0, challengeUntil: 0, arbitrationUntil: 0,
+          requestId: zero, sourceCaseId: zero, proposalEvidenceURI: null, user: null,
+          ruleURI: `https://flurbopm.singu.online/api/hybrid/rules/0x${'66'.repeat(32)}`,
+          automaticAnswer: { outcome: 2, evidenceURI: 'https://flurbopm.singu.online/api/pilot/evidence/0x1', observedAt: now - 3000 },
+          reality: { chainId: 11155111, reality: pool, arbitrator: pool, questionId: '0x' + '77'.repeat(32),
+            sourceNow: now, opensAt: now - 3600, finalizesAt: now + 600, bondWei: '100000000000000',
+            nextBondWei: '200000000000000', disputeFeeWei: '10000000000000000', pendingArbitration: true,
+            finalized: false, creditedEthWei: '0', answerLabel: 'Yes', historyHash: zero, disputeStatus: 1,
+            disputeId: '7', court: { court: pool, disputeId: '7', period: 2, periodLabel: 'Vote',
+              periodEndsAt: now + 600, rounds: 1, drawn: 1, votesNeeded: 1, votesCast: 0, ruled: false,
+              currentRuling: null, appeal: null },
+            links: { questionTx: null, reality: 'https://reality.eth.limo/app/#!/network/11155111/question/x',
+              courtContract: `https://sepolia.etherscan.io/address/${pool}#events` } } } });
+        if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unavailable fixture' } });
+        const relative = path.startsWith('/assets/') ? path.slice(1) : 'index.html';
+        return route.fulfill({ body: await readFile(new URL('../dist/' + relative, import.meta.url)),
+          contentType: relative.endsWith('.js') ? 'text/javascript' : relative.endsWith('.css')
+            ? 'text/css' : relative.endsWith('.woff2') ? 'font/woff2' : 'text/html' });
+      });
+      await page.goto(`https://flurbopm.singu.online/markets/hybrid/${pool}/0`);
+      await page.getByText('Kleros case #7: Vote.', { exact: false }).first().waitFor();
+      await page.getByText('Waiting for the juror vote', { exact: false }).first().waitFor();
+      const href = await page.getByRole('link', { name: 'Court contract on Etherscan' }).getAttribute('href');
+      assert.ok(href?.startsWith('https://sepolia.etherscan.io'));
+      await page.getByText('Flurbo reader answered Yes', { exact: false }).first().waitFor();
+      assert.deepEqual(errors, []);
+    } finally { await browser.close(); }
+  });

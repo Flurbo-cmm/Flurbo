@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decodeAbiParameters, parseAbiParameters } from 'viem';
-import { prepareHybridPilot } from '../scripts/prepare-hybrid-pilot.mjs';
+import { readFileSync } from 'node:fs';
+import { prepareHybridPilot, realityQuestionText } from '../scripts/prepare-hybrid-pilot.mjs';
+import { settlementRuleHash } from '../server/settlement-rules.mjs';
+import { hybridSettlementCatalog } from '../server/hybrid-settlement-worker.mjs';
+import { SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { createHybridEvmPilot } from '../scripts/create-hybrid-evm-pilot.mjs';
 
 const T = 1_800_000_000;
@@ -56,4 +60,56 @@ test('pilot generator preserves ordinary address checksums for every wallet role
     closesAt: Math.floor(Date.now() / 1000) + 10800,
   });
   assert.equal(prepareHybridPilot(input).draft.events.length, 2);
+});
+
+function realityPublication() {
+  const input = publication();
+  input.events = input.events.map((event, index) => {
+    const ruleURI = `https://flurbopm.singu.online/api/hybrid/rules/0x${settlementRuleHash(event.rule)}`;
+    return { id: event.id, question: event.question, observationEndsAt: event.observationEndsAt,
+      route: 'reality', rule: event.rule, source: { kind: 'reality-sepolia', chainId: 11155111,
+        reality: SEPOLIA_REALITY, arbitrator: SEPOLIA_KLEROS, ruleURI,
+        questionId: `0x${String(index + 5).repeat(64)}`, contentHash: `0x${String(index + 7).repeat(64)}`,
+        questionTxHash: `0x${["a", "b"][index].repeat(64)}`,
+        questionText: realityQuestionText(event.question, ruleURI), minTimeout: 3600,
+        minBond: '100000000000000', openingAt: event.observationEndsAt } };
+  });
+  return input;
+}
+
+test('reality event with an answer rule commits both rule and source', () => {
+  const input = realityPublication();
+  const prepared = prepareHybridPilot(input);
+  const abi = parseAbiParameters('(address collateral,bytes32 draftHash,uint64 closesAt,bytes32[] eventHashes,uint64[] observationEnds,uint8[] routes,address proposer,address relay,uint128 bond,uint32 assertionPeriod,uint32 challengePeriod,uint32 reportPeriod,uint32 arbitrationPeriod) config');
+  const [config] = decodeAbiParameters(abi, prepared.resolverConfig);
+  assert.deepEqual(config.routes, [1, 1]);
+  const changed = realityPublication();
+  changed.events[0].rule.decision.value = '5';
+  changed.events[0].source.ruleURI = `https://flurbopm.singu.online/api/hybrid/rules/0x${settlementRuleHash(changed.events[0].rule)}`;
+  changed.events[0].source.questionText = realityQuestionText(changed.events[0].question, changed.events[0].source.ruleURI);
+  assert.notEqual(prepareHybridPilot(changed).eventHashes[0], prepared.eventHashes[0]);
+});
+
+test('reality question text must embed the rule URI', () => {
+  const input = realityPublication();
+  input.events[0].source.questionText = `${input.events[0].question}␟flurbo␟en`;
+  assert.throws(() => prepareHybridPilot(input), /Invalid Reality source/);
+});
+
+test('rule URI must carry the rule hash', () => {
+  const input = realityPublication();
+  input.events[0].source.ruleURI = `https://flurbopm.singu.online/api/hybrid/rules/0x${'a'.repeat(64)}`;
+  input.events[0].source.questionText = realityQuestionText(input.events[0].question, input.events[0].source.ruleURI);
+  assert.throws(() => prepareHybridPilot(input), /Invalid Reality source/);
+});
+
+test('reality rule timing must match the Reality timeout', () => {
+  const input = realityPublication();
+  input.events[0].source.minTimeout = 7200;
+  assert.throws(() => prepareHybridPilot(input), /Reality rule differs from its event/);
+});
+
+test('committed hybrid catalog still re-prepares', () => {
+  const catalog = JSON.parse(readFileSync(new URL('../../../config/hybrid-markets.json', import.meta.url), 'utf8'));
+  assert.doesNotThrow(() => hybridSettlementCatalog(catalog));
 });

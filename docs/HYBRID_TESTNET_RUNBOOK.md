@@ -37,12 +37,140 @@ The existing Render Redis, Resend, and settlement bot settings remain in use. Fo
 | `FLURBO_HYBRID_ARBITRATION_ENABLED=true` | Open and report mechanical Kleros cases |
 | `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY` | New Sepolia case manager key |
 | `FLURBO_SEPOLIA_RPC_URL` | Reliable Sepolia HTTPS RPC |
+| `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` | Sepolia-only answerer key for Reality reader pools |
+| `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` | Optional cap on the Kleros arbitration fee the keeper pays, default `20000000000000000` |
 
 `FLURBO_SETTLEMENT_BOT=true` and `FLURBO_NOTIFY_ENABLED=true` continue to drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
 
 Run one company web instance for this testnet trial. The two hybrid workers serialize transactions from their shared Monad relay wallet inside that process. Multiple service instances using the same relay key need a distributed nonce coordinator or a single elected worker before they are enabled.
 
-## Manual deployment sequence
+## Reality reader pools
+
+New pools reuse `HybridPilotResolver` and `WidePilotPool` with every route set to Reality. Each question carries its published rule. After the observation window, the hybrid settlement worker reads the committed source, freezes the result in Redis, and its answerer wallet posts the first bonded answer on Reality.eth. Reality finalizes after its timeout (default one hour). The relay then reports the answer to Monad. If someone posts a different answer, the court keeper requests Kleros arbitration through the official proxy when the new best answer contradicts the reader result, files the reader evidence, and moves the court through each permissionless step: delayed stakes, phase changes, juror draw, period changes, ruling execution and the report back to Reality. Appeal funding stays open to users on the market page.
+
+The only manual step is the juror vote. An operator-controlled juror wallet staked with faucet test PNK casts it. The keeper passes the vote period once the vote is cast, or after `voteWaitSeconds` (default 24 hours) with no vote. Passing without a vote ends in a tie, which Kleros reports as ruling 0 and Flurbo treats as Void. The relay from Sepolia to Monad is trusted in this testnet version. Authenticated delivery is required before any real-money use. A Kleros case that outlasts the 90-day report period becomes Void.
+
+### Wallets and funding
+
+| Wallet | Chain | Role | Funding |
+| --- | --- | --- | --- |
+| Answerer (new keystore `flurbo-hybrid-answer`) | Sepolia | Posts the first bonded answer | At least 0.01 Sepolia ETH |
+| Juror (new keystore `flurbo-kleros-juror`) | Sepolia | Stakes test PNK and casts the vote | At least 0.01 Sepolia ETH and faucet PNK |
+| Keeper (existing case manager `0x771fE7003FA20737C933c39B89386d78cbc36370`) | Sepolia | Requests arbitration, files evidence, drives the court | At least 0.05 Sepolia ETH |
+
+The proposer, relay and deployer keep their existing roles. The answerer must differ from the creator, proposer and relay. The keeper must differ from the relay.
+
+### Environment variables
+
+`FLURBO_HYBRID_ANSWER_PRIVATE_KEY` is new and is pasted only into Render. A key set ahead of a catalog entry with rule-backed Reality events is ignored. `FLURBO_HYBRID_SETTLEMENT_ENABLED=true` and `FLURBO_HYBRID_ARBITRATION_ENABLED=true` start the answerer and the court keeper. The keeper reuses `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY`. `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` is optional. `/healthz` gains `hybrid_court` and `hybrid_settlement.answerer`, plus per-question `hybrid_settlement.answers`.
+
+### Owner procedure (Git Bash, the owner signs everything)
+
+Set up the environment:
+
+```bash
+export PATH="$USERPROFILE/.foundry/bin:$PATH"; export HOME="$USERPROFILE"
+export FLURBO_SEPOLIA_RPC_URL='<private Sepolia HTTPS RPC>'; export FLURBO_TESTNET_RPC_URL='<private Monad HTTPS RPC>'
+cd /c/Users/anany/Flurbo-company/apps/web
+```
+
+1. Create the two keystores and note the addresses. Back up each password privately.
+
+```bash
+cast wallet new "$USERPROFILE/.foundry/keystores" flurbo-hybrid-answer
+```
+
+```bash
+cast wallet new "$USERPROFILE/.foundry/keystores" flurbo-kleros-juror
+```
+
+```bash
+ANSWERER=$(cast wallet address --account flurbo-hybrid-answer); JUROR=$(cast wallet address --account flurbo-kleros-juror); KEEPER=0x771fE7003FA20737C933c39B89386d78cbc36370
+```
+
+```bash
+cast balance $KEEPER --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+2. Stake the juror. Request test PNK from the faucet, read the balance, then stake all of it in subcourt 0. Outside the staking phase the stake is queued and the keeper executes it later.
+
+```bash
+cast send 0x776e5853e3d61B2dFB22Bcf872a43bF9A1231e52 'request()' --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
+```
+
+```bash
+cast call 0xA1eE4D32bdBcA69cdb445D66fAA3804aFFa24bFE 'balanceOf(address)(uint256)' $JUROR --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+```bash
+cast send 0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879 'setStake(uint96,uint128)' 0 <PNK_BALANCE> --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
+```
+
+```bash
+cast call 0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879 'stakeOf(address,uint96)(uint256)' $JUROR 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+If the last call prints `0` because the stake was queued, check it again after the keeper runs.
+
+3. Ship the code with no new catalog entry. Commit and merge the contracts test, set the CI pin in `.github/workflows/checks.yml` to that merge commit, then commit and merge the company changes. Set `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` (from `cast wallet decrypt-keystore flurbo-hybrid-answer`), `FLURBO_HYBRID_SETTLEMENT_ENABLED=true` and `FLURBO_HYBRID_ARBITRATION_ENABLED=true` in Render. `/healthz` shows `hybrid_court` as `disabled` until a Reality pool is listed.
+
+4. Move the files of any earlier hybrid pool out of `Flurbo-contracts/target/deployments/` into private records (`hybrid-pilot-input.json`, `hybrid-pilot-prepared.json`, `hybrid-pilot-unverified.json`, `hybrid-catalog-candidate.json`). Every script below writes with `wx` and refuses to overwrite. Then generate the template and ask both questions. `CLOSE` must be at least 2 hours away.
+
+```bash
+CLOSE=$(( $(date +%s) + 3*3600 )); DEPLOYER=0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391
+```
+
+```bash
+node scripts/create-hybrid-reality-pilot.mjs $DEPLOYER 0xa45c95f673580132F2E6f75372808162Ea069d49 0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1 $CLOSE https://flurbopm.singu.online ../../../Flurbo-contracts/target/deployments/hybrid-reality-template.json
+```
+
+Run the two printed `cast send` lines and copy both transaction hashes.
+
+5. Complete the draft, prepare, deploy and register.
+
+```bash
+node scripts/complete-hybrid-reality-draft.mjs ../../../Flurbo-contracts/target/deployments/hybrid-reality-template.json <TX0> <TX1> ../../../Flurbo-contracts/target/deployments/hybrid-pilot-input.json
+```
+
+```bash
+node scripts/prepare-hybrid-pilot.mjs ../../../Flurbo-contracts/target/deployments/hybrid-pilot-input.json ../../../Flurbo-contracts/target/deployments/hybrid-pilot-prepared.json
+```
+
+```bash
+cd /c/Users/anany/Flurbo-contracts && FOUNDRY_PROFILE=demo FLURBO_DEPLOYER=$DEPLOYER forge script script/DeployHybridPilot.s.sol:DeployHybridPilot --rpc-url "$FLURBO_TESTNET_RPC_URL" --account flurbo-testnet --sender $DEPLOYER --broadcast --slow
+```
+
+```bash
+cd /c/Users/anany/Flurbo-company && node apps/web/scripts/register-hybrid-pool.mjs hybrid-reality-1 ../Flurbo-contracts/target/deployments/hybrid-pilot-prepared.json ../Flurbo-contracts/target/deployments/hybrid-pilot-unverified.json ../Flurbo-contracts/target/deployments/hybrid-catalog-candidate.json --keeper $KEEPER --answerer $ANSWERER
+```
+
+Review the candidate, then copy it to `config/hybrid-markets.json`, commit, merge and deploy. Check `/healthz`: `hybrid_court.routes` is 2, `hybrid_settlement.answerer` equals `$ANSWERER`, and no `lastError` appears.
+
+```bash
+cp ../Flurbo-contracts/target/deployments/hybrid-catalog-candidate.json config/hybrid-markets.json
+```
+
+6. Question 1 (no challenge). Buy one share on each question from the market page. After `observationEndsAt`, `hybrid_settlement.answers` reaches `submitted`, then `already_answered`. About one hour later Reality finalizes and the relay reports.
+
+7. Question 2 (challenge). Inside its Reality timeout, a separate test wallet posts the opposite answer from the market page at double the bond. Within one keeper cycle `hybrid_court.cases[<id>].proxyStatus` becomes 1. Note the dispute ID and the `requestArbitration` transaction. Inspect the case:
+
+```bash
+node apps/web/scripts/inspect-kleros-dispute.mjs <Q2_ID> $JUROR
+```
+
+Once the period is `Vote`, run the printed `castVoteCommand` with the right choice: 2 for Yes, 1 for No, 0 for Void. The keeper passes the vote and appeal periods, executes the ruling and reports it. Reality finalizes, the relay reports to Monad, and the relay delivers when both questions are final.
+
+8. Redeem from the market page. Claim Reality bonds and withdraw on Sepolia for the answerer and the challenger. Check the Resend logs for the closing, observation, challenge, arbitration, ruling and payout notices. Store the transaction hashes, the dispute ID and the addresses in `secrets/COMPANY_OPERATIONS.md`.
+
+### Staging for the owner
+
+```bash
+cd /c/Users/anany/Flurbo-company && git add -- apps/web/server/oracle-integration.mjs apps/web/server/hybrid-reality.mjs apps/web/server/hybrid-settlement-worker.mjs apps/web/server/hybrid-court-keeper.mjs apps/web/server/hybrid-market-service.mjs apps/web/server/hybrid-notices.mjs apps/web/server/member-notices.mjs apps/web/server/local-api.mjs apps/web/server/production.mjs apps/web/scripts/prepare-hybrid-pilot.mjs apps/web/scripts/create-hybrid-evm-pilot.mjs apps/web/scripts/create-hybrid-reality-pilot.mjs apps/web/scripts/complete-hybrid-reality-draft.mjs apps/web/scripts/inspect-reality-question.mjs apps/web/scripts/inspect-kleros-dispute.mjs apps/web/scripts/register-hybrid-pool.mjs apps/web/src/pages/HybridMarket.tsx apps/web/src/pages/OracleMarkets.tsx apps/web/tests/oracle-integration.test.ts apps/web/tests/hybrid-reality.test.ts apps/web/tests/hybrid-settlement-worker.test.ts apps/web/tests/hybrid-catalog-fixture.ts apps/web/tests/hybrid-reality-fixture.ts apps/web/tests/hybrid-market-service.test.ts apps/web/tests/hybrid-trade-browser.test.ts apps/web/tests/member-notices.test.ts apps/web/tests/prepare-hybrid-pilot.test.ts apps/web/tests/create-hybrid-reality-pilot.test.ts apps/web/tests/register-hybrid-pool.test.ts apps/web/tests/hybrid-rule-endpoint.test.ts apps/web/tests/hybrid-court-keeper.test.ts apps/web/tests/inspect-kleros-dispute.test.ts apps/web/tests/hybrid-api-errors.test.ts docs/SETTLEMENT_ROUTING_V4.md docs/HYBRID_TESTNET_RUNBOOK.md docs/HANDOFF.md && git diff --cached --check && git diff --cached --stat
+```
+
+The CI pin edit to `.github/workflows/checks.yml` is a separate commit made after the contracts pull request merges. The contracts side stages only `test/HybridPilotLifecycle.t.sol`.
+
+## Manual deployment sequence (historical, mechanical pool)
 
 Run PowerShell 7. First merge and deploy the code with the empty `config/hybrid-markets.json`. Confirm `https://flurbopm.singu.online/hybrid-meta-evidence.json` serves the MetaEvidence JSON. It follows [ERC-1497](https://docs.kleros.io/developer/arbitration-development/erc-1497-evidence-standard). For a durable deployment, pin the exact JSON on IPFS and use its immutable HTTPS gateway URL when deploying the adapter.
 
@@ -143,7 +271,7 @@ Keep the pool, resolver, adapter, court, manager, proposer, relay, rule hash, dr
 
 No command here commits, pushes, merges, or deploys on your behalf.
 
-## Git commands for you to run
+## Git commands for the first hybrid release (historical)
 
 After reviewing both checkouts and running the tests, stage only the listed settlement files. Unrelated untracked files are intentionally excluded.
 

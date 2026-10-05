@@ -1,8 +1,8 @@
 import { encodeFunctionData, formatEther, getAddress, parseEther } from 'viem';
-import { answerEvent, courtAbi, proxyAbi, realityAbi } from './oracle-integration.mjs';
+import { answerEvent, ARBITRATION_STATUS, courtAbi, proxyAbi, realityAbi } from './oracle-integration.mjs';
 
 const zero = `0x${'0'.repeat(64)}`;
-const answers = { no: zero, yes: `0x${'0'.repeat(63)}1`, void: `0x${'f'.repeat(64)}` };
+export const REALITY_ANSWERS = { no: zero, yes: `0x${'0'.repeat(63)}1`, void: `0x${'f'.repeat(64)}` };
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 
 export async function hybridRealitySnapshot(source, event, owner = null) {
@@ -37,6 +37,8 @@ export async function hybridRealitySnapshot(source, event, owner = null) {
     || Number(timeout) < details.minTimeout || BigInt(minBond) < BigInt(details.minBond)
     || !Number.isSafeInteger(Number(block.timestamp)))
     throw Error('Reality question differs from the published source');
+  const court = Number(dispute[0]) > 0
+    ? await klerosCourtSnapshot(source, arbitrator, BigInt(dispute[2])) : null;
   const nextBond = [BigInt(minBond), BigInt(bond) * 2n, 1n]
     .reduce((a, b) => a > b ? a : b);
   return { chainId: 11155111, reality, arbitrator, questionId: q,
@@ -44,10 +46,14 @@ export async function hybridRealitySnapshot(source, event, owner = null) {
     finalizesAt: Number(finalizesAt), bondWei: BigInt(bond).toString(),
     nextBondWei: nextBond.toString(), disputeFeeWei: BigInt(disputeFee).toString(),
     pendingArbitration, finalized, creditedEthWei: BigInt(credit).toString(),
-    historyHash, disputeStatus: Number(dispute[0]),
+    historyHash, bestAnswer, court, links: {
+      questionTx: details.questionTxHash ? `https://sepolia.etherscan.io/tx/${details.questionTxHash}` : null,
+      reality: `https://reality.eth.limo/app/#!/network/11155111/question/${reality.toLowerCase()}-${q.toLowerCase()}`,
+      courtContract: court ? `https://sepolia.etherscan.io/address/${court.court}#events` : null },
+    disputeStatus: Number(dispute[0]),
     disputeId: BigInt(dispute[2]).toString(),
-    answerLabel: BigInt(bond) === 0n ? null : same(bestAnswer, answers.no) ? 'No'
-      : same(bestAnswer, answers.yes) ? 'Yes' : same(bestAnswer, answers.void) ? 'Void' : 'Unsupported answer' };
+    answerLabel: BigInt(bond) === 0n ? null : same(bestAnswer, REALITY_ANSWERS.no) ? 'No'
+      : same(bestAnswer, REALITY_ANSWERS.yes) ? 'Yes' : same(bestAnswer, REALITY_ANSWERS.void) ? 'Void' : 'Unsupported answer' };
 }
 
 async function answerHistory(source, event) {
@@ -67,8 +73,8 @@ async function answerHistory(source, event) {
   return logs.map(log => log.args);
 }
 
-export async function hybridRealityReportAction(source, event, owner, state) {
-  if (!state.pendingArbitration || state.disputeStatus !== 3)
+export async function realityReportArgs(source, event, state) {
+  if (state.disputeStatus !== ARBITRATION_STATUS.Ruled)
     throw Error('Kleros ruling is not ready to report');
   const logs = await answerHistory(source, event);
   const last = logs.at(-1), previous = logs.at(-2)?.history_hash || zero;
@@ -77,12 +83,59 @@ export async function hybridRealityReportAction(source, event, owner, state) {
     || !/^0x[0-9a-f]{40}$/i.test(last.user)
     || !/^0x[0-9a-f]{64}$/i.test(last.answer))
     throw Error('Reality answer history mismatch');
-  const args = [state.questionId, previous, last.answer, getAddress(last.user)];
+  return [state.questionId, previous, last.answer, getAddress(last.user)];
+}
+
+export async function hybridRealityReportAction(source, event, owner, state) {
+  if (!state.pendingArbitration) throw Error('Kleros ruling is not ready to report');
+  const args = await realityReportArgs(source, event, state);
   await source.simulateContract({ address: getAddress(state.arbitrator), abi: proxyAbi,
     functionName: 'reportAnswer', args, account: getAddress(owner) });
   return { action: 'finalizeArbitration', reason: 'Report the final Kleros ruling to Reality.eth',
     transaction: { chainId: 11155111, from: getAddress(owner), to: getAddress(state.arbitrator),
       data: encodeFunctionData({ abi: proxyAbi, functionName: 'reportAnswer', args }), value: '0x0' } };
+}
+
+const PERIODS = ['Evidence', 'Commit', 'Vote', 'Appeal', 'Execution'];
+
+export async function klerosCourtSnapshot(source, proxy, disputeId) {
+  const id = BigInt(disputeId);
+  const readProxy = (functionName, args = []) => source.readContract({ address: getAddress(proxy),
+    abi: proxyAbi, functionName, args });
+  const [court, extraData, multipliers] = await Promise.all([
+    readProxy('arbitrator'), readProxy('arbitratorExtraData'), readProxy('getMultipliers')]);
+  const readCourt = (functionName, args = []) => source.readContract({ address: getAddress(court),
+    abi: courtAbi, functionName, args });
+  const [dispute, detail] = await Promise.all([readCourt('disputes', [id]), readCourt('getDispute', [id])]);
+  const subcourt = await readCourt('getSubcourt', [BigInt(dispute[0])]);
+  const period = Number(dispute[3]), lastPeriodChange = Number(dispute[4]);
+  const times = subcourt[1].map(Number), round = detail[0].length - 1;
+  let currentRuling = null, appeal = null;
+  if (period >= 2) currentRuling = Number(await readCourt('currentRuling', [id]));
+  if (period === 3) {
+    const [window, cost] = await Promise.all([readCourt('appealPeriod', [id]),
+      readCourt('appealCost', [id, extraData])]);
+    const [winner, loser, , denominator] = multipliers.map(BigInt);
+    const start = Number(window[0]), end = Number(window[1]);
+    appeal = { start, end, loserEnd: start + Math.floor((end - start) / 2), costWei: BigInt(cost).toString(),
+      winnerTotalWei: (BigInt(cost) + BigInt(cost) * winner / denominator).toString(),
+      loserTotalWei: (BigInt(cost) + BigInt(cost) * loser / denominator).toString() };
+  }
+  return { court: getAddress(court), disputeId: id.toString(), subcourtId: Number(dispute[0]),
+    period, periodLabel: PERIODS[period] ?? 'Unknown', lastPeriodChange,
+    periodEndsAt: period < 4 ? lastPeriodChange + times[period] : null, timesPerPeriod: times,
+    rounds: round + 1, drawn: Number(dispute[5]), votesNeeded: Number(detail[0][round]),
+    votesCast: Number(detail[3][round]), ruled: Boolean(dispute[7]), currentRuling, appeal };
+}
+
+export async function klerosCourtPhase(source, court) {
+  const read = functionName => source.readContract({ address: getAddress(court), abi: courtAbi, functionName });
+  const [phase, lastPhaseChange, minStakingTime, maxDrawingTime, disputesWithoutJurors, nextDelayed, lastDelayed] =
+    await Promise.all(['phase', 'lastPhaseChange', 'minStakingTime', 'maxDrawingTime',
+      'disputesWithoutJurors', 'nextDelayedSetStake', 'lastDelayedSetStake'].map(read));
+  return { phase: Number(phase), lastPhaseChange: Number(lastPhaseChange), minStakingTime: Number(minStakingTime),
+    maxDrawingTime: Number(maxDrawingTime), disputesWithoutJurors: Number(disputesWithoutJurors),
+    nextDelayed: Number(nextDelayed), lastDelayed: Number(lastDelayed) };
 }
 
 export async function hybridRealityClaimAction(source, event, owner, state) {
@@ -117,7 +170,7 @@ export function hybridRealityAction(id, action, input, owner, state) {
     chainId: 11155111, from: getAddress(owner), to: getAddress(to),
     data: encodeFunctionData({ abi, functionName, args }), value: `0x${value.toString(16)}` });
   if (action === 'answer') {
-    if (!Object.hasOwn(answers, input?.answer)
+    if (!Object.hasOwn(REALITY_ANSWERS, input?.answer)
       || typeof input?.bondEth !== 'string'
       || !/^(?:0|[1-9]\d*)(?:\.\d{1,18})?$/.test(input.bondEth))
       throw Error('Enter a valid answer and Sepolia ETH bond');
@@ -128,7 +181,7 @@ export function hybridRealityAction(id, action, input, owner, state) {
     if (amount < BigInt(state.nextBondWei)) throw Error('Bond must meet the current minimum');
     return { action, reason: `Post ${input.answer.toUpperCase()} with ${input.bondEth} Sepolia ETH bond`,
       transaction: tx(state.reality, 'submitAnswer', realityAbi,
-        [state.questionId, answers[input.answer], BigInt(state.bondWei)], amount) };
+        [state.questionId, REALITY_ANSWERS[input.answer], BigInt(state.bondWei)], amount) };
   }
   if (action === 'arbitrate') {
     if (state.finalized || state.pendingArbitration || BigInt(state.bondWei) === 0n
@@ -152,7 +205,7 @@ export async function hybridRealityAppealAction(source, action, input, owner, st
   if (![0, 1, 2].includes(input?.ruling)) throw Error('Select a Kleros ruling');
   let amount = 0n, functionName, args;
   if (action === 'appeal') {
-    if (!state.pendingArbitration || state.disputeStatus !== 2)
+    if (!state.pendingArbitration || state.disputeStatus !== ARBITRATION_STATUS.Disputed)
       throw Error('No appealable Kleros dispute');
     const court = await source.readContract({ address: getAddress(state.arbitrator), abi: proxyAbi,
       functionName: 'arbitrator' });
@@ -167,7 +220,7 @@ export async function hybridRealityAppealAction(source, action, input, owner, st
     if (amount <= 0n) throw Error('Appeal contribution must be positive');
     functionName = 'fundAppeal'; args = [BigInt(state.questionId), BigInt(input.ruling)];
   } else if (action === 'claimAppeal') {
-    if (state.disputeStatus < 2) throw Error('No Kleros appeal rewards available');
+    if (state.disputeStatus < ARBITRATION_STATUS.Ruled) throw Error('No Kleros appeal rewards available');
     const available = await source.readContract({ address: getAddress(state.arbitrator),
       abi: proxyAbi, functionName: 'getTotalWithdrawableAmount',
       args: [BigInt(state.questionId), getAddress(owner), BigInt(input.ruling)] });

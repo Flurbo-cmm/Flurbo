@@ -5,6 +5,7 @@ import { pilotIndex } from './pilot-index.mjs';
 export const SEPOLIA_REALITY = '0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA';
 export const SEPOLIA_KLEROS = '0x05b942faecfb3924970e3a28e0f230910cedff45';
 export const EVIDENCE_PATH = '/api/oracle/evidence/';
+export const ARBITRATION_STATUS = Object.freeze({ None: 0, Disputed: 1, Ruled: 2, Reported: 3 });
 export const TEST_AUSD = '0xa9012a055bd4e0edff8ce09f960291c09d5322dc';
 const ZERO = `0x${'0'.repeat(64)}`;
 const address = value => typeof value === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value);
@@ -55,6 +56,24 @@ export const courtAbi = parseAbi([
   'function appealPeriod(uint256) view returns (uint256 start,uint256 end)',
   'function currentRuling(uint256) view returns (uint256)',
   'function appealCost(uint256,bytes) view returns (uint256)',
+  'function phase() view returns (uint8)',
+  'function lastPhaseChange() view returns (uint256)',
+  'function minStakingTime() view returns (uint256)',
+  'function maxDrawingTime() view returns (uint256)',
+  'function disputesWithoutJurors() view returns (uint256)',
+  'function nextDelayedSetStake() view returns (uint256)',
+  'function lastDelayedSetStake() view returns (uint256)',
+  'function disputes(uint256) view returns (uint96,address,uint256,uint8,uint256,uint256,uint256,bool)',
+  'function getDispute(uint256) view returns (uint256[],uint256[],uint256[],uint256[],uint256[],uint256[])',
+  'function getSubcourt(uint96) view returns (uint256[],uint256[4])',
+  'function getVote(uint256,uint256,uint256) view returns (address,bytes32,uint256,bool)',
+  'function stakeOf(address,uint96) view returns (uint256)',
+  'function passPhase()',
+  'function passPeriod(uint256)',
+  'function drawJurors(uint256,uint256)',
+  'function executeDelayedSetStakes(uint256)',
+  'function executeRuling(uint256)',
+  'function castVote(uint256,uint256[],uint256,uint256)',
 ]);
 export const poolAbi = parseAbi([
   'function protocolVersion() pure returns (uint8)',
@@ -333,7 +352,7 @@ export function oracleService({ catalog, source, market, evidence = null }) {
       phase, reported, funded, resolved, user };
   }
   async function appealWindow(route, snap) {
-    if (snap.dispute?.status !== 2 || !snap.pendingArbitration) throw Error('No appealable Kleros dispute');
+    if (snap.dispute?.status !== ARBITRATION_STATUS.Disputed || !snap.pendingArbitration) throw Error('No appealable Kleros dispute');
     const court = await read(source, route.arbitrator, proxyAbi, 'arbitrator');
     const [start, end] = await read(source, court, courtAbi, 'appealPeriod', [BigInt(snap.dispute.disputeId)]);
     if (BigInt(snap.sourceNow) < BigInt(start) || BigInt(snap.sourceNow) >= BigInt(end))
@@ -407,7 +426,7 @@ export function oracleService({ catalog, source, market, evidence = null }) {
           encodeFunctionData({ abi: proxyAbi, functionName: 'submitEvidence', args: [BigInt(q), uri] })) };
     }
     if (action === 'finalizeArbitration') {
-      if (!snap.pendingArbitration || snap.dispute?.status !== 3)
+      if (!snap.pendingArbitration || snap.dispute?.status !== ARBITRATION_STATUS.Ruled)
         throw Error('Kleros ruling is not ready to report');
       const logs = await answerHistory(route);
       if (!logs.length) throw Error('Reality answer history unavailable');

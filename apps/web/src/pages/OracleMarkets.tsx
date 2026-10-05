@@ -17,6 +17,8 @@ import './market-detail.css';
 import './pilot.css';
 import './oracle.css';
 
+const arbitration = { disputed: 1, ruled: 2 } as const;
+
 type OracleUser = { wallet: string; creditedEthWei: string; noShares: string; yesShares: string;
   cashAtoms: string; allowanceAtoms: string };
 type OracleSnapshot = OracleMarket & { schema: string; reality: string; arbitrator: string;
@@ -328,13 +330,13 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
             </details>
           </div>}
 
-          {snapshot.dispute?.status === 3 && snapshot.pendingArbitration && <div className="oracle-settlement-action"><h3>Complete Kleros ruling</h3><p>Kleros has ruled. Flurbo verifies Reality's answer history, then prepares the transaction that sends the ruling into Reality so the question can finalize.</p><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></div>}
+          {snapshot.dispute?.status === arbitration.ruled && snapshot.pendingArbitration && <div className="oracle-settlement-action"><h3>Complete Kleros ruling</h3><p>Kleros has ruled. Flurbo verifies Reality's answer history, then prepares the transaction that sends the ruling into Reality so the question can finalize.</p><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></div>}
 
-          {snapshot.dispute && snapshot.dispute.status >= 3 && <div className="oracle-settlement-action"><h3>Claim appeal rewards</h3><p>If you funded an appeal, select the ruling you supported. Flurbo checks whether this wallet can withdraw its contribution or reward.</p><label>Ruling funded<select value={ruling} onChange={e => setRuling(Number(e.target.value))}><option value={2}>Yes</option><option value={1}>No</option><option value={0}>Refuse to rule / invalid</option></select></label><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling }))}>Check and claim selected ruling</button></div>}
+          {snapshot.dispute && snapshot.dispute.status >= arbitration.ruled && <div className="oracle-settlement-action"><h3>Claim appeal rewards</h3><p>If you funded an appeal, select the ruling you supported. Flurbo checks whether this wallet can withdraw its contribution or reward.</p><label>Ruling funded<select value={ruling} onChange={e => setRuling(Number(e.target.value))}><option value={2}>Yes</option><option value={1}>No</option><option value={0}>Refuse to rule / invalid</option></select></label><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling }))}>Check and claim selected ruling</button></div>}
 
           {snapshot.finalized && !zero(snapshot.historyHash) && <div className="oracle-settlement-action"><h3>Claim answer bonds</h3><p>If this wallet posted a Reality answer, Flurbo prepares the history transaction that credits eligible answerers. You can withdraw credited ETH from your wallet panel.</p><button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimWinnings'))}>Review bond claim</button></div>}
 
-          {snapshot.pendingArbitration && snapshot.dispute && snapshot.dispute.status <= 2 && <div className="oracle-settlement-action"><h3>Submit evidence</h3><p>Evidence is public and identified by its content hash. Include only information you may disclose to jurors and everyone else.</p>
+          {snapshot.pendingArbitration && snapshot.dispute && snapshot.dispute.status === arbitration.disputed && <div className="oracle-settlement-action"><h3>Submit evidence</h3><p>Evidence is public and identified by its content hash. Include only information you may disclose to jurors and everyone else.</p>
             <div className="oracle-fields"><label>Title<input maxLength={120} value={evidence.name} onChange={e => setEvidence(v => ({ ...v, name: e.target.value }))}/></label>
               <label>Public source URL<input type="url" value={evidence.sourceURL} onChange={e => setEvidence(v => ({ ...v, sourceURL: e.target.value }))}/></label>
               <label className="oracle-wide">Explanation<textarea rows={5} maxLength={8000} value={evidence.description} onChange={e => setEvidence(v => ({ ...v, description: e.target.value }))}/></label></div>
@@ -342,7 +344,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
               {evidenceHash && <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('evidence', { hash: evidenceHash }))}>Review on-chain evidence submission</button>}</div>
           </div>}
 
-          {snapshot.dispute?.status === 2 && <div className="oracle-settlement-action"><h3>Fund an appeal</h3><p>Kleros appeal contributions use Sepolia ETH. Enter the amount you want to contribute. Flurbo simulates the transaction against the pinned proxy before MetaMask asks you to sign.</p>
+          {snapshot.dispute?.status === arbitration.disputed && <div className="oracle-settlement-action"><h3>Fund an appeal</h3><p>Kleros appeal contributions use Sepolia ETH. Enter the amount you want to contribute. Flurbo simulates the transaction against the pinned proxy before MetaMask asks you to sign.</p>
             <div className="oracle-fields"><label>Contribution in Sepolia ETH<input inputMode="decimal" value={appealEth} onChange={e => setAppealEth(e.target.value)}/></label><label>Ruling to support<select value={ruling} onChange={e => setRuling(Number(e.target.value))}><option value={2}>Yes</option><option value={1}>No</option><option value={0}>Refuse to rule / invalid</option></select></label></div>
             <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('appeal', { ruling, amountEth: appealEth }))}>Review appeal contribution</button></div>}
           {plan?.transaction.chainId === 11155111 && <div className="ticket-review" aria-label="Transaction review"><h3>Review on Sepolia</h3><p>{plan.reason}</p><p className="market-caption">Destination: <span className="mono oracle-address">{plan.transaction.to}</span></p><p className="market-caption">Sepolia ETH: {eth(BigInt(plan.transaction.value).toString())}</p><div className="cluster"><button className="btn btn-primary" disabled={busy} onClick={() => run(confirm)}>Confirm in MetaMask</button><button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel review</button></div></div>}

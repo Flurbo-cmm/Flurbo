@@ -11,7 +11,7 @@ import { LINKS } from './user-metrics.mjs';
 const PREFIX = 'flurbo:notify:v1:';
 export const PREFS = PREFIX + 'prefs';
 export const DEFAULT_PREFS = Object.freeze({ payouts: true, challenges: true, observations: true, closing: false });
-const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', observation: 'observations', closing: 'closing' };
+const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', arbitration: 'challenges', ruling: 'challenges', observation: 'observations', closing: 'closing' };
 const HOUR = 3600, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR, OBSERVATION_WINDOW = 6 * HOUR;
 const OUTCOME = ['Unset', 'No', 'Yes', 'VOID'];
 const address = v => typeof v === 'string' && /^0x[0-9a-f]{40}$/.test(v);
@@ -103,6 +103,12 @@ export function memberNotices({ command, pools, applications = null, links = nul
         stages.push({ kind: 'challenge', id: `challenge:${m.pool}:${event}:${c.challengeUntil}`, market: label, namespace, event,
           question: events[event].question, proposal: OUTCOME[Number(c.proposal)] || 'an answer', until: Number(c.challengeUntil),
           href: service.eventHref?.(event) });
+      if (c.court?.status >= 1) {
+        const ruled = c.court.status >= 2;
+        stages.push({ kind: ruled ? 'ruling' : 'arbitration', id: `${ruled ? 'ruling' : 'arbitration'}:${m.pool}:${event}:${c.court.disputeId}`,
+          market: label, namespace, event, question: events[event].question, disputeId: c.court.disputeId,
+          href: service.eventHref?.(event) });
+      }
     });
     if (status.delivered && status.resolved) {
       stages.push({ kind: 'payout', id: `payout:${m.pool}`, market: label, namespace, href: service.payoutHref, eventHref: service.eventHref });
@@ -126,7 +132,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
       }
       return { payoutAtoms: String(total), href: event < 32 ? stage.eventHref?.(event) : null };
     }
-    if (stage.kind === 'challenge' || stage.kind === 'observation') return rows.some(r => Number(r.scope) & (1 << stage.event)) ? {} : null;
+    if (['challenge', 'observation', 'arbitration', 'ruling'].includes(stage.kind)) return rows.some(r => Number(r.scope) & (1 << stage.event)) ? {} : null;
     return rows.length ? {} : null;
   }
 
@@ -136,6 +142,14 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const parts = items.map(({ stage, detail }) => {
       if (stage.kind === 'payout' || stage.kind === 'reminder') return `${stage.kind === 'reminder' ? 'Reminder: ' : ''}results are final for ${stage.market}. You have about ${ausd(detail.payoutAtoms)} test AUSD to collect. Payouts are not sent automatically: open ${detail.href || stage.href ? 'the market page' : 'Portfolio'} and collect with the MetaMask wallet that holds the shares.\n${url}${detail.href || stage.href || '/portfolio'}`;
       if (stage.kind === 'challenge') return `An answer was proposed for a question you hold in ${stage.market}:\n"${stage.question}"\nProposed answer: ${stage.proposal}. It can be challenged until ${utc(stage.until)}. If it is right, you do not need to do anything. If it is wrong, review the evidence and challenge it from the market page before the deadline.\n${url}${stage.href || `/markets/${stage.namespace}/${stage.event}`}`;
+      if (stage.kind === 'arbitration') return `A Kleros case (#${stage.disputeId}) was opened for a question you hold in ${stage.market}:
+"${stage.question}"
+Jurors will review the evidence. You can add public evidence or fund an appeal from the market page.
+${url}${stage.href}`;
+      if (stage.kind === 'ruling') return `Kleros has ruled on a question you hold in ${stage.market}:
+"${stage.question}"
+The result is being reported to Reality.eth and then to Monad. Payout follows when every question in the pool is final.
+${url}${stage.href}`;
       if (stage.kind === 'observation') return `The source window has ended for a question you hold in ${stage.market}:\n"${stage.question}"\n${stage.route === 'mechanical' ? 'The committed reader checks the official source and posts a bonded answer when the evidence is ready. A challenge can go to Kleros.' : 'The answer is not final yet. A bonded answer can be submitted on Reality.eth, and disputed answers can go to Kleros.'} Follow the settlement timeline on the market page.\n${url}${stage.href}`;
       return `Trading in ${stage.market} closes at ${utc(stage.closesAt)}, in about 2 hours. After that you can no longer buy or sell there.\n${url}/markets`;
     });
@@ -143,6 +157,8 @@ export function memberNotices({ command, pools, applications = null, links = nul
     const subject = kinds.size > 1 ? 'Updates on your Flurbo predictions'
       : kinds.has('payout') ? 'You have test AUSD to collect on Flurbo'
       : kinds.has('challenge') ? 'An answer was proposed for a question you hold'
+      : kinds.has('arbitration') ? 'A Kleros case was opened for a question you hold'
+      : kinds.has('ruling') ? 'Kleros ruled on a question you hold'
       : kinds.has('observation') ? 'The source window has ended for your Flurbo prediction'
       : `Trading closes in about 2 hours: ${items[0].stage.market}`;
     const text = [...parts,

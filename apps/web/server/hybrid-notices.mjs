@@ -37,7 +37,8 @@ export function hybridNoticePools({ pools, market, source, command }) {
           return { phase: !reality.finalized && !reality.pendingArbitration
               && BigInt(reality.bondWei) > 0n && reality.sourceNow < reality.finalizesAt ? 1 : 0,
             proposal: { No: 1, Yes: 2, Void: 3 }[reality.answerLabel] || 0,
-            challengeUntil: reality.finalizesAt };
+            challengeUntil: reality.finalizesAt,
+            court: reality.disputeStatus > 0 ? { disputeId: reality.disputeId, status: reality.disputeStatus } : null };
         }));
         return { resolved: snapshot.resolved, delivered: snapshot.delivered,
           cases };
