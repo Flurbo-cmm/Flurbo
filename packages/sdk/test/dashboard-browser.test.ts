@@ -35,7 +35,12 @@ test('dashboard: register, link the wallet, issue a credential, then watch a run
     await page.locator('.contour-loader').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {});
     await form.getByRole('checkbox', { checked: true }).first().waitFor({ timeout: 30_000 });
     const nameField = form.getByLabel('Name');
-    await nameField.fill('Dashboard test agent');
+    // The form can remount while the page finishes loading, which clears the box; fill again until the value holds.
+    for (let attempt = 0; attempt < 8; attempt++) {
+      await nameField.fill('Dashboard test agent');
+      await page.waitForTimeout(400);
+      if (await nameField.inputValue() === 'Dashboard test agent') break;
+    }
     assert.equal(await nameField.inputValue(), 'Dashboard test agent');
     await form.getByRole('button', { name: 'Register agent' }).click();
     await page.waitForURL(/\/agents\/[0-9a-f-]{36}$/).catch(async (error: Error) => {
