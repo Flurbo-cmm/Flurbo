@@ -1,19 +1,24 @@
-import {pilotRequest,type PilotNamespace,type PilotState} from './pilot';
-import {portfolioClaims,rememberedClaims,type ClaimHint} from './pilot-claims';
-import {type AccountHolding,accountOwners} from './account-holdings';
-import type {MarketGroup} from './market-directory';
-import {portfolioOrder} from './portfolio-order';
+import {pilotRequest,type PilotNamespace,type PilotState} from './pilot.ts';
+import {portfolioClaims,rememberedClaims,type ClaimHint} from './pilot-claims.ts';
+import {type AccountHolding,accountOwners} from './account-holdings.ts';
+import {portfolioOrder} from './portfolio-order.ts';
+import {hybridPoolRequest} from './hybrid-portfolio.ts';
+import {isHybridNamespace,type PortfolioGroup,type PortfolioNamespace} from './portfolio-groups.ts';
 import type {ActivityLog} from './portfolio-performance';
 import type {AgentExecution} from './portfolio-sources';
 
 export type HistoryRead={complete:boolean;through?:number;target?:number;logs:ActivityLog[]};
-export type PoolRead={cachedAt?:number;group:MarketGroup;manifest?:PilotState['manifest'];owners:Record<string,AccountHolding[]>;blocks:Record<string,string>;holdingsComplete:boolean;history?:HistoryRead;payouts?:HistoryRead;payoutError?:boolean;error?:string;historyError?:boolean};
-export type PortfolioRequest=<T>(path:string,input:unknown,namespace:PilotNamespace,signal:AbortSignal)=>Promise<T>;
-type AccountRead=Pick<PilotState,'manifest'|'snapshot'>&{claimScopes?:number[]};
-export async function loadPortfolio({groups:listed,account,wallets,signal,publish,request=pilotRequest,historyOnly=false,previous={},agentExecutions=[]}:{groups:MarketGroup[];account:string;wallets:string[];signal:AbortSignal;publish:(namespace:string,value:PoolRead)=>void;request?:PortfolioRequest;historyOnly?:boolean;previous?:Record<string,PoolRead>;agentExecutions?:AgentExecution[]}){
+export type PortfolioManifest={pool:string;publication:{draft:{title:string;closesAt:number;events:{id:string;question:string}[]}}};
+export type PoolRead={cachedAt?:number;group:PortfolioGroup;manifest?:PortfolioManifest;owners:Record<string,AccountHolding[]>;blocks:Record<string,string>;holdingsComplete:boolean;history?:HistoryRead;payouts?:HistoryRead;payoutError?:boolean;error?:string;historyError?:boolean};
+export type PortfolioRequest=<T>(path:string,input:unknown,namespace:PortfolioNamespace,signal:AbortSignal)=>Promise<T>;
+type AccountRead={manifest:PortfolioManifest;snapshot?:PilotState['snapshot'];claimScopes?:number[]};
+export function portfolioRequest<T>(path:string,input:unknown,namespace:PortfolioNamespace,signal:AbortSignal):Promise<T>{
+  return isHybridNamespace(namespace)?hybridPoolRequest<T>(path,input,namespace,signal):pilotRequest<T>(path,input,namespace as PilotNamespace,signal);
+}
+export async function loadPortfolio({groups:listed,account,wallets,signal,publish,request=portfolioRequest,historyOnly=false,previous={},agentExecutions=[]}:{groups:PortfolioGroup[];account:string;wallets:string[];signal:AbortSignal;publish:(namespace:string,value:PoolRead)=>void;request?:PortfolioRequest;historyOnly?:boolean;previous?:Record<string,PoolRead>;agentExecutions?:AgentExecution[]}){
   const groups=portfolioOrder(listed),owners=accountOwners(account,wallets),queue=[...groups],data:Record<string,PoolRead>={};
   const send=(value:PoolRead)=>{data[value.group.namespace]=value;if(!signal.aborted)publish(value.group.namespace,{...value,owners:{...value.owners},blocks:{...value.blocks}});};
-  const call=<T,>(group:MarketGroup,path:string,input?:unknown)=>request<T>(path,input,group.namespace,AbortSignal.any([signal,AbortSignal.timeout(45000)]));
+  const call=<T,>(group:PortfolioGroup,path:string,input?:unknown)=>request<T>(path,input,group.namespace,AbortSignal.any([signal,AbortSignal.timeout(45000)]));
   async function balances(value:PoolRead,claims:ClaimHint[],owner:string){
     for(let offset=0;offset<claims.length&&!signal.aborted;offset+=60){
       const batch=claims.slice(offset,offset+60);

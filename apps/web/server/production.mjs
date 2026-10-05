@@ -14,7 +14,7 @@ import {configureApplications} from './access-applications.mjs';
 import { RedisSessionStore, redisCommand } from './redis-session.mjs';
 import { runComparison } from './learning-comparison.mjs';
 import { learningService, learningRpc, loadLearningModel } from './learning-pool.mjs';
-import { pilotEvidence } from './pilot.mjs';
+import { pilotEvidence, pilotRpc } from './pilot.mjs';
 import { configurePilot } from './pilot-config.mjs';
 import { androidAssetLinks } from './native-association.mjs';
 import { configurePracticeCollections } from './practice-collections.mjs';
@@ -30,6 +30,7 @@ import { hybridSettlementCatalog, hybridSettlementWorker } from './hybrid-settle
 import { hybridArbitrationWorker } from './hybrid-arbitration-worker.mjs';
 import { hybridCourtKeeper } from './hybrid-court-keeper.mjs';
 import { hybridNoticePools } from './hybrid-notices.mjs';
+import { hybridPoolIndexes, hybridPortfolioService } from './hybrid-portfolio.mjs';
 import { hybridMarketService } from './hybrid-market-service.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -43,7 +44,7 @@ const security = {
 export function productionServer(config, store, staticRoot = dist) {
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
-    learningDashboardUrl: config.learningDashboardUrl, pilot: config.pilot, practiceCollections:config.practiceCollections, evidence: config.pilotEvidence, evidenceOptions: config.evidenceOptions, challengeOptions:config.challengeOptions, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid });
+    learningDashboardUrl: config.learningDashboardUrl, pilot: config.pilot, practiceCollections:config.practiceCollections, evidence: config.pilotEvidence, evidenceOptions: config.evidenceOptions, challengeOptions:config.challengeOptions, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio });
   config.metrics = api.metrics;
   config.notices = api.notices;
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
@@ -138,7 +139,10 @@ async function main() {
     };
     const [source, market] = oracleClients(process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com', config.rpcUrl);
     config.oracleEvidence = oracleEvidence(store.command, config.origin);
-    config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command });
+    const hybridIndexes = hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
+      fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : pilotRpc('https://testnet-rpc.monad.xyz') });
+    config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command, indexes: hybridIndexes });
+    if (hybrid.pools.length) config.hybridPortfolio = hybridPortfolioService({ catalog: hybrid, market, indexes: hybridIndexes });
     if (hybrid.pools.length) config.hybrid = hybridMarketService({ catalog: hybrid,
       market, source, evidence: config.oracleEvidence, origin: config.origin, command: store.command });
     if (catalog.routes.some(route => route.evidenceOrigin !== config.origin)) throw Error('Oracle evidence origin must match this site');

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
-import { formatEther, formatUnits, parseUnits } from 'viem';
+import { decodeFunctionData, formatEther, formatUnits, parseAbi, parseUnits } from 'viem';
 import { appFetch } from '../platform-fetch';
 import { useAuth } from '../auth/context';
 import { discoverWallets, type BrowserWallet } from '../auth/wallet-choice';
@@ -11,6 +11,9 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import QuantityStepper from '../components/ui/QuantityStepper';
 import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
 import Stepper, { type Step } from '../components/ui/Stepper';
+import { forgetPortfolioCachePool } from '../portfolio-cache';
+import { rememberClaimHint } from '../pilot-claims';
+import { hybridNamespace } from '../portfolio-groups';
 import PriceHistory from './PriceHistory';
 import { HybridConnections } from './HybridAnalysis';
 import './market-detail.css';
@@ -18,6 +21,9 @@ import './pilot.css';
 import './oracle.css';
 
 const arbitration = { disputed: 1, ruled: 2 } as const;
+const tradeAbi = parseAbi(['function buy(uint32,uint256,uint128,uint128,uint256) returns (uint128)',
+  'function sell(uint32,uint256,uint128,uint128,uint256) returns (uint128)',
+  'function redeem(uint32,uint256,uint128) returns (uint128)']);
 
 type Market = { id: string; pool: string; poolTitle: string; eventIndex: number;
   question: string; route: 'mechanical' | 'reality'; closesAt: number; observationEndsAt: number };
@@ -52,7 +58,7 @@ type Quote = { action: 'quote'; buyAtoms: string; maxCostAtoms: string;
   cashAtoms: string; allowanceAtoms: string; holdingsAtoms: string };
 type PositionRead = { action: 'position'; holdingsAtoms: string; payoutAtoms: string | null };
 type Pending = { hash: string | null; owner: string; id: string; action: string; chainId: number;
-  approvalSelection?: string };
+  approvalSelection?: string; claim?: { scope: number; mask: string } };
 
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString(undefined,
   { dateStyle: 'medium', timeStyle: 'short' });
@@ -64,7 +70,8 @@ const readPending = (): Pending | null => {
     const item = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
     return (item?.hash === null || /^0x[0-9a-f]{64}$/i.test(item?.hash))
       && /^0x[0-9a-f]{40}$/i.test(item?.owner)
-      && typeof item.id === 'string' && [10143,11155111].includes(item.chainId) ? item : null;
+      && typeof item.id === 'string' && [10143,11155111].includes(item.chainId)
+      && (item.claim === undefined || (Number.isInteger(item.claim?.scope) && /^[1-9]\d{0,2}$/.test(item.claim?.mask))) ? item : null;
   } catch { return null; }
 };
 const friendly = (error: unknown) => {
@@ -118,6 +125,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [pending, setPending] = useState<Pending | null>(readPending);
   const [pendingHash, setPendingHash] = useState('');
   const [pollPaused, setPollPaused] = useState(false);
+  const [combinationLink] = useState(() => new URLSearchParams(location.search).has('other'));
   const [approvalReady, setApprovalReady] = useState<string | null>(null);
   const [completed, setCompleted] = useState('');
   const pollCount = useRef(0);
@@ -296,8 +304,13 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       if (accounts[0]?.toLowerCase() !== owner.toLowerCase()
         || transaction.from.toLowerCase() !== owner.toLowerCase())
         throw Error('MetaMask account changed. Reconnect and review again.');
+      let claim: Pending['claim'];
+      if (['buy', 'sell', 'redeem'].includes(plan.action)) try {
+        const { args } = decodeFunctionData({ abi: tradeAbi, data: transaction.data as `0x${string}` });
+        claim = { scope: Number(args[0]), mask: String(args[1]) };
+      } catch { claim = undefined; }
       const intent: Pending = { hash: null, owner, id, action: plan.action,
-        chainId: transaction.chainId,
+        chainId: transaction.chainId, ...(claim ? { claim } : {}),
         ...(plan.action === 'approve' ? { approvalSelection: selectionKey } : {}) };
       sessionStorage.setItem(pendingKey, JSON.stringify(intent));
       setPending(intent);
@@ -333,6 +346,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       if (receipt.status === '0x1') {
         if (pending.action === 'approve' && pending.id === id)
           setApprovalReady(pending.approvalSelection || null);
+        if (['buy', 'sell', 'redeem'].includes(pending.action)) {
+          const tradedPool = pending.id.slice(0, 42), namespace = hybridNamespace(tradedPool);
+          forgetPortfolioCachePool(namespace);
+          const events = markets.filter(item => item.pool.toLowerCase() === tradedPool.toLowerCase()).length;
+          if (pending.claim && events) rememberClaimHint(namespace, tradedPool, pending.owner, events, pending.claim);
+        }
         if (['buy', 'sell', 'redeem'].includes(pending.action) && pending.id === id)
           setCompleted(pending.action);
         setNotice(pending.action === 'approve' ? 'Payment approval confirmed. Preparing the purchase.'
@@ -529,7 +548,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
             {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
               && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
                 { side: answer, quantity: answer === 'yes' ? snapshot.user?.yesShares : snapshot.user?.noShares }))}>Collect {answer} payout</button>)}
-            {others.length > 0 && <details><summary>Collect a combined prediction</summary>
+            {others.length > 0 && <details open={combinationLink}><summary>Collect a combined prediction</summary>
               <p className="market-caption">Select the same questions and answers you bought. Holdings and payout are read from the pool.</p>
               <SegmentedControl label="This answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setSide(value === 'no' ? 'no' : 'yes')}/>
               <label>Second question<select value={extra1} onChange={e => { setExtra1(e.target.value); setExtra2(''); }}><option value="">Choose a question</option>{others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>

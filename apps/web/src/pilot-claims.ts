@@ -1,15 +1,16 @@
 import { validClaim } from '../shared/pilot.mjs';
 import {CLAIM_RULES, encodeClaim} from '../shared/claims.mjs';
 import type { PilotPending, PilotNamespace } from './pilot';
+import type { PortfolioNamespace } from './portfolio-groups';
 import { forgetPortfolioCachePool } from './portfolio-cache.ts';
 
 export type ClaimHint={scope:number;mask:string};
-const key=(namespace:PilotNamespace,pool:string,owner:string)=>`flurbo.claims.v1:10143:${namespace}:${pool.toLowerCase()}:${owner.toLowerCase()}`;
+const key=(namespace:PortfolioNamespace,pool:string,owner:string)=>`flurbo.claims.v1:10143:${namespace}:${pool.toLowerCase()}:${owner.toLowerCase()}`;
 function valid(claim:ClaimHint,events:number){
   return !!claim&&typeof claim.mask==='string'&&/^[1-9][0-9]{0,2}$/.test(claim.mask)&&validClaim(claim.scope,BigInt(claim.mask),events);
 }
 // Discovery hints only. Quantities and payouts always come from a fresh contract read.
-export function rememberedClaims(namespace:PilotNamespace,pool:string,owner:string,events:number):ClaimHint[]{
+export function rememberedClaims(namespace:PortfolioNamespace,pool:string,owner:string,events:number):ClaimHint[]{
   try{
     const raw=localStorage.getItem(key(namespace,pool,owner));if(!raw||raw.length>8000)return [];
     const parsed:unknown=JSON.parse(raw);
@@ -17,17 +18,19 @@ export function rememberedClaims(namespace:PilotNamespace,pool:string,owner:stri
     return parsed.filter((v):v is ClaimHint=>valid(v,events)).map(({scope,mask})=>({scope,mask}));
   }catch{return [];}
 }
+export function rememberClaimHint(namespace:PortfolioNamespace,pool:string,owner:string,events:number,claim:ClaimHint){
+  if(!valid(claim,events))return;
+  try{
+    const old=rememberedClaims(namespace,pool,owner,events);
+    const claims=[claim,...old.filter(c=>c.scope!==claim.scope||c.mask!==claim.mask)].slice(0,64);
+    localStorage.setItem(key(namespace,pool,owner),JSON.stringify(claims));
+  }catch{/* Optional discovery hints must not turn a confirmed transaction into an error. */}
+}
 export function rememberConfirmedClaim(namespace:PilotNamespace,saved:PilotPending){
   if(!['buy','sell','redeem'].includes(saved.review.action))return;
   forgetPortfolioCachePool(namespace);
-  const {manifest,requested}=saved.review,claim={scope:requested.scope!,mask:requested.mask!};
-  const events=manifest.publication.draft.events.length;
-  if(!valid(claim,events))return;
-  try{
-    const old=rememberedClaims(namespace,manifest.pool,requested.owner,events);
-    const claims=[claim,...old.filter(c=>c.scope!==claim.scope||c.mask!==claim.mask)].slice(0,64);
-    localStorage.setItem(key(namespace,manifest.pool,requested.owner),JSON.stringify(claims));
-  }catch{/* Optional discovery hints must not turn a confirmed transaction into an error. */}
+  const {manifest,requested}=saved.review;
+  rememberClaimHint(namespace,manifest.pool,requested.owner,manifest.publication.draft.events.length,{scope:requested.scope!,mask:requested.mask!});
 }
 export function portfolioClaims(events:number,scopes:number[],hints:ClaimHint[],indexed:ClaimHint[]):ClaimHint[]{
   const claims=new Map<string,ClaimHint>();
