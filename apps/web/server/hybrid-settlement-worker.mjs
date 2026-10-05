@@ -4,7 +4,6 @@ import { prepareHybridPilot, hybridRulesHash } from '../scripts/prepare-hybrid-p
 import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { archiveSettlementProposal, evaluateSettlement, parseSettlementCapture, retrieveSettlementCapture } from './settlement-evidence.mjs';
 import { verifyPublicSettlementEvidence } from './deterministic-evidence.mjs';
-import { realityOutcome } from './reality-relay.mjs';
 import { realityAbi as fullRealityAbi, SEPOLIA_REALITY, TEST_AUSD } from './oracle-integration.mjs';
 import { hybridRealitySnapshot, REALITY_ANSWERS } from './hybrid-reality.mjs';
 
@@ -36,6 +35,11 @@ const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLow
 const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '');
 const hash32 = value => /^0x[0-9a-fA-F]{64}$/.test(value || '');
 export const realityAnswerBytes = Object.freeze({ 1: REALITY_ANSWERS.no, 2: REALITY_ANSWERS.yes, 3: REALITY_ANSWERS.void });
+export function hybridRealityOutcome(answer) {
+  if (!hash32(answer)) throw Error('Reality answer is malformed');
+  const value = BigInt(answer);
+  return value === 0n ? 1 : value === 1n ? 2 : 3;
+}
 const publicErrors = new Set(['Hybrid settlement transaction reverted', 'Hybrid settlement transaction hash invalid',
   'Hybrid proposer needs test AUSD bond', 'Hybrid Reality RPC chain mismatch', 'Hybrid Reality evidence URI mismatch',
   'Hybrid market RPC chain mismatch', 'Hybrid pool differs from verified catalog',
@@ -45,7 +49,8 @@ const publicErrors = new Set(['Hybrid settlement transaction reverted', 'Hybrid 
   'Confirmed Sepolia answer has no bond; manual review required',
   'Sepolia answer transaction missing; manual review required', 'Reality answer bond mismatch',
   'Sepolia answer signer needs ETH for bond and gas',
-  'Sepolia answer submission uncertain; inspect the signer before retrying']);
+  'Sepolia answer submission uncertain; inspect the signer before retrying',
+  'Reality answer is malformed', 'Reality credit withdrawal reverted']);
 const safeError = error => publicErrors.has(error?.message) ? error.message
   : 'Hybrid settlement source or transaction request failed';
 const key = (pool, action, event) => `flurbo:hybrid-settlement:v1:${pool.toLowerCase()}:${action}:${event}`;
@@ -175,7 +180,7 @@ export async function readHybridSnapshot(record, market) {
 export function hybridSettlementWorker({ pools, market, source, command, archive, captureStore,
   packetStore, oracleEvidence, origin, marketRpcUrl, proposerPrivateKey, relayPrivateKey,
   proposerWallet = null, relayWallet = null, relaySend = task => task(), request = fetch,
-  answererPrivateKey = null, answererWallet = null, sourceRpcUrl = null,
+  answererPrivateKey = null, answererWallet = null, sourceRpcUrl = null, minWithdrawWei = 100_000_000_000_000n,
   now = () => Math.floor(Date.now() / 1000),
   intervalMs = 120_000 }) {
   hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools });
@@ -205,7 +210,7 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   }
   const answererClient = answerer ? answererWallet || createWalletClient({ account: answerer, chain: sepolia,
     transport: http(sourceRpcUrl, { timeout: 20_000 }) }) : null;
-  const answers = new Map();
+  const answers = new Map(), errors = new Map();
   const proposerClient = proposerWallet || createWalletClient({ account: proposer, chain: monad,
     transport: http(marketRpcUrl, { timeout: 20_000 }) });
   const relayClient = relayWallet || createWalletClient({ account: relay, chain: monad,
@@ -289,16 +294,16 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   async function reportReality(record, event) {
     if (await source.getChainId() !== 11155111) throw Error('Hybrid Reality RPC chain mismatch');
     const item = record.prepared.draft.events[event], reality = item.source;
-    const finalized = await source.readContract({ address: getAddress(reality.reality), abi: realityAbi,
-      functionName: 'isFinalized', args: [reality.questionId] });
-    if (!finalized) return null;
     const block = await source.getBlock({ blockTag: 'finalized' });
     if (!hash32(block?.hash) || typeof block.number !== 'bigint') return null;
+    const finalized = await source.readContract({ address: getAddress(reality.reality), abi: realityAbi,
+      functionName: 'isFinalized', args: [reality.questionId], blockNumber: block.number });
+    if (!finalized) return null;
     const answer = await source.readContract({ address: getAddress(reality.reality), abi: realityAbi,
       functionName: 'getFinalAnswerIfMatches', args: [reality.questionId, reality.contentHash,
         getAddress(reality.arbitrator), reality.minTimeout, BigInt(reality.minBond)],
       blockNumber: block.number });
-    const outcome = realityOutcome(answer);
+    const outcome = hybridRealityOutcome(answer);
     const evidence = JSON.stringify({ schema: 'flurbo.reality-evidence.v2', sourceChainId: 11155111,
       sourceBlockNumber: block.number.toString(), sourceBlockHash: block.hash.toLowerCase(),
       reality: getAddress(reality.reality), arbitrator: getAddress(reality.arbitrator),
@@ -384,25 +389,63 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     return result;
   }
 
+  async function withdrawRealityCredit() {
+    const reality = getAddress(SEPOLIA_REALITY);
+    const balance = BigInt(await source.readContract({ address: reality, abi: fullRealityAbi,
+      functionName: 'balanceOf', args: [answerer.address] }));
+    if (balance < minWithdrawWei) return 'idle';
+    const journal = `flurbo:hybrid-answer:v1:withdraw:${answerer.address.toLowerCase()}:${balance}`;
+    const saved = await command('GET', journal);
+    if (saved === 'preparing') return 'pending';
+    if (saved) {
+      const receipt = await source.getTransactionReceipt({ hash: saved }).catch(() => null);
+      if (!receipt) return 'pending';
+      if (receipt.status !== 'success') {
+        await command('DEL', journal);
+        throw Error('Reality credit withdrawal reverted');
+      }
+      return 'confirmed';
+    }
+    const simulated = await source.simulateContract({ address: reality, abi: fullRealityAbi,
+      functionName: 'withdraw', account: answerer });
+    if (await command('SET', journal, 'preparing', 'EX', 1800, 'NX') !== 'OK') return 'pending';
+    const hash = await answererClient.writeContract({ ...simulated.request, account: answerer, chain: sepolia });
+    if (!hash32(hash)) throw Error('Hybrid settlement transaction hash invalid');
+    await command('SET', journal, hash, 'EX', 86400);
+    return 'submitted';
+  }
+
   async function tick() {
     if (running) return;
     running = true; cycles++;
     try {
       for (const record of pools) {
-        const snapshot = await readHybridSnapshot(record, market);
-        if (snapshot.delivered || snapshot.resolved) continue;
-        await collect(record, snapshot);
-        for (const action of nextHybridActions(snapshot)) {
-          const item = action.event === undefined ? null : record.prepared.draft.events[action.event];
-          if (action.kind === 'reality' && item.rule) await answer(record, action.event);
-          const result = action.kind === 'propose' ? await propose(record, action.event)
-            : action.kind === 'reality' ? await reportReality(record, action.event)
-              : await send(record, action.kind, action.event ?? 'all', relayClient, relay,
-                record.resolver, resolverAbi, action.kind, action.event === undefined ? [] : [action.event]);
-          if (result === 'submitted' || result === 'pending') break;
+        try {
+          const snapshot = await readHybridSnapshot(record, market);
+          if (!snapshot.delivered && !snapshot.resolved) {
+            await collect(record, snapshot);
+            for (const action of nextHybridActions(snapshot)) {
+              const item = action.event === undefined ? null : record.prepared.draft.events[action.event];
+              if (action.kind === 'reality' && item.rule) await answer(record, action.event);
+              const result = action.kind === 'propose' ? await propose(record, action.event)
+                : action.kind === 'reality' ? await reportReality(record, action.event)
+                  : await send(record, action.kind, action.event ?? 'all', relayClient, relay,
+                    record.resolver, resolverAbi, action.kind, action.event === undefined ? [] : [action.event]);
+              if (result === 'submitted' || result === 'pending') break;
+            }
+          }
+          errors.delete(record.id);
+        } catch (error) {
+          const message = safeError(error);
+          if (errors.get(record.id) !== message) console.error(`Hybrid settlement ${record.id}: ${message}`);
+          errors.set(record.id, message);
         }
       }
-      lastError = null;
+      if (answerer) {
+        try { await withdrawRealityCredit(); errors.delete('answerer-withdraw'); }
+        catch (error) { errors.set('answerer-withdraw', safeError(error)); }
+      }
+      lastError = [...errors].map(([id, message]) => `${id}: ${message}`).join('; ') || null;
     } catch (error) {
       lastError = safeError(error);
       console.error(lastError);

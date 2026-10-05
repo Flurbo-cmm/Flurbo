@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { encodeAbiParameters, keccak256, parseAbiParameters } from 'viem';
 import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { prepareHybridPilot } from '../scripts/prepare-hybrid-pilot.mjs';
 import { verifyHybridDeployment } from '../scripts/register-hybrid-pool.mjs';
 import { TEST_AUSD } from '../server/oracle-integration.mjs';
 import { createHybridEvmPilot } from '../scripts/create-hybrid-evm-pilot.mjs';
-import { completedDraft, creator, fakeSepolia, proposer, relay } from './hybrid-reality-fixture.ts';
+import { completedDraft, creator, fakeSepolia, proposer, proxyCode, relay } from './hybrid-reality-fixture.ts';
 
 const account = (digit: string) => `0x${digit.repeat(40)}`;
 const pool = account('5'), resolver = account('4');
@@ -62,11 +63,27 @@ test('registration rejects a Reality question receipt that differs from the publ
 test('registration records keeper and answerer for a verified Reality pool', async () => {
   const { prepared, unverified, rulesHash, source } = await fixture();
   const record = await verifyHybridDeployment({ id: 'reality-test', prepared, unverified,
-    keeper: account('8'), answerer: account('9'), market: market(prepared, rulesHash), source });
+    keeper: account('8'), answerer: account('9'), market: market(prepared, rulesHash), source,
+    proxyCodeHash: keccak256(proxyCode) });
   assert.equal(record.keeper, account('8'));
   assert.equal(record.answerer, account('9'));
   assert.equal('adapter' in record, false);
   assert.equal(record.deploymentBlock, 200);
+});
+
+test('registration rejects a proxy that is not the verified Kleros code', async () => {
+  const { prepared, unverified, rulesHash, source } = await fixture({ proxyCode: '0x6081' });
+  await assert.rejects(() => verifyHybridDeployment({ id: 'reality-test', prepared, unverified,
+    keeper: account('8'), answerer: account('9'), market: market(prepared, rulesHash), source,
+    proxyCodeHash: keccak256(proxyCode) }), /Reality arbitrator is not a verified Kleros proxy/);
+});
+
+test('registration rejects a proxy with more than one juror seat', async () => {
+  const { prepared, unverified, rulesHash, source } = await fixture({
+    extraData: encodeAbiParameters(parseAbiParameters('uint256,uint256'), [3n, 2n]) });
+  await assert.rejects(() => verifyHybridDeployment({ id: 'reality-test', prepared, unverified,
+    keeper: account('8'), answerer: account('9'), market: market(prepared, rulesHash), source,
+    proxyCodeHash: keccak256(proxyCode) }), /Reality arbitrator is not a verified Kleros proxy/);
 });
 
 test('mechanical-only registration is unchanged', async () => {

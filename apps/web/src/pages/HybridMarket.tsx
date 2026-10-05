@@ -600,7 +600,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           <label>Ruling<select value={appealRuling} onChange={e => setAppealRuling(Number(e.target.value))}><option value={0}>Refuse to rule</option><option value={1}>No</option><option value={2}>Yes</option></select></label>
           <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling: appealRuling }))}>Check appeal rewards</button>
         </section>}
-        {reality?.finalized && owner && <section className="detail-panel"><h2>Reality.eth answer bonds</h2><p>If this wallet posted an answer, process the answer history to credit eligible bond winnings.</p>
+        {reality?.finalized && owner && !/^0x0{64}$/i.test(reality.historyHash) && <section className="detail-panel"><h2>Reality.eth answer bonds</h2><p>If this wallet posted an answer, process the answer history to credit eligible bond winnings.</p>
           <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('claimWinnings'))}>Review bond claim</button></section>}
         {reality && BigInt(reality.creditedEthWei) > 0n && <section className="detail-panel"><h2>Reality.eth bond credit</h2><p>{formatEther(BigInt(reality.creditedEthWei))} Sepolia ETH is ready to withdraw.</p>
           <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('withdrawReality'))}>Review ETH withdrawal</button></section>}

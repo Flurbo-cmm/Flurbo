@@ -72,6 +72,8 @@ All addresses below are public identifiers. Keep the original receipts, prepared
 | Hybrid case manager | Sepolia | `0x771fE7003FA20737C933c39B89386d78cbc36370` | `config/hybrid-markets.json` |
 | Reality.eth oracle | Sepolia | `0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA` | `config/oracle-markets.json` |
 | Reality Kleros arbitrator proxy | Sepolia | `0x05b942faecfb3924970e3a28e0f230910cedff45` | `config/oracle-markets.json` |
+| KlerosLiquid court | Sepolia | `0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879` | `apps/web/server/oracle-integration.mjs` |
+| Flurbo copy of the Kleros proxy (subcourt 3, 1 juror) | Sepolia | `0x9E05da51D17bCd4B796E4505FCEED9135bd99964` | `apps/web/server/oracle-integration.mjs` |
 | Shared test AUSD | Monad testnet | `0xa9012a055bd4e0edff8ce09f960291c09d5322dc` | `apps/web/server/network.mjs` |
 | Existing deployer | Monad testnet and Sepolia | `0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391` | deployment manifests |
 
@@ -139,7 +141,7 @@ These are names and roles, not values read from Render. Retain existing secret v
 | RPC and state | `FLURBO_ALCHEMY_TESTNET_RPC_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `FLURBO_SUPABASE_KV`, `FLURBO_APPLICATIONS_SUPABASE_URL`, `FLURBO_APPLICATIONS_SUPABASE_SECRET` | Monad RPC, company Redis, optional company Supabase KV and applications. RPC token-bearing URL and credentials are secrets |
 | Existing activity settlement | `FLURBO_SETTLEMENT_BOT`, `FLURBO_MONITOR_ENABLED`, `FLURBO_RESOLUTION_ENABLED`, `FLURBO_RESOLUTION_PROPOSALS`, `FLURBO_RESOLUTION_EXECUTE`, `FLURBO_RESOLUTION_SIGNER_ADDRESS`, `FLURBO_RESOLUTION_PRIVATE_KEY`, `FLURBO_RESOLUTION_EVIDENCE_ORIGIN`, `FLURBO_RESOLUTION_HOLD` | Keep the activity pool's dedicated signer and registry behavior. Company startup requires monitor, worker, proposal flag and matching evidence origin when the bot is on |
 | Hybrid settlement, new | `FLURBO_HYBRID_SETTLEMENT_ENABLED`, `FLURBO_HYBRID_PROPOSER_PRIVATE_KEY`, `FLURBO_HYBRID_RELAY_PRIVATE_KEY` | `true` starts capture, propose, finalize and delivery for the hybrid catalog. Keys must match the catalog's public proposer and relay |
-| Hybrid Kleros, new | `FLURBO_HYBRID_ARBITRATION_ENABLED`, `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY`, `FLURBO_SEPOLIA_RPC_URL`, `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` | `true` starts opening, linking and relaying mechanical Kleros cases and the Reality court keeper. Case manager and keeper need Sepolia ETH |
+| Hybrid Kleros, new | `FLURBO_HYBRID_ARBITRATION_ENABLED`, `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY`, `FLURBO_SEPOLIA_RPC_URL`, `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI`, `FLURBO_HYBRID_JUROR_ADDRESS` | `true` starts opening, linking and relaying mechanical Kleros cases and the Reality court keeper. Case manager and keeper need Sepolia ETH. The juror address is public and optional: it adds the juror's unvoted seats to `/healthz` and the ACTION email |
 | Hybrid operator emails, new | `FLURBO_HYBRID_ALERTS_ENABLED`, `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_EMAIL_FROM`, `FLURBO_MONITOR_RESEND_KEY` | `true` emails hybrid events, errors and low balances to the operator. The monitor email settings are shared with the activity pool monitor |
 | Hybrid Reality answerer, new | `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` | Sepolia key that posts the first bonded answer for rule-backed Reality questions |
 | Earlier Reality pool | `FLURBO_ORACLE_RELAY_ENABLED`, `FLURBO_ORACLE_RELAY_PRIVATE_KEY`, `FLURBO_ORACLE_ANSWER_ENABLED`, `FLURBO_ORACLE_ANSWER_PRIVATE_KEY`, `FLURBO_SEPOLIA_BEACON_URL` | Keep its relay separate from the hybrid relay. The answer worker was last reported disabled; only enable with the intended Sepolia answer wallet and finality source |
@@ -176,6 +178,7 @@ New pools settle every question through Reality.eth v3 on Sepolia with the offic
 - The `hybrid-reader-1` proposer holds 2 test AUSD of uncollected bond credit. Collect it with `withdrawBond()` on that resolver from the proposer wallet.
 - The Reality.eth question link was opened for an existing Sepolia question and resolves. `court.kleros.io/cases/<id>` opens mainnet cases only, so the market page links the Sepolia court contract events on Etherscan instead and shows the case number and period as text.
 - The juror vote is manual. An operator juror wallet staked with faucet test PNK casts it. The relay stays trusted.
+- Challenge path fix: new pools use a Flurbo copy of the Kleros proxy bound to subcourt 3, where the operator juror is the only staker, instead of the official proxy's crowded subcourt 0. The keeper also executes court rounds and processes Reality bonds, the relay waits for the finalized Sepolia block and delivers any non-boolean final answer as Void, and workers isolate errors per pool. See [the Reality and Kleros handoff](REALITY_KLEROS_HANDOFF.md) for details and the live run status, and the runbook section "Kleros proxy copy" for the hashes.
 
 ## Verification and unfinished work
 

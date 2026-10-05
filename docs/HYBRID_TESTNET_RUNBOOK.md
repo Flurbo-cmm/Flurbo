@@ -39,6 +39,7 @@ The existing Render Redis, Resend, and settlement bot settings remain in use. Fo
 | `FLURBO_SEPOLIA_RPC_URL` | Reliable Sepolia HTTPS RPC |
 | `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` | Sepolia-only answerer key for Reality reader pools |
 | `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` | Optional cap on the Kleros arbitration fee the keeper pays, default `20000000000000000` |
+| `FLURBO_HYBRID_JUROR_ADDRESS` | Optional public address of the operator juror. `/healthz` and the ACTION email then show the juror's unvoted seats and the exact `castVote` command |
 | `FLURBO_HYBRID_ALERTS_ENABLED=true` | Operator emails for hybrid pools (see "Operator emails" below). Needs `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_EMAIL_FROM` and `FLURBO_MONITOR_RESEND_KEY` |
 
 `FLURBO_SETTLEMENT_BOT=true` and `FLURBO_NOTIFY_ENABLED=true` continue to drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
@@ -47,9 +48,11 @@ Run one company web instance for this testnet trial. The two hybrid workers seri
 
 ## Reality reader pools
 
-New pools reuse `HybridPilotResolver` and `WidePilotPool` with every route set to Reality. Each question carries its published rule. After the observation window, the hybrid settlement worker reads the committed source, freezes the result in Redis, and its answerer wallet posts the first bonded answer on Reality.eth. Reality finalizes after its timeout (default one hour). The relay then reports the answer to Monad. If someone posts a different answer, the court keeper requests Kleros arbitration through the official proxy when the new best answer contradicts the reader result, files the reader evidence, and moves the court through each permissionless step: delayed stakes, phase changes, juror draw, period changes, ruling execution and the report back to Reality. Appeal funding stays open to users on the market page.
+New pools reuse `HybridPilotResolver` and `WidePilotPool` with every route set to Reality. Each question carries its published rule. After the observation window, the hybrid settlement worker reads the committed source, freezes the result in Redis, and its answerer wallet posts the first bonded answer on Reality.eth. Reality finalizes after its timeout (default one hour). The relay then reports the answer to Monad. If someone posts a different answer, the court keeper requests Kleros arbitration through the question's arbitrator proxy when the new best answer contradicts the reader result, files the reader evidence, and moves the court through each permissionless step: delayed stakes, phase changes, juror draw, period changes, ruling execution and the report back to Reality. After the ruling it also executes each court round (so the juror's locked PNK is released and the juror fee is paid), processes the Reality answer history with `claimWinnings` once per finalized question, and withdraws its own Reality credit. The settlement worker's answerer withdraws its own credit the same way. Both withdrawals need at least 0.0001 ETH of credit. Appeal funding stays open to users on the market page.
 
-The only manual step is the juror vote. An operator-controlled juror wallet staked with faucet test PNK casts it. The keeper passes the vote period once the vote is cast, or after `voteWaitSeconds` (default 24 hours) with no vote. Passing without a vote ends in a tie, which Kleros reports as ruling 0 and Flurbo treats as Void. The relay from Sepolia to Monad is trusted in this testnet version. Authenticated delivery is required before any real-money use. A Kleros case that outlasts the 90-day report period becomes Void.
+New pools use the Flurbo copy of the Kleros proxy at `0x9E05da51D17bCd4B796E4505FCEED9135bd99964` (subcourt 3, one juror seat, 0.02 Sepolia ETH dispute fee). `hybrid-reality-1` keeps the official proxy. The reason: the official proxy sends every dispute to subcourt 0, which held about 122,000 test PNK on 5 October 2026, while a faucet address can hold only 10,000. The operator juror would be drawn about 8% of the time, and otherwise an absent stranger holds the seat and the question ends Void. Subcourt 3 had no stake, open votes and the same 30/600/600/600 second periods, so a juror staked there alone is always drawn. The juror stakes only in subcourt 3. A missed vote gets the juror penalized and unstaked when the court round is executed, so the juror then needs new PNK before the next test.
+
+The only manual step is the juror vote. An operator-controlled juror wallet staked with faucet test PNK casts it. The keeper passes the vote period once the vote is cast, or after `voteWaitSeconds` (default 24 hours) with no vote. Passing without a vote ends in a tie, which Kleros reports as ruling 0 and Flurbo treats as Void. Before every challenge test, confirm the juror is still the only staker in subcourt 3 (step 7 below). A final Reality answer that is neither Yes nor No is delivered to Monad as Void. The relay from Sepolia to Monad is trusted in this testnet version. Authenticated delivery is required before any real-money use. A Kleros case that outlasts the 90-day report period becomes Void.
 
 ### Operator emails and member notice diagnostics
 
@@ -62,14 +65,14 @@ Member notices (traders) are separate. A stage that nobody could receive, becaus
 | Wallet | Chain | Role | Funding |
 | --- | --- | --- | --- |
 | Answerer (new keystore `flurbo-hybrid-answer`) | Sepolia | Posts the first bonded answer | At least 0.01 Sepolia ETH |
-| Juror (new keystore `flurbo-kleros-juror`) | Sepolia | Stakes test PNK and casts the vote | At least 0.01 Sepolia ETH and faucet PNK |
+| Juror (new keystore `flurbo-kleros-juror`) | Sepolia | Casts the vote | At least 7,400 test PNK staked in subcourt 3 only, 0.01 Sepolia ETH |
 | Keeper (existing case manager `0x771fE7003FA20737C933c39B89386d78cbc36370`) | Sepolia | Requests arbitration, files evidence, drives the court | At least 0.05 Sepolia ETH |
 
 The proposer, relay and deployer keep their existing roles. The answerer must differ from the creator, proposer and relay. The keeper must differ from the relay.
 
 ### Environment variables
 
-`FLURBO_HYBRID_ANSWER_PRIVATE_KEY` is new and is pasted only into Render. A key set ahead of a catalog entry with rule-backed Reality events is ignored. `FLURBO_HYBRID_SETTLEMENT_ENABLED=true` and `FLURBO_HYBRID_ARBITRATION_ENABLED=true` start the answerer and the court keeper. The keeper reuses `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY`. `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` is optional. `/healthz` gains `hybrid_court` and `hybrid_settlement.answerer`, plus per-question `hybrid_settlement.answers`.
+`FLURBO_HYBRID_ANSWER_PRIVATE_KEY` is new and is pasted only into Render. A key set ahead of a catalog entry with rule-backed Reality events is ignored. `FLURBO_HYBRID_SETTLEMENT_ENABLED=true` and `FLURBO_HYBRID_ARBITRATION_ENABLED=true` start the answerer and the court keeper. The keeper reuses `FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY`. `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` is optional. `FLURBO_HYBRID_JUROR_ADDRESS` is optional and public. `/healthz` gains `hybrid_court` (with `juror` and each case's `jurorVoteIds`) and `hybrid_settlement.answerer`, plus per-question `hybrid_settlement.answers`. Errors are reported per pool or route as `<id>: <message>` joined by `; `, so one failing pool no longer hides the others.
 
 ### Owner procedure (Git Bash, the owner signs everything)
 
@@ -99,39 +102,99 @@ ANSWERER=$(cast wallet address --account flurbo-hybrid-answer); JUROR=$(cast wal
 cast balance $KEEPER --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
 ```
 
-2. Stake the juror. Request test PNK from the faucet, read the balance, then stake all of it in subcourt 0. Outside the staking phase the stake is queued and the keeper executes it later.
+2. Deploy the Flurbo copy of the Kleros proxy and stake the juror in subcourt 3 (details in "Kleros proxy copy" below). `MSYS_NO_PATHCONV=1` stops Git Bash from rewriting the `/ipfs/...` argument into a Windows path.
+
+```bash
+export MSYS_NO_PATHCONV=1; DEPLOYER=0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391; COURT=0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879; PROXY3=0x9E05da51D17bCd4B796E4505FCEED9135bd99964; FACTORY=0x4e59b44847b379578588920cA78FbF26c0B4956C; PNK=0xA1eE4D32bdBcA69cdb445D66fAA3804aFFa24bFE; SALT=0x0000000000000000000000000000000000000000000000000000000000000000
+```
+
+If `cast code $PROXY3 --rpc-url "$FLURBO_SEPOLIA_RPC_URL"` already prints more than `0x`, skip to the verification. Otherwise rebuild the init code from the official deployment and compare each hash with the value in "Kleros proxy copy". Stop on any difference.
+
+```bash
+CREATION=$(cast tx 0x45c4df7712dd6a09e8845646821e454779c390c8afa7bcf2dfbbe29a3ba65ac9 input --rpc-url "$FLURBO_SEPOLIA_RPC_URL" | cut -c1-22186); cast keccak "$CREATION"
+```
+
+```bash
+META='{"tos":"ipfs://QmaUr6hnSVxYD899xdcn2GUVtXVjXoSXKZbce3zFtGWw4H/Question_Resolution_Policy.pdf"}'; EVIDENCE='/ipfs/QmPrLN3L6z3MrTKnyuiLdF4miS9LSSLfVB62kpkxn1hbr8/metaEvidence.json'
+```
+
+```bash
+ARGS=$(cast abi-encode 'constructor(address,string,address,bytes,string)' 0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA "$META" $COURT $(cast abi-encode 'f(uint256,uint256)' 3 1) "$EVIDENCE"); cast keccak "$ARGS"
+```
+
+```bash
+INIT="${CREATION}${ARGS#0x}"; cast keccak "$INIT"
+```
+
+```bash
+cast call $FACTORY "${SALT}${INIT#0x}" --from $DEPLOYER --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+The simulated address must be `0x9e05da51d17bcd4b796e4505fceed9135bd99964`. Then deploy it and verify the copy:
+
+```bash
+cast send $FACTORY "${SALT}${INIT#0x}" --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-testnet
+```
+
+```bash
+cast keccak "$(cast code $PROXY3 --rpc-url "$FLURBO_SEPOLIA_RPC_URL")"; cast call $PROXY3 'arbitratorExtraData()(bytes)' --rpc-url "$FLURBO_SEPOLIA_RPC_URL"; cast call $PROXY3 'getDisputeFee(bytes32)(uint256)' $SALT --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+```bash
+unset MSYS_NO_PATHCONV
+```
+
+Stake the juror. Read the PNK balance first. It must be at least 7,400 PNK (`7400000000000000000000`). The faucet gives 10,000 PNK once per address, so if the juror already used it, create `flurbo-kleros-juror-2` with `cast wallet new`, fund it with 0.02 Sepolia ETH, request from it and use that keystore name below. The locked tokens from `jurors(address)` must be 0.
 
 ```bash
 cast send 0x776e5853e3d61B2dFB22Bcf872a43bF9A1231e52 'request()' --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
 ```
 
 ```bash
-cast call 0xA1eE4D32bdBcA69cdb445D66fAA3804aFFa24bFE 'balanceOf(address)(uint256)' $JUROR --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+BAL=$(cast call $PNK 'balanceOf(address)(uint256)' $JUROR --rpc-url "$FLURBO_SEPOLIA_RPC_URL" | awk '{print $1}'); echo $BAL; cast call $COURT 'jurors(address)(uint256,uint256)' $JUROR --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+```
+
+Move the whole stake to subcourt 3 (unstake subcourt 0 first if it holds any):
+
+```bash
+cast send $COURT 'setStake(uint96,uint128)' 0 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
 ```
 
 ```bash
-cast send 0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879 'setStake(uint96,uint128)' 0 <PNK_BALANCE> --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
+cast send $COURT 'setStake(uint96,uint128)' 3 $BAL --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
+```
+
+Outside the court's staking phase the stake is queued. Wait for phase 0 (send `passPhase()` once if phase 2 lasts more than ten minutes), then run the queue:
+
+```bash
+until [ "$(cast call $COURT 'phase()(uint8)' --rpc-url "$FLURBO_SEPOLIA_RPC_URL")" = "0" ]; do date; sleep 30; done
 ```
 
 ```bash
-cast call 0x90992fb4E15ce0C59aEFfb376460Fda4Ee19C879 'stakeOf(address,uint96)(uint256)' $JUROR 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL"
+cast send $COURT 'executeDelayedSetStakes(uint256)' 20 --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-kleros-juror
 ```
 
-If the last call prints `0` because the stake was queued, check it again after the keeper runs.
+Check readiness. It must print `"ready": true` and `"sharePercent": "100.00"`:
+
+```bash
+node scripts/inspect-kleros-court.mjs $PROXY3 $JUROR
+```
+
+Keep the juror address for `FLURBO_HYBRID_JUROR_ADDRESS`.
 
 3. Ship the code with no new catalog entry. Commit and merge the contracts test, set the CI pin in `.github/workflows/checks.yml` to that merge commit, then commit and merge the company changes. Set `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` (from `cast wallet decrypt-keystore flurbo-hybrid-answer`), `FLURBO_HYBRID_SETTLEMENT_ENABLED=true` and `FLURBO_HYBRID_ARBITRATION_ENABLED=true` in Render. `/healthz` shows `hybrid_court` as `disabled` until a Reality pool is listed.
 
-4. Move the files of any earlier hybrid pool out of `Flurbo-contracts/target/deployments/` into private records (`hybrid-pilot-input.json`, `hybrid-pilot-prepared.json`, `hybrid-pilot-unverified.json`, `hybrid-catalog-candidate.json`). Every script below writes with `wx` and refuses to overwrite. Then generate the template and ask both questions. `CLOSE` must be at least 2 hours away.
+4. Move the files of any earlier hybrid pool out of `Flurbo-contracts/target/deployments/` into private records (`hybrid-pilot-input.json`, `hybrid-pilot-prepared.json`, `hybrid-pilot-unverified.json`, `hybrid-catalog-candidate.json`). Every script below writes with `wx` and refuses to overwrite. Then generate the template and ask both questions. `CLOSE` must be at least 2 hours away. Without the last two arguments the template uses the subcourt 3 proxy copy and the title `Monad testnet Reality reader pool`. The optional arguments pin the arbitrator (`0x9E05da51D17bCd4B796E4505FCEED9135bd99964` or the official proxy) and the title.
 
 ```bash
 CLOSE=$(( $(date +%s) + 3*3600 )); DEPLOYER=0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391
 ```
 
 ```bash
-node scripts/create-hybrid-reality-pilot.mjs $DEPLOYER 0xa45c95f673580132F2E6f75372808162Ea069d49 0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1 $CLOSE https://flurbopm.singu.online ../../../Flurbo-contracts/target/deployments/hybrid-reality-template.json
+node scripts/create-hybrid-reality-pilot.mjs $DEPLOYER 0xa45c95f673580132F2E6f75372808162Ea069d49 0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1 $CLOSE https://flurbopm.singu.online ../../../Flurbo-contracts/target/deployments/hybrid-reality-template.json 0x9E05da51D17bCd4B796E4505FCEED9135bd99964 "Monad testnet Kleros challenge pool"
 ```
 
-Run the two printed `cast send` lines and copy both transaction hashes.
+Check that both printed `cast send` lines contain the proxy copy address, run them and copy both transaction hashes.
 
 5. Complete the draft, prepare, deploy and register.
 
@@ -151,7 +214,7 @@ cd /c/Users/anany/Flurbo-contracts && FOUNDRY_PROFILE=demo FLURBO_DEPLOYER=$DEPL
 cd /c/Users/anany/Flurbo-company && node apps/web/scripts/register-hybrid-pool.mjs hybrid-reality-1 ../Flurbo-contracts/target/deployments/hybrid-pilot-prepared.json ../Flurbo-contracts/target/deployments/hybrid-pilot-unverified.json ../Flurbo-contracts/target/deployments/hybrid-catalog-candidate.json --keeper $KEEPER --answerer $ANSWERER
 ```
 
-Review the candidate, then copy it to `config/hybrid-markets.json`, commit, merge and deploy. Check `/healthz`: `hybrid_court.routes` is 2, `hybrid_settlement.answerer` equals `$ANSWERER`, and no `lastError` appears.
+The registration output lists `arbitrators`. Registration refuses a proxy whose runtime code, Reality and court bindings or juror seat count differ from the verified Kleros proxy. Review the candidate, then copy it to `config/hybrid-markets.json`, commit, merge and deploy. Check `/healthz`: `hybrid_court.routes` is 2, `hybrid_settlement.answerer` equals `$ANSWERER`, and no `lastError` appears.
 
 ```bash
 cp ../Flurbo-contracts/target/deployments/hybrid-catalog-candidate.json config/hybrid-markets.json
@@ -159,15 +222,39 @@ cp ../Flurbo-contracts/target/deployments/hybrid-catalog-candidate.json config/h
 
 6. Question 1 (no challenge). Buy one share on each question from the market page. After `observationEndsAt`, `hybrid_settlement.answers` reaches `submitted`, then `already_answered`. About one hour later Reality finalizes and the relay reports.
 
-7. Question 2 (challenge). Inside its Reality timeout, a separate test wallet posts the opposite answer from the market page at double the bond. Within one keeper cycle `hybrid_court.cases[<id>].proxyStatus` becomes 1. Note the dispute ID and the `requestArbitration` transaction. Inspect the case:
+7. Question 2 (challenge). About 15 minutes before the question's `observationEndsAt`, check that the juror is ready and that the keeper, answerer, juror and challenger wallets are funded. Stop if `ready` is false.
+
+```bash
+node scripts/inspect-kleros-court.mjs $PROXY3 $JUROR
+```
+
+Inside its Reality timeout, a separate test wallet posts the opposite answer from the market page at double the bond. Within one keeper cycle `hybrid_court.cases[<id>].proxyStatus` becomes 1. Note the dispute ID and the `requestArbitration` transaction. Inspect the case:
 
 ```bash
 node apps/web/scripts/inspect-kleros-dispute.mjs <Q2_ID> $JUROR
 ```
 
-Once the period is `Vote`, run the printed `castVoteCommand` with the right choice: 2 for Yes, 1 for No, 0 for Void. The keeper passes the vote and appeal periods, executes the ruling and reports it. Reality finalizes, the relay reports to Monad, and the relay delivers when both questions are final.
+Once the period is `Vote`, `/healthz` shows `jurorVoteIds` for the case and the `ACTION` email carries the ready-to-run `castVote` command (set `FLURBO_HYBRID_JUROR_ADDRESS` first). If `jurorVoteIds` is empty, the juror was not drawn: do not vote, and repeat on a new pool after re-checking readiness. Otherwise run the command with the right choice: 2 for Yes, 1 for No, 0 for Void. The keeper passes the vote and appeal periods, executes the ruling and reports it, then executes the court round and processes the Reality bonds. Reality finalizes, the relay reports to Monad, and the relay delivers when both questions are final.
 
-8. Redeem from the market page. Claim Reality bonds and withdraw on Sepolia for the answerer and the challenger. Check the Resend logs for the closing, observation, challenge, arbitration, ruling and payout notices. Store the transaction hashes, the dispute ID and the addresses in `secrets/COMPANY_OPERATIONS.md`.
+8. Redeem from the market page. The keeper and the answerer process bonds and withdraw their credit automatically. The challenger claims on the market page under "Reality.eth answer bonds" if its wallet posted a winning answer. Check the Resend logs for the closing, observation, challenge, arbitration, ruling and payout notices. Store the transaction hashes, the dispute ID and the addresses in `secrets/COMPANY_OPERATIONS.md`.
+
+### Kleros proxy copy
+
+The copy is byte-identical to the official Kleros `Realitio_v2_1_ArbitratorWithAppeals` deployment (Sourcify exact match) except for the constructor argument `arbitratorExtraData`, which is subcourt 3 with 1 juror. It has no owner. It is deployed through the deterministic deployment factory, so anyone who sends the same init code gets the same address.
+
+| Item | Value |
+| --- | --- |
+| Official proxy | `0x05b942faecfb3924970e3a28e0f230910cedff45` (deployment transaction `0x45c4df7712dd6a09e8845646821e454779c390c8afa7bcf2dfbbe29a3ba65ac9`) |
+| Creation code keccak (first 11092 bytes of the deployment input) | `0x23b20a66834e0b462b0ec8db4d38d8617374e4982cb984daa93fef48ece4a6b5` |
+| Constructor arguments keccak | `0xf2772a7e82b34c914cb3a41a847ffe5e692be2bc97bd010999758b1c1d028229` |
+| Init code keccak | `0x7184b2cb6ccd385eacbe8b2e941d89c4337c575480898bc6cbc0449196d307fe` |
+| Factory and salt | `0x4e59b44847b379578588920cA78FbF26c0B4956C`, salt 0 |
+| Copy address | `0x9E05da51D17bCd4B796E4505FCEED9135bd99964` |
+| Runtime code keccak (official and copy) | `0x41e678fa0e8ad73d464dbaa431d4b61a3f275f5079d75ed8e24b12ac53e4e5ad` |
+| `arbitratorExtraData` | 64 bytes, `3` then `1` |
+| `getDisputeFee` | `20000000000000000` (0.02 ETH) |
+
+The code pins the same runtime hash. The keeper, registration and `inspect-kleros-court.mjs` all refuse a proxy whose code, Reality binding, court binding or seat count differs.
 
 ### Staging for the owner
 

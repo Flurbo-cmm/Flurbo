@@ -1,17 +1,20 @@
 import { createWalletClient, defineChain, getAddress, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { hybridSettlementCatalog } from './hybrid-settlement-worker.mjs';
-import { hybridRealitySnapshot, klerosCourtPhase, klerosCourtSnapshot, realityReportArgs } from './hybrid-reality.mjs';
-import { ARBITRATION_STATUS, courtAbi, proxyAbi } from './oracle-integration.mjs';
+import { hybridRealitySnapshot, klerosCourtPhase, klerosCourtSnapshot, realityClaimArgs, realityReportArgs,
+  verifyKlerosProxy } from './hybrid-reality.mjs';
+import { ARBITRATION_STATUS, courtAbi, KLEROS_PROXY_CODE_HASH, proxyAbi, realityAbi, SEPOLIA_REALITY } from './oracle-integration.mjs';
 
 const sepolia = defineChain({ id: 11155111, name: 'Sepolia', nativeCurrency: {
   name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: ['https://ethereum-sepolia-rpc.publicnode.com'] } } });
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 const hash32 = value => /^0x[0-9a-fA-F]{64}$/.test(value || '');
+const zero = `0x${'0'.repeat(64)}`;
 const outcomeLabel = ['', 'No', 'Yes', 'Void'];
 const publicErrors = new Set(['Hybrid court keeper chain mismatch', 'Sepolia keeper needs the arbitration fee and gas',
   'Hybrid court transaction reverted', 'Hybrid court transaction hash invalid', 'Kleros ruling is not ready to report',
-  'Reality answer history mismatch', 'Reality question differs from the published source']);
+  'Reality answer history mismatch', 'Reality question differs from the published source',
+  'Reality arbitrator is not a verified Kleros proxy', 'Reality bonds are not ready to claim']);
 const safeError = error => publicErrors.has(error?.message) ? error.message
   : 'Hybrid court keeper source or transaction request failed';
 
@@ -43,9 +46,10 @@ export function courtAction({ now, court, phase, voteWaitSeconds }) {
 
 export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, privateKey,
   maxDisputeFeeWei = 20_000_000_000_000_000n, voteWaitSeconds = 86_400, keeperWallet = null,
-  intervalMs = 60_000 }) {
+  intervalMs = 60_000, juror = null, proxyCodeHash = KLEROS_PROXY_CODE_HASH, minWithdrawWei = 100_000_000_000_000n }) {
   if (!Array.isArray(pools) || !pools.length || !source || typeof command !== 'function' || !evidence?.put
-    || !rpcUrl?.startsWith('https://') || !/^0x[0-9a-fA-F]{64}$/.test(privateKey || ''))
+    || !rpcUrl?.startsWith('https://') || !/^0x[0-9a-fA-F]{64}$/.test(privateKey || '')
+    || (juror !== null && !/^0x[0-9a-fA-F]{40}$/.test(juror)))
     throw Error('Hybrid court keeper configuration incomplete');
   hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools });
   const account = privateKeyToAccount(privateKey);
@@ -56,7 +60,7 @@ export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, pr
   const routes = pools.flatMap(pool => pool.prepared.draft.events.flatMap((event, eventIndex) =>
     event.route === 'reality' ? [{ id: `${pool.pool}-${eventIndex}`, record: pool, event, eventIndex,
       questionId: event.source.questionId.toLowerCase() }] : []));
-  const results = new Map(), errors = new Map();
+  const results = new Map(), errors = new Map(), verified = new Set();
   let timer = null, running = false, cycles = 0, lastError = null, lastFinishedAt = null;
 
   async function send(suffix, build) {
@@ -80,12 +84,44 @@ export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, pr
     return 'submitted';
   }
 
+  async function afterFinal(route, state) {
+    const { event, questionId: q } = route;
+    if (state.disputeStatus >= ARBITRATION_STATUS.Ruled) {
+      const court = await klerosCourtSnapshot(source, event.source.arbitrator, state.disputeId);
+      const round = court.period === 4
+        ? court.votesPerRound.findIndex((votes, index) => court.repartitions[index] < 2 * votes) : -1;
+      if (round >= 0) {
+        const result = await send(`${q}:${state.disputeId}:execute-${round}`, () => ({ address: court.court,
+          abi: courtAbi, functionName: 'execute',
+          args: [BigInt(court.disputeId), BigInt(round), BigInt(2 * court.votesPerRound[round])] }));
+        if (result !== 'confirmed') return;
+      }
+    }
+    if (state.historyHash.toLowerCase() === zero) return;
+    await send(`${q}:claim`, async () => ({ address: getAddress(event.source.reality), abi: realityAbi,
+      functionName: 'claimWinnings', args: await realityClaimArgs(source, event, state) }));
+  }
+
+  async function withdrawCredit() {
+    const reality = getAddress(SEPOLIA_REALITY);
+    const balance = BigInt(await source.readContract({ address: reality, abi: realityAbi,
+      functionName: 'balanceOf', args: [account.address] }));
+    if (balance < minWithdrawWei) return;
+    await send(`withdraw:${account.address.toLowerCase()}:${balance}`, () => ({ address: reality,
+      abi: realityAbi, functionName: 'withdraw', args: [] }));
+  }
+
   async function step(route) {
     const { event, questionId: q } = route, proxy = getAddress(event.source.arbitrator);
-    const state = await hybridRealitySnapshot(source, event, null);
-    const summary = { proxyStatus: state.disputeStatus, disputeId: null, period: null, waiting: null };
+    if (!verified.has(proxy.toLowerCase())) {
+      await verifyKlerosProxy(source, proxy, proxyCodeHash);
+      verified.add(proxy.toLowerCase());
+    }
+    const state = await hybridRealitySnapshot(source, event, null, { juror });
+    const summary = { proxyStatus: state.disputeStatus, disputeId: null, period: null, waiting: null,
+      jurorVoteIds: null };
     results.set(route.id, summary);
-    if (state.finalized) return;
+    if (state.finalized) { await afterFinal(route, state); return; }
     const stored = await command('GET', `flurbo:hybrid-answer:v1:${q}:observation`);
     const observation = JSON.parse(stored || 'null');
     const proxyRequest = (functionName, args, value) => ({ address: proxy, abi: proxyAbi, functionName,
@@ -116,7 +152,8 @@ export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, pr
       });
       if (result === 'submitted' || result === 'pending') return;
     }
-    const court = await klerosCourtSnapshot(source, proxy, state.disputeId);
+    const court = await klerosCourtSnapshot(source, proxy, state.disputeId, juror);
+    summary.jurorVoteIds = court.jurorPendingVoteIds;
     const phase = await klerosCourtPhase(source, court.court);
     summary.period = court.periodLabel;
     const action = courtAction({ now: state.sourceNow, court, phase, voteWaitSeconds });
@@ -149,6 +186,8 @@ export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, pr
           errors.set(route.id, message);
         }
       }
+      try { await withdrawCredit(); errors.delete('withdraw'); }
+      catch (error) { errors.set('withdraw', safeError(error)); }
       lastError = [...errors].map(([id, message]) => `${id}: ${message}`).join('; ') || null;
     } catch (error) {
       lastError = safeError(error);
@@ -160,6 +199,6 @@ export function hybridCourtKeeper({ pools, source, command, evidence, rpcUrl, pr
     start() { if (!timer) { timer = setInterval(() => { void tick(); }, intervalMs); timer.unref(); void tick(); } },
     stop() { if (timer) clearInterval(timer); timer = null; },
     status() { return { enabled: Boolean(timer), running, cycles, routes: routes.length,
-      keeper: account.address, lastError, lastFinishedAt, cases: Object.fromEntries(results) }; },
+      keeper: account.address, juror, lastError, lastFinishedAt, cases: Object.fromEntries(results) }; },
   };
 }

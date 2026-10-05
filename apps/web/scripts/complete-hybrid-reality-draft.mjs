@@ -13,7 +13,7 @@ export async function completeHybridRealityDraft(template, txHashes, client) {
   for (const [index, item] of template.questions.entries()) {
     const found = await inspectRealityQuestion(client, { txHash: txHashes[index],
       creator: draft.creator, questionText: item.questionText, opening: item.opening,
-      minTimeout: item.timeout });
+      minTimeout: item.timeout, arbitrator: draft.events[index].source.arbitrator });
     if (found.minBond !== item.minBondWei) throw Error('Question minimum bond differs from the template');
     const { questionId, contentHash, questionTxHash } = found;
     Object.assign(draft.events[index].source, { questionId, contentHash, questionTxHash });

@@ -5,10 +5,14 @@ import { getAddress } from 'viem';
 import { evmBlockEvents } from './create-hybrid-evm-pilot.mjs';
 import { realityQuestionText } from './prepare-hybrid-pilot.mjs';
 import { settlementRuleHash } from '../server/settlement-rules.mjs';
-import { SEPOLIA_KLEROS, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
+import { hybridArbitrator, SEPOLIA_KLEROS_SUBCOURT3, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 
 export function createHybridRealityPilot({ creator, proposer, relay, closesAt, origin, timeout = 3600,
-  minBondWei = '100000000000000' }) {
+  minBondWei = '100000000000000', arbitrator = SEPOLIA_KLEROS_SUBCOURT3,
+  title = 'Monad testnet Reality reader pool' }) {
+  if (!hybridArbitrator(arbitrator)) throw Error('Choose a supported Kleros arbitrator proxy');
+  if (typeof title !== 'string' || title.length < 8 || title.length > 120)
+    throw Error('Choose a title of 8 to 120 characters');
   const addresses = [creator, proposer, relay].map(address => getAddress(address));
   if (new Set(addresses.map(address => address.toLowerCase())).size !== 3
     || !Number.isSafeInteger(closesAt)
@@ -26,11 +30,11 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
   const events = items.map(item => ({ id: item.id, question: item.question,
     observationEndsAt: item.observationEndsAt, route: 'reality', rule: item.rule,
     source: { kind: 'reality-sepolia', chainId: 11155111, reality: SEPOLIA_REALITY,
-      arbitrator: SEPOLIA_KLEROS, ruleURI: item.ruleURI, questionText: item.questionText,
+      arbitrator: getAddress(arbitrator), ruleURI: item.ruleURI, questionText: item.questionText,
       minTimeout: timeout, minBond: minBondWei, openingAt: item.observationEndsAt } }));
   const draft = { schema: 'flurbo.hybrid-publication.v4', chainId: 10143, rulesReviewed: true,
     creator: deployer, proposer: proposerWallet, relay: relayWallet,
-    title: 'Monad testnet Reality reader pool', closesAt, assertionPeriod: 3600,
+    title, closesAt, assertionPeriod: 3600,
     challengePeriod: 3600, reportPeriod: 90 * 86400, arbitrationPeriod: 90 * 86400,
     bondAtoms: '1000000', liquidityAtoms: '10000000', events };
   return { schema: 'flurbo.hybrid-reality-template.v1', draft,
@@ -40,15 +44,17 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
 
 export function askCommand(template, index, templatePath) {
   const item = template.questions[index];
+  const { arbitrator } = template.draft.events[index].source;
   const file = resolve(templatePath).replaceAll('\\', '/');
-  return `cast send ${SEPOLIA_REALITY} 'askQuestionWithMinBond(uint256,string,address,uint32,uint32,uint256,uint256)' 0 "$(node -p "require('${file}').questions[${index}].questionText")" ${SEPOLIA_KLEROS} ${item.timeout} ${item.opening} ${item.nonce} ${item.minBondWei} --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-testnet`;
+  return `cast send ${SEPOLIA_REALITY} 'askQuestionWithMinBond(uint256,string,address,uint32,uint32,uint256,uint256)' 0 "$(node -p "require('${file}').questions[${index}].questionText")" ${arbitrator} ${item.timeout} ${item.opening} ${item.nonce} ${item.minBondWei} --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account flurbo-testnet`;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const [creator, proposer, relay, close, origin, output] = process.argv.slice(2);
+  const [creator, proposer, relay, close, origin, output, arbitrator, title] = process.argv.slice(2);
   if (!output || !/^[1-9]\d*$/.test(close || ''))
-    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json');
-  const template = createHybridRealityPilot({ creator, proposer, relay, closesAt: Number(close), origin });
+    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE]');
+  const template = createHybridRealityPilot({ creator, proposer, relay, closesAt: Number(close), origin,
+    ...(arbitrator ? { arbitrator } : {}), ...(title ? { title } : {}) });
   await writeFile(output, JSON.stringify(template, null, 2) + '\n', { flag: 'wx' });
   template.questions.forEach((_, index) => console.log(askCommand(template, index, output)));
   console.log(JSON.stringify({ status: 'template_created', questions: template.questions.length,

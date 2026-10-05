@@ -1,11 +1,31 @@
-import { encodeFunctionData, formatEther, getAddress, parseEther } from 'viem';
-import { answerEvent, ARBITRATION_STATUS, courtAbi, proxyAbi, realityAbi } from './oracle-integration.mjs';
+import { decodeAbiParameters, encodeFunctionData, formatEther, getAddress, keccak256, parseAbiParameters, parseEther } from 'viem';
+import { answerEvent, ARBITRATION_STATUS, courtAbi, hybridArbitrator, KLEROS_PROXY_CODE_HASH, proxyAbi, realityAbi,
+  SEPOLIA_KLEROS_LIQUID, SEPOLIA_REALITY } from './oracle-integration.mjs';
 
 const zero = `0x${'0'.repeat(64)}`;
 export const REALITY_ANSWERS = { no: zero, yes: `0x${'0'.repeat(63)}1`, void: `0x${'f'.repeat(64)}` };
 const same = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 
-export async function hybridRealitySnapshot(source, event, owner = null) {
+export async function verifyKlerosProxy(source, proxy, expectedCodeHash = KLEROS_PROXY_CODE_HASH) {
+  const refuse = () => Error('Reality arbitrator is not a verified Kleros proxy');
+  if (!hybridArbitrator(proxy)) throw refuse();
+  const address = getAddress(proxy);
+  const code = await source.getBytecode({ address });
+  if (typeof code !== 'string' || code === '0x' || !same(keccak256(code), expectedCodeHash)) throw refuse();
+  const read = functionName => source.readContract({ address, abi: proxyAbi, functionName });
+  const [realitio, court, extraData] = await Promise.all([read('realitio'), read('arbitrator'),
+    read('arbitratorExtraData')]);
+  if (!same(realitio, SEPOLIA_REALITY) || !same(court, SEPOLIA_KLEROS_LIQUID)
+    || typeof extraData !== 'string' || extraData.length !== 130) throw refuse();
+  const [subcourt, minJurors] = decodeAbiParameters(parseAbiParameters('uint256,uint256'), extraData);
+  if (minJurors !== 1n || subcourt > 4n) throw refuse();
+  return { proxy: address, court: getAddress(court), subcourtId: Number(subcourt), minJurors: Number(minJurors) };
+}
+
+export const castVoteCommand = (court, disputeId, voteIds, account = 'flurbo-kleros-juror') =>
+  `cast send ${getAddress(court)} 'castVote(uint256,uint256[],uint256,uint256)' ${disputeId} '[${voteIds.join(',')}]' <CHOICE> 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account ${account}`;
+
+export async function hybridRealitySnapshot(source, event, owner = null, { juror = null } = {}) {
   const details = event.source;
   if (await source.getChainId() !== 11155111) throw Error('Reality RPC is not Sepolia');
   const reality = getAddress(details.reality), arbitrator = getAddress(details.arbitrator);
@@ -38,7 +58,7 @@ export async function hybridRealitySnapshot(source, event, owner = null) {
     || !Number.isSafeInteger(Number(block.timestamp)))
     throw Error('Reality question differs from the published source');
   const court = Number(dispute[0]) > 0
-    ? await klerosCourtSnapshot(source, arbitrator, BigInt(dispute[2])) : null;
+    ? await klerosCourtSnapshot(source, arbitrator, BigInt(dispute[2]), juror) : null;
   const nextBond = [BigInt(minBond), BigInt(bond) * 2n, 1n]
     .reduce((a, b) => a > b ? a : b);
   return { chainId: 11155111, reality, arbitrator, questionId: q,
@@ -98,7 +118,7 @@ export async function hybridRealityReportAction(source, event, owner, state) {
 
 const PERIODS = ['Evidence', 'Commit', 'Vote', 'Appeal', 'Execution'];
 
-export async function klerosCourtSnapshot(source, proxy, disputeId) {
+export async function klerosCourtSnapshot(source, proxy, disputeId, juror = null) {
   const id = BigInt(disputeId);
   const readProxy = (functionName, args = []) => source.readContract({ address: getAddress(proxy),
     abi: proxyAbi, functionName, args });
@@ -110,7 +130,12 @@ export async function klerosCourtSnapshot(source, proxy, disputeId) {
   const subcourt = await readCourt('getSubcourt', [BigInt(dispute[0])]);
   const period = Number(dispute[3]), lastPeriodChange = Number(dispute[4]);
   const times = subcourt[1].map(Number), round = detail[0].length - 1;
-  let currentRuling = null, appeal = null;
+  let currentRuling = null, appeal = null, jurorPendingVoteIds = null;
+  if (juror && period === 2) {
+    const seats = await Promise.all(Array.from({ length: Number(detail[0][round]) }, (_, voteId) =>
+      readCourt('getVote', [id, BigInt(round), BigInt(voteId)])));
+    jurorPendingVoteIds = seats.flatMap((seat, voteId) => same(seat[0], juror) && !seat[3] ? [voteId] : []);
+  }
   if (period >= 2) currentRuling = Number(await readCourt('currentRuling', [id]));
   if (period === 3) {
     const [window, cost] = await Promise.all([readCourt('appealPeriod', [id]),
@@ -125,7 +150,8 @@ export async function klerosCourtSnapshot(source, proxy, disputeId) {
     period, periodLabel: PERIODS[period] ?? 'Unknown', lastPeriodChange,
     periodEndsAt: period < 4 ? lastPeriodChange + times[period] : null, timesPerPeriod: times,
     rounds: round + 1, drawn: Number(dispute[5]), votesNeeded: Number(detail[0][round]),
-    votesCast: Number(detail[3][round]), ruled: Boolean(dispute[7]), currentRuling, appeal };
+    votesCast: Number(detail[3][round]), votesPerRound: detail[0].map(Number),
+    repartitions: detail[4].map(Number), jurorPendingVoteIds, ruled: Boolean(dispute[7]), currentRuling, appeal };
 }
 
 export async function klerosCourtPhase(source, court) {
@@ -138,14 +164,12 @@ export async function klerosCourtPhase(source, court) {
     nextDelayed: Number(nextDelayed), lastDelayed: Number(lastDelayed) };
 }
 
-export async function hybridRealityClaimAction(source, event, owner, state) {
+export async function realityClaimArgs(source, event, state) {
   if (!state.finalized || same(state.historyHash, zero))
     throw Error('Reality bonds are not ready to claim');
   const logs = await answerHistory(source, event);
   const current = logs.findLastIndex(log => same(log.history_hash, state.historyHash));
   if (current < 0) throw Error('Reality answer history mismatch');
-  if (!logs.slice(0, current + 1).some(log => same(log.user, owner)))
-    throw Error('This wallet did not post an answer bond');
   const selected = [];
   for (let index = current; index >= 0 && selected.length < 32; index--) {
     const item = logs[index];
@@ -155,9 +179,14 @@ export async function hybridRealityClaimAction(source, event, owner, state) {
     selected.push({ previous: index === 0 ? zero : logs[index - 1].history_hash,
       user: getAddress(item.user), bond: BigInt(item.bond), answer: item.answer });
   }
-  const args = [state.questionId, selected.map(item => item.previous),
+  return [state.questionId, selected.map(item => item.previous),
     selected.map(item => item.user), selected.map(item => item.bond),
     selected.map(item => item.answer)];
+}
+
+export async function hybridRealityClaimAction(source, event, owner, state) {
+  const args = await realityClaimArgs(source, event, state);
+  if (!args[2].some(user => same(user, owner))) throw Error('This wallet did not post an answer bond');
   await source.simulateContract({ address: getAddress(state.reality), abi: realityAbi,
     functionName: 'claimWinnings', args, account: getAddress(owner) });
   return { action: 'claimWinnings', reason: 'Process Reality answer bonds and credit eligible winners',
