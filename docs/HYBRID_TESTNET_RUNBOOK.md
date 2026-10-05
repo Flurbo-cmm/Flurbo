@@ -39,6 +39,7 @@ The existing Render Redis, Resend, and settlement bot settings remain in use. Fo
 | `FLURBO_SEPOLIA_RPC_URL` | Reliable Sepolia HTTPS RPC |
 | `FLURBO_HYBRID_ANSWER_PRIVATE_KEY` | Sepolia-only answerer key for Reality reader pools |
 | `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` | Optional cap on the Kleros arbitration fee the keeper pays, default `20000000000000000` |
+| `FLURBO_HYBRID_ALERTS_ENABLED=true` | Operator emails for hybrid pools (see "Operator emails" below). Needs `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_EMAIL_FROM` and `FLURBO_MONITOR_RESEND_KEY` |
 
 `FLURBO_SETTLEMENT_BOT=true` and `FLURBO_NOTIFY_ENABLED=true` continue to drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
 
@@ -49,6 +50,12 @@ Run one company web instance for this testnet trial. The two hybrid workers seri
 New pools reuse `HybridPilotResolver` and `WidePilotPool` with every route set to Reality. Each question carries its published rule. After the observation window, the hybrid settlement worker reads the committed source, freezes the result in Redis, and its answerer wallet posts the first bonded answer on Reality.eth. Reality finalizes after its timeout (default one hour). The relay then reports the answer to Monad. If someone posts a different answer, the court keeper requests Kleros arbitration through the official proxy when the new best answer contradicts the reader result, files the reader evidence, and moves the court through each permissionless step: delayed stakes, phase changes, juror draw, period changes, ruling execution and the report back to Reality. Appeal funding stays open to users on the market page.
 
 The only manual step is the juror vote. An operator-controlled juror wallet staked with faucet test PNK casts it. The keeper passes the vote period once the vote is cast, or after `voteWaitSeconds` (default 24 hours) with no vote. Passing without a vote ends in a tie, which Kleros reports as ruling 0 and Flurbo treats as Void. The relay from Sepolia to Monad is trusted in this testnet version. Authenticated delivery is required before any real-money use. A Kleros case that outlasts the 90-day report period becomes Void.
+
+### Operator emails and member notice diagnostics
+
+The original operator monitor (`FLURBO_MONITOR_*`) only watches the activity pool. Hybrid pools have their own operator email, `hybrid-operator-alerts.mjs`, enabled with `FLURBO_HYBRID_ALERTS_ENABLED=true` and sent through the same Resend settings and recipient. It emails once per event: answer posted, Kleros arbitration requested, vote period reached (subject starts with `ACTION`, this is your cue to cast the juror vote), ruling, Reality final, reported to Monad, and pool delivered. It also emails worker errors (once per 6 hours per message) and low Sepolia balances for the answerer (below 0.002 ETH) and the keeper (below 0.03 ETH), once per day. The first run for a pool records the current state without sending, so history is never emailed. Check `/healthz` `hybrid_alerts`.
+
+Member notices (traders) are separate. A stage that nobody could receive, because no wallet was linked or no verified email existed, is now checked again after one hour instead of being closed for good. When stages were due but nobody was emailed, the `settlement_bot.notices` text in `/healthz` adds the counts, for example `sent 0 (stages 1, wallets 1, unlinked 1, no verified email 0)`. `unlinked` means a trading wallet is not linked to a Flurbo account. `no verified email` means the account has no verified email in the company applications data.
 
 ### Wallets and funding
 

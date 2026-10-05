@@ -12,7 +12,7 @@ const PREFIX = 'flurbo:notify:v1:';
 export const PREFS = PREFIX + 'prefs';
 export const DEFAULT_PREFS = Object.freeze({ payouts: true, challenges: true, observations: true, closing: false });
 const CONSENT = { payout: 'payouts', reminder: 'payouts', challenge: 'challenges', arbitration: 'challenges', ruling: 'challenges', observation: 'observations', closing: 'closing' };
-const HOUR = 3600, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR, OBSERVATION_WINDOW = 6 * HOUR;
+const HOUR = 3600, RECHECK = HOUR, SENT_TTL = 90 * 86_400, REMINDER_AFTER = 72 * HOUR, CLOSING_BEFORE = 2 * HOUR, OBSERVATION_WINDOW = 6 * HOUR;
 const OUTCOME = ['Unset', 'No', 'Yes', 'VOID'];
 const address = v => typeof v === 'string' && /^0x[0-9a-f]{40}$/.test(v);
 const json = raw => { try { return JSON.parse(raw); } catch { return null; } };
@@ -34,6 +34,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
   if (!command) return null;
   const secret = applications?.noticeSecret || null;
   const dailyLimit = Math.min(500, Math.max(1, Number(env.FLURBO_NOTIFY_DAILY_LIMIT) || 40));
+  let lastStats = { stages: 0, wallets: 0, unlinked: 0, accounts: 0, withoutEmail: 0, emailed: 0 };
 
   async function preferences(account) {
     const saved = json(await command('HGET', PREFS, account.toLowerCase()));
@@ -62,7 +63,7 @@ export function memberNotices({ command, pools, applications = null, links = nul
   }
 
   // Current holdings per account in one market: candidates from the trade index, balances from the chain.
-  async function holdings(service) {
+  async function holdings(service, stats) {
     const index = json(await command('GET', `flurbo:pilot:index:v1:${service.manifest.pool}`));
     if (!index || !(index.through >= index.target)) return null; // wait until the index has caught up
     const candidates = new Map();
@@ -73,14 +74,15 @@ export function memberNotices({ command, pools, applications = null, links = nul
       candidates.get(wallet).set(`${log.args.scope}:${log.args.mask}`, { scope: Number(log.args.scope), mask: String(log.args.mask) });
     }
     const byAccount = new Map();
+    stats.wallets += candidates.size;
     for (const [wallet, claims] of candidates) {
       const account = await ownerOf(wallet);
-      if (!account) continue;
+      if (!account) { stats.unlinked++; continue; }
       const list = [...claims.values()], rows = [];
       for (let i = 0; i < list.length; i += 60) rows.push(...(await service.positions(wallet, list.slice(i, i + 60))).rows);
       const held = rows.filter(r => BigInt(r.quantity) > 0n);
       if (!held.length) continue;
-      if (!byAccount.has(account)) byAccount.set(account, []);
+      if (!byAccount.has(account)) { byAccount.set(account, []); stats.accounts++; }
       byAccount.get(account).push(...held);
     }
     return byAccount;
@@ -172,6 +174,8 @@ ${url}${stage.href}`;
     if (env.FLURBO_NOTIFY_ENABLED !== 'true') return 'disabled';
     if (!applications?.contacts || !secret || !send) return 'not_configured';
     const t = now(), pending = new Map(), stageAccounts = new Map();
+    const stats = { stages: 0, wallets: 0, unlinked: 0, accounts: 0, withoutEmail: 0, emailed: 0 };
+    lastStats = stats;
     let indexing = false, unavailable = false;
     for (const pool of pools()) {
       let stages, held;
@@ -183,7 +187,7 @@ ${url}${stage.href}`;
           }
           if (progress?.complete === false) indexing = true;
         }
-        stages = await dueStages(pool, t); if (!stages.length) continue; held = await holdings(pool.service); }
+        stages = await dueStages(pool, t); if (!stages.length) continue; stats.stages += stages.length; held = await holdings(pool.service, stats); }
       catch { unavailable = true; continue; }
       if (!held) continue;
       for (const stage of stages) {
@@ -200,16 +204,16 @@ ${url}${stage.href}`;
     }
     if (!stageAccounts.size) return unavailable ? 'pool unavailable' : indexing ? 'indexing' : 'idle';
     const contacts = pending.size ? await applications.contacts([...pending.keys()]) : {};
-    const handled = new Set();
+    const handled = new Set(), settled = new Set();
     let sent = 0, capped = false;
     for (const [account, all] of pending) {
       const prefs = await preferences(account), items = [];
       for (const item of all) {
-        if (!prefs[CONSENT[item.stage.kind]] || await command('EXISTS', item.key) === 1) { handled.add(item.key); continue; }
+        if (!prefs[CONSENT[item.stage.kind]] || await command('EXISTS', item.key) === 1) { handled.add(item.key); settled.add(item.key); continue; }
         items.push(item);
       }
       if (!items.length) continue;
-      if (!contacts[account]) { items.forEach(i => handled.add(i.key)); continue; }
+      if (!contacts[account]) { items.forEach(i => handled.add(i.key)); stats.withoutEmail++; continue; }
       const day = PREFIX + 'day:' + new Date(t * 1000).toISOString().slice(0, 10);
       const count = Number(await command('INCR', day)); await command('EXPIRE', day, 172_800);
       if (count > dailyLimit) { capped = true; break; }
@@ -217,17 +221,21 @@ ${url}${stage.href}`;
       const idempotency = 'flurbo-notice-' + createHash('sha256').update(items.map(i => i.key).sort().join('|')).digest('hex').slice(0, 40);
       try { await send({ ...message, key: idempotency }); }
       catch { continue; }
-      for (const item of items) { await command('SET', item.key, String(t), 'EX', SENT_TTL); handled.add(item.key); }
-      sent++;
+      for (const item of items) { await command('SET', item.key, String(t), 'EX', SENT_TTL); handled.add(item.key); settled.add(item.key); }
+      sent++; stats.emailed++;
     }
-    // A stage is finished once every account it concerns was emailed, opted out or has no verified email.
-    for (const [id, accounts] of stageAccounts)
-      if (accounts.every(a => handled.has(`${PREFIX}sent:${id}:${a}`))) await command('SET', PREFIX + 'done:' + id, String(t), 'NX', 'EX', SENT_TTL);
+    // A stage is finished for good once every account it concerns was emailed or opted out. A stage nobody could
+    // receive (no linked holder, no verified email) is checked again after an hour so a later link or email still counts.
+    for (const [id, accounts] of stageAccounts) {
+      const key = a => `${PREFIX}sent:${id}:${a}`;
+      if (accounts.every(a => handled.has(key(a))))
+        await command('SET', PREFIX + 'done:' + id, String(t), 'NX', 'EX', accounts.length && accounts.every(a => settled.has(key(a))) ? SENT_TTL : RECHECK);
+    }
     return capped ? `sent ${sent}; daily limit reached` : unavailable ? `sent ${sent}; pool unavailable`
       : indexing ? `sent ${sent}; indexing` : `sent ${sent}`;
   }
 
-  return { preferences, setPreferences, unsubscribe, tick };
+  return { preferences, setPreferences, unsubscribe, tick, diagnostics: () => ({ ...lastStats }) };
 }
 
 // Resend delivery for notices: always one recipient, never CC or BCC, with one-click unsubscribe headers.
