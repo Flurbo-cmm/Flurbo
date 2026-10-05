@@ -277,3 +277,45 @@ test('arbitration and ruling notices reach holders of the disputed question', as
   assert.match(sent[1].text, /reported to Reality\.eth/);
   assert.equal(await notices.tick(), 'idle');
 });
+
+function noticeFixture({ linked = true, email = true } = {}) {
+  const redis = fakeRedis(), pool = addr(0x74), sent: any[] = [], writes: any[][] = [];
+  redis.hashes.set(LINKS, new Map(linked ? [[WA, JSON.stringify({ account: A, at: 1 })]] : []));
+  redis.kv.set(`flurbo:pilot:index:v1:${pool}`, JSON.stringify({ through: 100, target: 100,
+    logs: [{ name: 'Traded', args: { trader: WA, scope: 1, mask: '2', isBuy: true } }] }));
+  const service = {
+    manifest: { pool, publication: { draft: { closesAt: NOW - 8 * 3600,
+      events: [{ question: 'Will the block be even?', observationEndsAt: NOW - 3600 }] } } },
+    index: { refresh: async () => ({ complete: true }) },
+    eventHref: () => `/markets/hybrid/${pool}/0`,
+    status: async () => ({ resolved: false, delivered: false, cases: [{ phase: 0, proposal: 0, challengeUntil: 0 }] }),
+    positions: async (_wallet: string, claims: any[]) => ({ rows: claims.map(c => ({ ...c, quantity: '1000000', payoutAtoms: null })) }),
+  };
+  const command = (op: string, ...args: any[]) => { writes.push([op, ...args]); return redis.command(op, ...args); };
+  const notices = memberNotices({ command, origin: 'https://flurbopm.singu.online', now: () => NOW,
+    env: { FLURBO_NOTIFY_ENABLED: 'true' }, pools: () => [{ namespace: 'hybrid:' + pool, label: 'Hybrid fixture', service }],
+    applications: { noticeSecret: SECRET, contacts: async () => email ? { [A]: 'a@example.com' } : {} },
+    send: async (message: any) => { sent.push(message); } })!;
+  const doneWrites = () => writes.filter(w => w[0] === 'SET' && String(w[1]).startsWith('flurbo:notify:v1:done:'));
+  return { notices, sent, doneWrites };
+}
+
+test('a stage with no linked holder is rechecked within the hour and diagnostics say why', async () => {
+  const h = noticeFixture({ linked: false });
+  assert.equal(await h.notices.tick(), 'sent 0');
+  assert.deepEqual(h.notices.diagnostics(), { stages: 1, wallets: 1, unlinked: 1, accounts: 0, withoutEmail: 0, emailed: 0 });
+  const done = h.doneWrites();
+  assert.equal(done.length, 1);
+  assert.deepEqual(done[0].slice(-2), ['EX', 3600]);
+});
+
+test('a holder without a verified email is counted and rechecked, an emailed stage is kept', async () => {
+  const noEmail = noticeFixture({ email: false });
+  assert.equal(await noEmail.notices.tick(), 'sent 0');
+  assert.deepEqual(noEmail.notices.diagnostics(), { stages: 1, wallets: 1, unlinked: 0, accounts: 1, withoutEmail: 1, emailed: 0 });
+  assert.deepEqual(noEmail.doneWrites()[0].slice(-2), ['EX', 3600]);
+  const ok = noticeFixture();
+  assert.equal(await ok.notices.tick(), 'sent 1');
+  assert.equal(ok.notices.diagnostics().emailed, 1);
+  assert.deepEqual(ok.doneWrites()[0].slice(-2), ['EX', 90 * 86400]);
+});

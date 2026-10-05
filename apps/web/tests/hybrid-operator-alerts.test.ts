@@ -1,0 +1,119 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { hybridAlertsFor, hybridOperatorAlerts } from '../server/hybrid-operator-alerts.mjs';
+import { at, catalog } from './hybrid-catalog-fixture.ts';
+
+const origin = 'https://flurbopm.singu.online';
+const zero = `0x${'0'.repeat(64)}`;
+const record = catalog(['reality', 'reality']).pools[0];
+const mech = catalog(['mechanical', 'mechanical']).pools[0];
+
+const reality = (over: Record<string, unknown> = {}) => ({ bondWei: '0', answerLabel: null, finalized: false,
+  finalizesAt: at + 7200, disputeStatus: 0, disputeId: '0', court: null, ...over });
+const pool = (events: any[], over: Record<string, unknown> = {}) => ({ delivered: false, resolved: false, events, ...over });
+const open = () => ({ phase: 0, result: 0, reality: reality() });
+
+function memory() {
+  const values = new Map<string, string>();
+  return { values, command: async (op: string, name: string, value?: string, ...options: string[]) => {
+    if (op === 'GET') return values.get(name) ?? null;
+    if (op === 'SET') {
+      if (options.includes('NX') && values.has(name)) return null;
+      values.set(name, value || ''); return 'OK';
+    }
+    throw Error(`Unexpected ${op}`);
+  } };
+}
+
+function fixture(initial: any, extra: Record<string, unknown> = {}) {
+  const redis = memory(), sent: any[] = [];
+  let state = initial, failures = 0, workers: any = {}, balances: any = {};
+  const alerts = hybridOperatorAlerts({ pools: [record], readPool: async () => state, command: redis.command,
+    deliver: async (pending: any) => { if (failures > 0) { failures--; throw Error('down'); } sent.push(pending); return 'id'; },
+    from: 'ops@example.com', to: ['owner@example.com'], origin, now: () => at + 3700,
+    workers: () => workers, balances: async () => balances, ...extra });
+  return { alerts, sent, set: (next: any) => { state = next; }, fail: (n: number) => { failures = n; },
+    setWorkers: (next: any) => { workers = next; }, setBalances: (next: any) => { balances = next; } };
+}
+
+test('the first run records the current state without sending anything', async () => {
+  const h = fixture(pool([{ phase: 3, result: 2, reality: reality({ bondWei: '1', answerLabel: 'Yes', finalized: true }) }, open()], { delivered: true }));
+  assert.equal(await h.alerts.tick(), 'baseline 1 pool');
+  assert.equal(await h.alerts.tick(), 'idle');
+  assert.deepEqual(h.sent, []);
+});
+
+test('a posted answer sends one email and is not repeated', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  h.set(pool([{ phase: 0, result: 0, reality: reality({ bondWei: '100000000000000', answerLabel: 'Yes' }) }, open()]));
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.equal(h.sent.length, 1);
+  assert.match(h.sent[0].body.subject, /answer posted/i);
+  assert.match(h.sent[0].body.text, /Yes/);
+  assert.match(h.sent[0].body.text, /\/markets\/hybrid\//);
+  assert.deepEqual(h.sent[0].body.to, ['owner@example.com']);
+  assert.equal(await h.alerts.tick(), 'idle');
+  assert.equal(h.sent.length, 1);
+});
+
+test('the vote period asks the operator to act, once per round', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  const court = { period: 2, periodLabel: 'Vote', ruled: false, rounds: 1, votesCast: 0, votesNeeded: 1 };
+  h.set(pool([{ phase: 0, result: 0, reality: reality({ bondWei: '2', answerLabel: 'No', disputeStatus: 1, disputeId: '7', court,
+    questionId: '0xabc' }) }, open()]));
+  await h.alerts.tick();
+  const text = h.sent.map(m => m.body.text).join('\n');
+  assert.ok(h.sent.some(m => /^ACTION/.test(m.body.subject)));
+  assert.match(text, /juror vote/i);
+  assert.match(text, /inspect-kleros-dispute\.mjs/);
+  assert.match(text, /#7/);
+  const before = h.sent.length;
+  await h.alerts.tick();
+  assert.equal(h.sent.length, before);
+});
+
+test('several new alerts go out in one email', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  h.set(pool([{ phase: 3, result: 2, reality: reality({ bondWei: '1', answerLabel: 'Yes', finalized: true }) },
+    { phase: 3, result: 1, reality: reality({ bondWei: '1', answerLabel: 'No', finalized: true }) }], { delivered: true, resolved: true }));
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.equal(h.sent.length, 1);
+  assert.match(h.sent[0].body.subject, /updates/);
+  assert.match(h.sent[0].body.text, /delivered/i);
+});
+
+test('a failed send is retried and never duplicated', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  h.set(pool([{ phase: 0, result: 0, reality: reality({ bondWei: '1', answerLabel: 'Yes' }) }, open()]));
+  h.fail(1);
+  assert.equal(await h.alerts.tick(), 'send failed; retained');
+  assert.equal(h.sent.length, 0);
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.equal(await h.alerts.tick(), 'idle');
+  assert.equal(h.sent.length, 1);
+});
+
+test('worker errors and low balances alert once per window', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  h.setWorkers({ hybrid_court: { lastError: 'Sepolia keeper needs the arbitration fee and gas' } });
+  h.setBalances({ keeper: 10n ** 16n, answerer: 10n ** 18n });
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.match(h.sent[0].body.text, /arbitration fee and gas/);
+  assert.match(h.sent[0].body.text, /keeper/i);
+  assert.equal(await h.alerts.tick(), 'idle');
+});
+
+test('mechanical questions report proposal, challenge and result', () => {
+  const states = [{ phase: 1, result: 0, reality: null }, { phase: 2, result: 0, reality: null }];
+  const ids = hybridAlertsFor(mech, pool(states), origin).map((a: any) => a.id);
+  assert.ok(ids.some((id: string) => id.startsWith('proposed:')));
+  assert.ok(ids.some((id: string) => id.startsWith('challenged:')));
+  const done = hybridAlertsFor(mech, pool([{ phase: 3, result: 2, reality: null }, { phase: 3, result: 1, reality: null }], { delivered: true }), origin);
+  assert.ok(done.some((a: any) => a.id.startsWith('finalized:')));
+  assert.ok(done.some((a: any) => a.id.startsWith('delivered:')));
+});

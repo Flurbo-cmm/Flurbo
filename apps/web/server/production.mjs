@@ -29,6 +29,8 @@ import { oracleAnswerWorker } from './oracle-answer-worker.mjs';
 import { hybridSettlementCatalog, hybridSettlementWorker } from './hybrid-settlement-worker.mjs';
 import { hybridArbitrationWorker } from './hybrid-arbitration-worker.mjs';
 import { hybridCourtKeeper } from './hybrid-court-keeper.mjs';
+import { hybridOperatorAlerts, readPoolForAlerts, walletBalances } from './hybrid-operator-alerts.mjs';
+import { emailConfig, resendDelivery } from './settlement-email.mjs';
 import { hybridNoticePools } from './hybrid-notices.mjs';
 import { hybridPoolIndexes, hybridPortfolioService } from './hybrid-portfolio.mjs';
 import { hybridMarketService } from './hybrid-market-service.mjs';
@@ -50,7 +52,7 @@ export function productionServer(config, store, staticRoot = dist) {
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
     if (req.url === '/envio') { await envioProxy(req, res, config.envioGraphqlUrl); return; }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
@@ -186,6 +188,17 @@ async function main() {
         privateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
         maxDisputeFeeWei: BigInt(process.env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000') });
     }
+    if (process.env.FLURBO_HYBRID_ALERTS_ENABLED === 'true' && hybrid.pools.length) {
+      try {
+        const mail = emailConfig(process.env);
+        config.hybridAlerts = hybridOperatorAlerts({ pools: hybrid.pools, command: store.command,
+          readPool: record => readPoolForAlerts(record, market, source), deliver: resendDelivery(mail),
+          from: mail.from, to: mail.to, origin: config.origin,
+          workers: () => ({ hybrid_settlement: config.hybridSettlement?.status(),
+            hybrid_arbitration: config.hybridArbitration?.status(), hybrid_court: config.hybridCourt?.status() }),
+          balances: () => walletBalances(source, hybrid.pools) });
+      } catch { console.error('Hybrid alerts disabled: set FLURBO_MONITOR_EMAIL_TO, FLURBO_MONITOR_EMAIL_FROM and FLURBO_MONITOR_RESEND_KEY'); }
+    }
   }
   config.practiceCollections=await configurePracticeCollections({rpcUrl:config.rpcUrl,command:store.command});
   for(const service of config.practiceCollections.services.values())if(config.pilot&&(service.manifest.pool===config.pilot.manifest.pool||service.manifest.resolver===config.pilot.manifest.resolver))throw Error('Practice collections must be separate from the real pilot');
@@ -253,19 +266,23 @@ async function main() {
   config.hybridSettlement?.start();
   config.hybridArbitration?.start();
   config.hybridCourt?.start();
+  config.hybridAlerts?.start();
   // Optional settlement monitor and resolution worker for hosts without a reliable free scheduler.
   // Disabled unless explicitly enabled; the separate GitHub Actions path is unchanged.
   if (process.env.FLURBO_SETTLEMENT_BOT === 'true') {
     const { settlementBot } = await import('./settlement-bot.mjs');
     // Operator metrics ride the same cycle: advance the trade scan, then send the daily summary when due.
     config.settlementBot = settlementBot({ env: process.env, metrics: config.metrics ? () => config.metrics.tick() : null,
-      funds: config.fundingAlerts ? () => config.fundingAlerts.tick() : null, notices: config.notices ? () => config.notices.tick() : null });
+      funds: config.fundingAlerts ? () => config.fundingAlerts.tick() : null, notices: config.notices ? async () => {
+        const result = await config.notices.tick(), d = config.notices.diagnostics?.();
+        return d && d.stages && !d.emailed ? `${result} (stages ${d.stages}, wallets ${d.wallets}, unlinked ${d.unlinked}, no verified email ${d.withoutEmail})` : result;
+      } : null });
     config.settlementBot.start();
     console.log('Settlement bot enabled: monitor, worker and metrics every 2 minutes');
   }
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
     comparison.abort(); config.settlementBot?.stop(); config.oracleAnswerer?.stop(); config.oracleRelay?.stop();
-    config.hybridSettlement?.stop(); config.hybridArbitration?.stop(); config.hybridCourt?.stop();
+    config.hybridSettlement?.stop(); config.hybridArbitration?.stop(); config.hybridCourt?.stop(); config.hybridAlerts?.stop();
     server.close(() => process.exit(0)); reader?.kill(); learningReader?.kill();
     setTimeout(() => process.exit(0), 5000).unref();
   });
