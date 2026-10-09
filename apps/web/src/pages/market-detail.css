@@ -1,81 +1,139 @@
-/* Market page: the question, then the action beside the information that decides it. */
-.market-detail { gap: var(--s-5); }
-.detail-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.detail-heading { display: grid; gap: var(--s-3); justify-items: start; padding-bottom: var(--s-5); border-bottom: 1px solid var(--rule); }
-.detail-heading h1 { max-width: 30ch; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
-.detail-heading .lead { font-size: 16px; max-width: 72ch; }
-.detail-meta { display: flex; flex-wrap: wrap; gap: var(--s-4) var(--s-10); margin-top: var(--s-2); }
-.detail-meta > div { display: grid; gap: 4px; align-content: start; }
-.detail-meta dt { color: var(--ink-3); font-size: 13px; }
-.detail-meta dd { display: grid; gap: 1px; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.detail-meta dd small { color: var(--ink-3); font-size: 12px; font-weight: 400; }
-.detail-meta .status { padding-left: 0; }
-.detail-meta .status-attention, .detail-meta .status-challenge { padding-left: 6px; }
+/* Market page: the question and its price pair first, the ticket beside the chart, everything else one tab away. */
+.market-page { position: relative; width: 100%; max-width: calc(var(--container) + 2 * var(--gutter)); margin-inline: auto; padding: 0 var(--gutter) var(--s-16); }
+.market-topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 48px; }
+.market-topbar-end { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); }
+.market-watch { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid var(--rule-strong); border-radius: var(--r-control); font-size: 13px; font-weight: 500; }
+.market-watch:hover { border-color: var(--ink); }
+.market-watch svg { width: 14px; height: 14px; }
+.market-watch[aria-pressed="true"] svg { fill: currentColor; }
+.market-head { display: grid; gap: var(--s-5); align-items: end; padding: var(--s-2) 0 var(--s-5); border-bottom: 1px solid var(--rule); }
+.market-head-main { display: grid; gap: var(--s-3); justify-items: start; min-width: 0; }
+.market-head h1 { max-width: 26ch; font-size: var(--text-h1); line-height: 1.12; font-weight: 500; letter-spacing: -0.015em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.market-head .lead { font-size: 15px; max-width: 68ch; }
+.market-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s-4); color: var(--ink-2); font-size: 13px; }
+.market-meta time { font-family: var(--font-num); color: var(--ink); }
+.market-meta > span + span { padding-left: var(--s-4); border-left: 1px solid var(--rule-strong); }
+.market-price-pair { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--surface); min-width: min(100%, 280px); }
+.market-price-pair > div { display: grid; gap: 4px; padding: 10px 18px 12px; }
+.market-price-pair > div + div { border-left: 1px solid var(--rule); }
+.market-price-pair > div > span:first-child { font: 500 11px/1.3 var(--font-num); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.market-price-pair p { grid-column: 1 / -1; padding: 6px 18px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-3); }
+@media (min-width: 900px) { .market-head { grid-template-columns: minmax(0, 1fr) auto; } }
+.market-page > .state-inline { margin-top: var(--s-3); }
 
-.detail-columns { display: grid; gap: var(--s-5); align-items: start; }
-.detail-primary, .detail-sidebar { display: grid; gap: var(--s-5); min-width: 0; align-content: start; }
+.market-columns { display: grid; gap: var(--s-6); padding-top: var(--s-6); align-items: start; }
+.market-primary, .market-sidebar { display: grid; gap: var(--s-5); min-width: 0; align-content: start; }
 @media (min-width: 1024px) {
-  .detail-columns { grid-template-columns: minmax(0, 7fr) minmax(360px, 5fr); grid-template-areas: "primary sidebar"; gap: var(--s-8); }
-  .detail-primary { grid-area: primary; }
-  .detail-sidebar { grid-area: sidebar; }
-  .detail-sidebar.is-sticky { position: sticky; top: calc(var(--header-h) + var(--s-4)); }
+  .market-columns { grid-template-columns: minmax(0, 8fr) minmax(340px, 4fr); gap: var(--s-8); }
+  .market-sidebar.is-sticky { position: sticky; top: calc(var(--header-h) + var(--s-4)); }
 }
-.detail-skeleton { display: grid; gap: var(--s-4); }
-.detail-skeleton .detail-columns { margin-top: var(--s-4); }
+/* Phones and tablets read ticket, chart, details, then position: the aside dissolves so its sections join the column. */
+@media (max-width: 1023px) {
+  .market-sidebar { display: contents; }
+  .market-sidebar > :first-child { order: -1; }
+  .market-sidebar > :not(:first-child) { order: 1; }
+}
+.market-tabs { margin-top: var(--s-2); }
+.market-tabs .tab-panel { display: grid; gap: var(--s-5); }
+.proof-panel { display: grid; gap: var(--s-5); min-width: 0; }
+/* Reading panels in the left column are not boxed; hairlines separate them. The ticket and position stay framed. */
+.market-primary .detail-panel { padding: 0; border: 0; border-radius: 0; background: none; }
+.market-tabs .tab-panel > * + .detail-panel, .proof-panel > * + .detail-panel { padding-top: var(--s-5); border-top: 1px solid var(--rule); }
+.detail-skeleton { display: grid; gap: var(--s-4); padding-top: var(--s-4); }
 
-.detail-panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-panel); padding: var(--s-5); display: grid; gap: var(--s-3); align-content: start; min-width: 0; }
-@media (min-width: 640px) { .detail-panel { padding: var(--s-6); } }
+.detail-panel { background: var(--surface); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); padding: var(--s-5); display: grid; gap: var(--s-3); align-content: start; min-width: 0; }
 .detail-panel > h2, .detail-panel .panel-head h2 { font-size: 18px; }
 .detail-panel p { color: var(--ink-2); }
 .detail-panel > summary { margin: -4px 0; }
 .detail-panel .panel-head { margin-bottom: 0; }
-.detail-trade { padding-top: var(--s-5); }
-.detail-quotes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
-.detail-quotes > div { display: grid; gap: 2px; padding: var(--s-3); border-radius: var(--r-control); background: var(--surface-sunken); }
-.detail-quotes span { color: var(--ink-3); font-size: 13px; }
-.detail-quotes strong { font-size: 16px; font-variant-numeric: tabular-nums; }
-.detail-quotes .market-caption { grid-column: 1 / -1; }
-.position-rows { display: grid; gap: var(--s-2); }
-.position-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); padding: var(--s-2) 0; border-bottom: 1px solid var(--rule); }
-.position-rows dt { font-weight: 600; }
+.detail-trade { padding: var(--s-4); border-color: var(--ink); }
+.position-rows { display: grid; gap: 8px; }
+.position-rows dt { font-weight: 500; color: var(--ink); }
 .position-rows dd { display: grid; justify-items: end; gap: 2px; }
-.position-rows dd small { color: var(--ink-3); font-size: 13px; }
-.detail-thesis .btn { justify-self: start; }
-.detail-connect > summary { font-size: 16px; }
+.position-rows dd small { color: var(--ink-3); font: 400 12px/1.3 var(--font-ui); }
 .detail-settlement .stepper { margin: var(--s-2) 0; }
 .detail-challenge { display: grid; gap: var(--s-3); padding-top: var(--s-4); border-top: 1px solid var(--rule); justify-items: start; }
 .detail-challenge .evidence-disclosure { justify-self: stretch; }
 .detail-panel h3 { font-size: 15px; margin-top: var(--s-3); }
+.settlement-links { display: flex; flex-wrap: wrap; gap: 4px var(--s-4); }
 
-/* Price history: Yes solid, No dashed, latest point marked. Differs by shape, not only color. */
+/* Price history: Yes solid over a printed dot tone, No dashed, the latest sample a lime square with its value at the end. */
 .price-history .detail-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .price-history .detail-section-heading h2 { font-size: 18px; }
-.price-ranges { display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px; border-radius: var(--r-control); background: var(--surface-sunken); }
-.price-ranges button { min-height: 32px; padding: 0 var(--s-3); border-radius: 6px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.price-ranges { display: inline-grid; grid-auto-flow: column; gap: 0; padding: 2px; border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); }
+.price-ranges button { min-height: 30px; padding: 0 var(--s-3); border-radius: 2px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
 .price-ranges button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-.price-legend { display: flex; gap: var(--s-5); color: var(--ink-2); font-size: 13px; }
+.price-legend { display: flex; gap: var(--s-5); color: var(--ink-2); font-size: 12px; }
 .price-legend span { display: inline-flex; align-items: center; gap: var(--s-2); }
 .price-legend span::before { content: ""; width: 22px; height: 0; border-top: 2px solid var(--ink); }
 .price-legend .price-no::before { border-top-style: dashed; }
-.price-history svg { width: 100%; height: auto; overflow: visible; }
-.price-history svg text { fill: var(--ink-3); font-family: var(--sans); font-size: 12px; font-variant-numeric: tabular-nums; }
+.price-chart { min-width: 0; margin-top: var(--s-2); }
+.price-history svg { display: block; width: 100%; height: auto; overflow: visible; }
+.price-history svg .price-grid line { stroke: var(--rule); }
+.price-history svg .price-base line { stroke: var(--ink-3); }
+.price-history svg .price-gap { fill: var(--surface-sunken); opacity: 0.7; }
+.price-history svg .price-tone-dot { fill: var(--ink); opacity: 0.32; }
+.price-history svg line { stroke-linecap: square; }
+.price-history svg .price-yes line { stroke-width: 1.75; }
+.price-history svg .price-no line { stroke-width: 1.5; }
+.price-history svg .price-mark { fill: var(--surface); stroke: currentColor; stroke-width: 1.25; }
+.price-history svg .price-hit { fill: transparent; }
+.price-history svg .price-end { fill: var(--ink); font-weight: 500; }
+.price-history svg .price-end-no { fill: var(--ink-2); }
+.price-history svg text { fill: var(--ink-3); font-family: var(--font-num); font-size: 11px; font-variant-numeric: tabular-nums; }
 .price-history svg .price-yes { color: var(--ink); }
 .price-history svg .price-no { color: var(--ink-2); }
 .price-history svg .price-no line { stroke-dasharray: 6 4; }
-.price-table { overflow-x: auto; }
-.price-table table { width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
-.price-table caption { caption-side: top; text-align: left; padding-bottom: var(--s-2); color: var(--ink-3); }
-.price-table th, .price-table td { padding: 8px var(--s-3) 8px 0; border-bottom: 1px solid var(--rule); text-align: left; }
-.price-table th { color: var(--ink-3); font-weight: 600; font-size: 12px; }
+.price-history svg .price-latest { fill: var(--lime); stroke: var(--ink); stroke-width: 1.25; }
+.price-table table { width: 100%; font-size: 13px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.price-table caption { caption-side: top; text-align: left; padding-bottom: var(--s-2); color: var(--ink-3); font-family: var(--font-ui); }
+.price-table th, .price-table td { padding: 6px var(--s-2) 6px 0; border-bottom: 1px solid var(--rule); text-align: left; overflow-wrap: anywhere; }
+.price-table th { color: var(--ink-3); font-weight: 500; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
 
-.detail-holdings { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
 .evidence-disclosure { border-top: 1px solid var(--rule); padding-top: var(--s-2); overflow-wrap: anywhere; }
-.evidence-disclosure dl { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--s-4); font-variant-numeric: tabular-nums; }
-.evidence-disclosure dd { margin: 0; }
+.evidence-disclosure dl { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--s-4); margin: 0; font-variant-numeric: tabular-nums; }
+.evidence-disclosure dt, .evidence-disclosure dd { padding: 6px 0; border-top: 1px solid var(--rule); }
+.evidence-disclosure dt { color: var(--ink-2); font-size: 13px; }
+.evidence-disclosure dd { margin: 0; font: 500 13px/1.4 var(--font-num); text-align: right; overflow-wrap: anywhere; }
 .evidence-disclosure > div { display: grid; gap: var(--s-2); padding-bottom: var(--s-2); }
-.price-history svg .price-latest { fill: var(--lime); stroke: var(--ink); stroke-width: 1.5; }
-/* Exact settlement sources: long addresses wrap inside the panel instead of widening the page. */
 .settlement-source { display: grid; gap: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--rule); }
 .settlement-source h3 { font-size: 15px; margin: 0; }
 .settlement-source ul { margin: 0; padding-left: var(--s-5); display: grid; gap: var(--s-1); }
 .settlement-source code { overflow-wrap: anywhere; word-break: break-all; font-size: 13px; }
+
+/* Linked questions: this question joined to the rest of its pool by callout lines. */
+.linked-questions { display: grid; gap: var(--s-5); }
+.linked-diagram { position: relative; display: grid; gap: var(--s-4); }
+@media (min-width: 768px) { .linked-diagram { grid-template-columns: 200px minmax(0, 1fr); gap: 64px; align-items: center; } }
+.linked-node { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--ink); border-radius: var(--r-tile); background: var(--surface); }
+.linked-node p { font-size: 14px; font-weight: 500; }
+.linked-node .num { font-size: 13px; color: var(--ink-2); }
+.linked-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.linked-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: var(--r-tile); background: var(--surface); font-size: 14px; line-height: 1.35; }
+.linked-row:hover { border-color: var(--ink); }
+.linked-price { display: inline-flex; align-items: baseline; gap: 6px; font-size: 13px; white-space: nowrap; }
+.linked-price .price { font-size: 14px; font-weight: 500; }
+.linked-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.linked-lines line { stroke: var(--ink); stroke-width: 1; opacity: 0.55; }
+.linked-lines .sq { fill: var(--lime); stroke: var(--ink); stroke-width: 1; }
+.linked-thesis { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+
+/* Contracts and records in the Proof tab. */
+.contract-list { display: grid; gap: var(--s-3); padding: var(--s-5); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--surface); }
+.contract-list h3 { font-size: 15px; }
+.contract-list dl { display: grid; gap: 0; margin: 0; }
+.contract-list dl > div { display: grid; grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); gap: var(--s-3); padding: 8px 0; border-top: 1px solid var(--rule); align-items: center; }
+.contract-list dt { color: var(--ink-2); font-size: 13px; }
+.contract-list dd { display: flex; align-items: center; gap: var(--s-2); margin: 0; min-width: 0; font-size: 12px; }
+.contract-list dd .mono-break { flex: 1 1 auto; min-width: 0; }
+.contract-actions { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+@media (max-width: 639px) { .contract-list dl > div { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Combination picker: up to two more questions, each with its own answer. */
+.combo-picker { display: grid; gap: var(--s-2); margin: 0; padding: 0; border: 0; min-width: 0; }
+.combo-picker legend { padding: 0; font-size: var(--text-label); font-weight: 500; }
+.combo-picker ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.combo-row { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); }
+.combo-row.is-chosen { border-color: var(--ink); }
+.combo-row .check-row { font-size: 14px; line-height: 1.35; }
+.combo-answer .segmented button { min-height: 32px; }

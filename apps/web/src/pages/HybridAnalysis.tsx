@@ -6,6 +6,8 @@ import { appFetch } from '../platform-fetch';
 import { percentageBps, scenarioWins, thesisDistribution, thesisProbability, THESIS_DENOMINATOR } from '../../shared/thesis.mjs';
 import { encodeClaim } from '../../shared/claims.mjs';
 import type { HybridMarket } from '../market-directory';
+import ChoiceList from '../components/ui/ChoiceList';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import './hybrid-analysis.css';
 
 type Outcome = { a: 'yes' | 'no'; b: 'yes' | 'no'; costAtoms: string | null;
@@ -74,8 +76,7 @@ function HybridComparison({ market, other, others, onOther }: { market: HybridMa
   return <details className="detail-panel detail-connect hybrid-connect" onToggle={event => setExpanded(event.currentTarget.open)}><summary>Explore how these markets connect</summary>
     <div className="hybrid-analysis-body">
       <div className="hybrid-analysis-head"><div><h3>What if?</h3><p>How does the pool price this question when another answer is assumed?</p></div><span className="chip">Read-only</span></div>
-      <label className="hybrid-analysis-select">Suppose this question resolves<select value={other.id} onChange={event => onOther(event.target.value)}>
-        {others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>
+      <ChoiceList label="Suppose this question resolves" value={other.id} options={others.map(item => ({ value: item.id, label: item.question, text: item.question }))} onChange={onOther} className="hybrid-analysis-select"/>
       <button className="btn btn-secondary btn-sm" disabled={loading} onClick={refresh}><RefreshCw size={15}/>Refresh comparison</button>
       {loading && <p role="status">Reading the shared pool...</p>}{error && <p role="alert" className="state-inline error">{error}</p>}
       {result && <>
@@ -144,19 +145,16 @@ function HybridThesisBody({ market, other, others, onOther, sideA, setSideA, sid
     <header className="hybrid-thesis-heading"><h1>Build your thesis.</h1><p>Put your view into numbers and compare it with the shared pool. No trade or estimate is saved here.</p></header>
     <div className="hybrid-thesis-grid"><section className="detail-panel"><h2>Your view</h2>
       <p>Question A: {market.question}</p>
-      <label className="hybrid-analysis-select">Question B<select value={other.id} onChange={event => onOther(event.target.value)}>
-        {others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>
+      <ChoiceList label="Question B" value={other.id} options={others.map(item => ({ value: item.id, label: item.question, text: item.question }))} onChange={onOther} className="hybrid-analysis-select"/>
       {['Chance A is Yes', 'Chance B is Yes if A is Yes', 'Chance B is Yes if A is No'].map((label, i) =>
         <label className="hybrid-belief" key={label}>{label}<span><input inputMode="decimal" value={belief[i]}
           onChange={event => setBelief(belief.map((value, index) => index === i ? event.target.value : value))}
           aria-invalid={belief[i] !== '' && bps[i] === null} placeholder="Your estimate"/>%</span></label>)}
       <p className="market-caption">These are your estimates, not facts supplied by the pool. The three numbers determine the four joint outcomes.</p>
     </section><section className="detail-panel"><h2>Prediction to compare</h2>
-      <div className="hybrid-thesis-answers"><label>A resolves<select value={sideA} onChange={event => setSideA(event.target.value as 'yes' | 'no')}><option value="yes">Yes</option><option value="no">No</option></select></label>
-        <label>B resolves<select value={sideB} onChange={event => setSideB(event.target.value as 'yes' | 'no')}><option value="yes">Yes</option><option value="no">No</option></select></label></div>
-      <label className="hybrid-analysis-select">Payout rule<select value={rule} onChange={event => setRule(event.target.value as Analysis['rule'])}>
-        <option value="AND">Both answers (AND)</option><option value="OR">At least one answer (OR)</option>
-        <option value="EXACTLY_ONE">Exactly one answer</option></select></label>
+      <div className="hybrid-thesis-answers"><SegmentedControl label="A resolves" value={sideA} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setSideA(value as 'yes' | 'no')} block/>
+        <SegmentedControl label="B resolves" value={sideB} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setSideB(value as 'yes' | 'no')} block/></div>
+      <SegmentedControl label="Payout rule" value={rule} options={[{ value: 'AND', label: 'Both (AND)' }, { value: 'OR', label: 'At least one (OR)' }, { value: 'EXACTLY_ONE', label: 'Exactly one' }]} onChange={value => setRule(value as Analysis['rule'])} block/>
       <label className="hybrid-belief">Shares<input inputMode="decimal" value={shares} onChange={event => setShares(event.target.value)} aria-invalid={!validShares}/></label>
       <button className="btn btn-secondary btn-sm" disabled={loading} onClick={refresh}><RefreshCw size={15}/>Refresh pool</button>
       {loading && <p role="status">Reading pool prices...</p>}{error && <p role="alert" className="state-inline error">{error}</p>}

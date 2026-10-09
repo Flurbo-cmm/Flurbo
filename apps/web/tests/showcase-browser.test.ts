@@ -50,6 +50,7 @@ test('landing example and unified directory work on desktop and mobile without l
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await page.screenshot({path:new URL('../../../target/showcase-ui/markets-mobile.png',import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1'),fullPage:true});
     await page.goto(`https://flurbo.singu.online/markets/${ns}/0`);
+    await page.getByRole('tab',{name:'Proof'}).click();
     const source=page.getByRole('region',{name:'Which Ethereum block',exact:true});
     await source.waitFor();
     assert.equal(await source.locator('time').getAttribute('datetime'),new Date((now+14520)*1000).toISOString());

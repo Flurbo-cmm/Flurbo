@@ -73,8 +73,15 @@ test('the directory lists twelve collections and the release pilot (thirteen mar
       return route.fulfill({body:await readFile(new URL('../dist/'+relative,import.meta.url)),contentType:relative.endsWith('.js')?'text/javascript':relative.endsWith('.css')?'text/css':relative.endsWith('.woff2')?'font/woff2':'text/html'});
     });
     await page.goto('https://flurbo.singu.online/markets');
-    await page.waitForFunction(()=>document.querySelectorAll('.market-card').length>=52,null,{timeout:30000});
-    assert.equal(await page.locator('.market-card').count(),52,'four questions in each of thirteen markets');
+    await page.locator('[data-market-count="52"]').waitFor({timeout:30000});
+    const seen=new Set<string>();
+    for(let i=0;i<30&&seen.size<52;i++){
+      for(const href of await page.locator('.market-card .tile-q a').evaluateAll((links:HTMLAnchorElement[])=>links.map(a=>a.getAttribute('href')!)))seen.add(href);
+      const next=page.getByRole('navigation',{name:'Pages'}).getByRole('button',{name:'Next page'});
+      if(!await next.count()||await next.isDisabled())break;
+      await next.click();
+    }
+    assert.equal(seen.size,52,'four questions in each of thirteen markets');
     assert.equal(await page.getByText('Market directory is unavailable.').count(),0);
     assert.equal(await page.getByRole('alert').count(),0);
     assert.deepEqual(errors,[]);

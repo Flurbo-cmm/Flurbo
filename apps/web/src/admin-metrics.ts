@@ -29,6 +29,6 @@ export const scanMoreTrades=()=>call<{sync:{complete:boolean}}>('/api/admin/metr
 
 export const ausd=(atoms:string)=>(Number(BigInt(atoms))/1e6).toLocaleString(undefined,{maximumFractionDigits:2});
 export const short=(address:string)=>`${address.slice(0,6)}…${address.slice(-4)}`;
-export const when=(ms:number|null)=>ms===null?'—':new Date(ms).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-export const share=(part:number,whole:number)=>whole?Math.round(part*100/whole)+'%':'—';
+export const when=(ms:number|null)=>ms===null?'Never':new Date(ms).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+export const share=(part:number,whole:number)=>whole?Math.round(part*100/whole)+'%':'n/a';
 export const RULE_LABELS:Record<string,string>={SINGLE:'Single answer',AND:'All must happen',OR:'At least one',EXACTLY_ONE:'Exactly one',AT_LEAST_TWO:'At least two',OTHER:'Other combination'};

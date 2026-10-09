@@ -1,6 +1,8 @@
 import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { m } from 'framer-motion';
 
 export type SegmentOption<T extends string> = { value: T; label: ReactNode; disabled?: boolean };
+const SLIDE = { type: 'spring', stiffness: 560, damping: 42, mass: 0.6 } as const;
 
 // Radio-group semantics for two to five choices: one tab stop, arrow keys move the selection.
 export default function SegmentedControl<T extends string>({ label, hideLabel = false, value, options, onChange, disabled = false, block = false, className = '' }: {
@@ -28,7 +30,10 @@ export default function SegmentedControl<T extends string>({ label, hideLabel = 
           const checked = option.value === value;
           return <button key={option.value} type="button" role="radio" data-value={option.value} aria-checked={checked}
             tabIndex={checked ? 0 : -1} disabled={disabled || option.disabled}
-            onClick={() => { if (!checked) onChange(option.value); }} onKeyDown={onKey}>{option.label}</button>;
+            onClick={() => { if (!checked) onChange(option.value); }} onKeyDown={onKey}>
+            {checked && <m.span className="seg-ink" layoutId={`seg-${id}`} transition={SLIDE} aria-hidden="true" />}
+            <span>{option.label}</span>
+          </button>;
         })}
       </div>
     </div>

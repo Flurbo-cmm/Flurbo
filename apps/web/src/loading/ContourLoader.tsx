@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, type Transition } from 'framer-motion';
+import { m, type Transition } from 'framer-motion';
+import { drawHalftone } from '../halftone';
 import { CONTOUR_PATHS, IVORY, LIME, LOCKUP } from '../components/BrandLogo';
 import { TIMING, type LoaderPhase } from './load-gate';
 
@@ -37,10 +38,23 @@ function useViewport() {
   return size;
 }
 
-function Rings({ scale }: { scale: number }) {
+// The rings ink on as they enter: each path draws over the enter duration instead of arriving already drawn.
+function Rings({ scale, drawn, seconds }: { scale: number; drawn: boolean; seconds: number }) {
   return <g transform={`scale(${scale}) translate(${-MARK_CENTER.x} ${-MARK_CENTER.y})`} fill="none" stroke={IVORY} strokeLinecap="round" strokeLinejoin="round">
-    {CONTOUR_PATHS.map((p) => <path key={p.d} strokeWidth={p.width} d={p.d} />)}
+    {CONTOUR_PATHS.map((p) => <m.path key={p.d} strokeWidth={p.width} d={p.d} initial={{ pathLength: drawn ? 1 : 0.02 }} animate={{ pathLength: 1 }} transition={{ duration: drawn ? 0 : seconds, ease: EASE_OUT }} />)}
   </g>;
+}
+
+// The forest panels carry the landing page's halftone of the contour rings, faintly, in ivory.
+function PanelTone() {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const node = canvas.current;
+    if (!node) return;
+    const small = window.innerWidth < 640;
+    drawHalftone(node, { color: IVORY, opacity: 0.06, markHeight: small ? 900 : 1500, cx: 0.5, cy: 0.5, step: 10, maxRadius: 3.4, band: 52 });
+  }, []);
+  return <canvas ref={canvas} className="contour-tone" aria-hidden="true" />;
 }
 
 export default function ContourLoader({ phase, label, stage, stages, error, slow, fast, reduced, onRetry, onLeave }: ContourLoaderProps) {
@@ -86,40 +100,42 @@ export default function ContourLoader({ phase, label, stage, stages, error, slow
   return (
     <div className="contour-loader" data-phase={phase} role="status" aria-live="polite" aria-busy={phase !== 'failed'}>
       <span className="sr-only">{phase === 'failed' ? '' : label}</span>
-      <motion.div className="contour-panel contour-panel-left" aria-hidden="true"
+      <m.div className="contour-panel contour-panel-left" aria-hidden="true"
         initial={{ opacity: 0, x: '0%' }}
         animate={exiting ? { opacity: 1, x: reduced ? '0%' : '-100%' } : { opacity: 1, x: '0%' }}
-        transition={exiting ? (reduced ? t(TIMING.reducedFadeOut / 1000) : t(TIMING.exit / 1000, EASE_IN_OUT)) : t((reduced ? TIMING.reducedFadeIn : 160) / 1000)} />
-      <motion.div className="contour-panel contour-panel-right" aria-hidden="true"
+        transition={exiting ? (reduced ? t(TIMING.reducedFadeOut / 1000) : t(TIMING.exit / 1000, EASE_IN_OUT)) : t((reduced ? TIMING.reducedFadeIn : 160) / 1000)}><PanelTone /></m.div>
+      <m.div className="contour-panel contour-panel-right" aria-hidden="true"
         initial={{ opacity: 0, x: '0%' }}
         animate={exiting ? { opacity: 1, x: reduced ? '0%' : '100%' } : { opacity: 1, x: '0%' }}
-        transition={exiting ? (reduced ? t(TIMING.reducedFadeOut / 1000) : t(TIMING.exit / 1000, EASE_IN_OUT)) : t((reduced ? TIMING.reducedFadeIn : 160) / 1000)} />
-      <motion.svg className="contour-stage" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false"
+        transition={exiting ? (reduced ? t(TIMING.reducedFadeOut / 1000) : t(TIMING.exit / 1000, EASE_IN_OUT)) : t((reduced ? TIMING.reducedFadeIn : 160) / 1000)}><PanelTone /></m.div>
+      <m.svg className="contour-stage" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true" focusable="false"
         initial={{ opacity: 0 }}
         animate={{ opacity: exiting ? 0 : 1 }}
         transition={exiting ? t(0.12) : t(reduced ? TIMING.reducedFadeIn / 1000 : 0.16)}>
         <g transform={`translate(${w / 2} ${h / 2})`}>
           {!reduced && <>
-            <motion.g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} {...left}><Rings scale={s} /></motion.g>
-            <motion.g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} {...right}><Rings scale={s} /></motion.g>
+            <m.g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} {...left}><Rings scale={s} drawn={phase !== 'entering' || instant} seconds={TIMING.enter / 1000} /></m.g>
+            <m.g style={{ transformBox: 'fill-box', transformOrigin: 'center' }} {...right}><Rings scale={s} drawn={phase !== 'entering' || instant} seconds={TIMING.enter / 1000} /></m.g>
           </>}
-          {lockupShown && <motion.g initial={{ x: placed ? dx : 0, y: placed ? dy : 0 }} animate={{ x: dx, y: dy }}
+          {lockupShown && <m.g initial={{ x: placed ? dx : 0, y: placed ? dy : 0 }} animate={{ x: dx, y: dy }}
             transition={placed ? { duration: 0 } : t(TIMING.settle / 1000, EASE_IN_OUT, TIMING.dot / 1000)}>
             <g transform={`translate(${-LOCKUP_MARK_CENTER.x * k} ${-LOCKUP_MARK_CENTER.y * k}) scale(${k})`}>
               <g transform={LOCKUP.markTransform} fill="none" stroke={IVORY} strokeLinecap="round" strokeLinejoin="round">
                 {CONTOUR_PATHS.map((p) => <path key={p.d} strokeWidth={p.width} d={p.d} />)}
               </g>
-              <motion.circle cx={LOCKUP.dot.cx} cy={LOCKUP.dot.cy} r={LOCKUP.dot.r} fill={LIME}
+              <m.circle cx={LOCKUP.dot.cx} cy={LOCKUP.dot.cy} r={LOCKUP.dot.r} fill={LIME}
                 style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-                initial={placed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }}
+                initial={placed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }} animate={placed ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [0.6, 1.2, 1] }}
                 transition={placed ? { duration: 0 } : t(TIMING.dot / 1000)} />
-              <motion.text x="170" y="111" fill={IVORY} fontFamily="Space Grotesk, Arial, sans-serif" fontSize="102" fontWeight="560" letterSpacing="-6.2"
+              <m.text x="170" y="111" fill={IVORY} fontFamily="Space Grotesk, Arial, sans-serif" fontSize="102" fontWeight="560" letterSpacing="-6.2"
                 initial={placed ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
-                transition={placed ? { duration: 0 } : t(TIMING.settle / 1000, EASE_OUT, TIMING.dot / 1000)}>flurbo</motion.text>
+                transition={placed ? { duration: 0 } : t(TIMING.settle / 1000, EASE_OUT, TIMING.dot / 1000)}>flurbo</m.text>
             </g>
-          </motion.g>}
+          </m.g>}
         </g>
-      </motion.svg>
+      </m.svg>
+      {!reduced && phase !== 'failed' && !lockupShown && <p className="contour-status" aria-hidden="true" style={{ top: `calc(50% + ${Math.round(markPx * 1.15)}px)` }}>{label}</p>}
+      {!reduced && phase !== 'failed' && <div className="contour-progress-bar" aria-hidden="true"><span style={{ width: `${Math.max(1, Math.min(stages, stage + (phase === 'complete' || exiting ? 1 : 0))) / Math.max(1, stages) * 100}%` }} /></div>}
       {reduced && phase !== 'failed' && <div className="contour-progress" style={{ top: `calc(50% + ${Math.round(markPx * 0.9)}px)` }}>
         <span className="contour-progress-track"><span style={{ width: `${Math.max(1, Math.min(stages, stage + (phase === 'complete' || exiting ? 1 : 0))) / Math.max(1, stages) * 100}%` }} /></span>
         <span className="contour-progress-label">{label}</span>

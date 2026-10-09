@@ -2,7 +2,7 @@ import {marketQuestion} from '../showcase-copy';
 import { useEffect, useRef, useState } from 'react';
 import { pilotRequest, type PilotState, type PilotNamespace } from '../pilot';
 import EnvioActivity from '../components/EnvioActivity';
-import Select from '../components/ui/Select';
+import ChoiceList from '../components/ui/ChoiceList';
 import './what-if.css';
 
 type Metric='a'|'b'|'joint'|'givenYes'|'givenNo'|'independent'|'difference';
@@ -55,8 +55,8 @@ export default function WhatIf({manifest,namespace}:{manifest:PilotState['manife
     <header className="what-if-heading"><h2 id="what-if-heading">What if?</h2><span className="chip">Read-only exploration</span></header>
     <p>What chance does the market imply for one answer, assuming another is known? Choose two questions to explore them together.</p>
     <div className="what-if-controls">
-      <Select label="Question to explore" value={String(a)} options={events.map((event,i)=>({value:String(i),label:marketQuestion(event),text:marketQuestion(event)}))} onChange={value=>select('a',Number(value))}/>
-      <Select label="Suppose this question resolves" value={String(b)} options={events.map((event,i)=>({value:String(i),label:marketQuestion(event),text:marketQuestion(event)}))} onChange={value=>select('b',Number(value))}/>
+      <ChoiceList label="Question to explore" value={String(a)} options={events.map((event,i)=>({value:String(i),label:marketQuestion(event),text:marketQuestion(event)}))} onChange={value=>select('a',Number(value))}/>
+      <ChoiceList label="Suppose this question resolves" value={String(b)} options={events.map((event,i)=>({value:String(i),label:marketQuestion(event),text:marketQuestion(event)}))} onChange={value=>select('b',Number(value))}/>
     </div>
     <div className="what-if-actions"><button className="btn btn-primary" disabled={busy} onClick={()=>void compare()}>{busy?'Reading the shared pool...':result?'Refresh comparison':'Compare these questions'}</button>{busy&&<button className="btn btn-secondary" onClick={cancel}>Cancel</button>}</div>{busy&&<span className="progress-line" aria-hidden="true"/>}
     {busy&&<p role="status">Reading one market snapshot. You can change either question while this loads.</p>}

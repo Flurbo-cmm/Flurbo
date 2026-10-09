@@ -89,7 +89,7 @@ export default function Metrics(){
         <div className="metrics-scroll"><table className="metrics-table">
           <thead><tr><th>Mera account</th><th>First sign-in</th><th>Access</th><th>Wallets</th><th>Starter MON</th><th>Bets</th><th>Single</th><th>Combined</th><th>Combined share</th><th>AUSD spent</th><th>Markets</th><th>Last bet</th></tr></thead>
           <tbody>{rows.map(u=><tr key={u.account} className={u.team?'metrics-team':''}>
-            <td><code title={u.account}>{short(u.account)}</code></td><td>{when(u.firstSignIn)}</td><td>{accessLabel(u)}</td><td>{u.wallets}</td><td>{u.starter?'Sent':'—'}</td>
+            <td><code title={u.account}>{short(u.account)}</code></td><td>{when(u.firstSignIn)}</td><td>{accessLabel(u)}</td><td>{u.wallets}</td><td>{u.starter?'Sent':'No'}</td>
             <td>{u.trades.buys}</td><td>{u.trades.singles}</td><td>{u.trades.combined}</td><td>{share(u.trades.combined,u.trades.buys)}</td><td>{ausd(u.trades.spentAtoms)}</td><td>{u.trades.markets}</td><td>{when(u.trades.lastBuyAt)}</td></tr>)}
             {!rows.length&&<tr><td colSpan={12}>No members match this filter.</td></tr>}</tbody></table></div>
         <p className="field-help">Sign-ins are recorded from {when(report.notes.signInsTrackedSince)}. Earlier members appear once they request access, link a wallet or bet. Times are in your local time zone.</p>

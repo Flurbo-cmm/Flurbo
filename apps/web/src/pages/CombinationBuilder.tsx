@@ -49,10 +49,10 @@ export default function CombinationBuilder({state,base,legs,answers,rule,scope,m
         {legs.length===2&&rule==='AT_LEAST_TWO'&&<p className="field-help">With two questions, at least two means both, the same as All (AND).</p>}
         <details className="combination-scenarios" open><summary>See winning outcomes</summary>
           <p>Each winning share pays 1 test AUSD, even if several answers match. VOID can produce a fractional payout under the market rules.</p>
-          <div className="combination-table"><table><caption>Resolved answers and payout per share</caption><thead><tr>{legs.map(event=><th key={event} scope="col">{marketQuestion(events[event])}</th>)}<th scope="col">Payout</th></tr></thead><tbody>
+          <div className="combination-table"><table><caption>Resolved answers and payout per share</caption><thead><tr>{legs.map((event,i)=><th key={event} scope="col"><span aria-hidden="true">Q{i+1}</span><span className="sr-only">{marketQuestion(events[event])}</span></th>)}<th scope="col">Payout</th></tr></thead><tbody>
             {claimScenarios(scope,mask,events.length).map(s=><tr key={s.state} className={s.wins?'wins':''}>{s.answers.map(a=><td key={a.event}>{a.yes?'Yes':'No'}</td>)}<td>{s.wins?<><Check aria-hidden="true" strokeWidth={2.25}/>1 AUSD</>:'0 AUSD'}</td></tr>)}
           </tbody></table></div>
-          <ol>{legs.map(event=><li key={event}>{marketQuestion(events[event])}</li>)}</ol>
+          <ol className="combination-key">{legs.map((event,i)=><li key={event}><b aria-hidden="true">Q{i+1}</b>{marketQuestion(events[event])}</li>)}</ol>
         </details>
         <details className="disclosure"><summary>Compare how the market connects these answers</summary><ClaimComparison key={`${scope}:${mask}`} namespace={namespace} manifest={state.manifest} scope={scope} mask={mask}/></details>
       </>}

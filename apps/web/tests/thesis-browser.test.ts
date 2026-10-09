@@ -108,7 +108,7 @@ test('thesis browser: visible rules before quotes, private forecast, one bounded
     assert.equal(await page.getByLabel('Chance A is Yes',{exact:true}).inputValue(),'');
     await compare.click();await page.getByRole('button',{name:'Refresh comparison',exact:true}).waitFor();await page.getByRole('button',{name:'Start from pool estimates'}).click();
     assert.equal(await page.getByLabel('Chance A is Yes',{exact:true}).inputValue(),'50.0');
-    await page.getByRole('combobox',{name:'Question B',exact:true}).click();await page.getByRole('option').nth(2).click();assert.equal(await page.getByLabel('Chance A is Yes',{exact:true}).inputValue(),'');
+    await page.getByRole('group',{name:'Question B',exact:true}).getByRole('radio').nth(2).check();assert.equal(await page.getByLabel('Chance A is Yes',{exact:true}).inputValue(),'');
     await compare.click();await page.getByRole('button',{name:'Refresh comparison',exact:true}).waitFor();
     await page.getByRole('button',{name:'Start from pool estimates'}).click();
     await page.clock.setSystemTime(new Date(Date.now()+65_000));await page.clock.runFor(1001);await page.getByText(/This comparison has expired/).waitFor();assert.equal(await review.isDisabled(),true);

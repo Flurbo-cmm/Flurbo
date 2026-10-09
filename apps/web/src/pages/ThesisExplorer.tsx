@@ -10,7 +10,7 @@ import {percentageBps,thesisCandidates,thesisDistribution,thesisProbability,thes
 import {validateThesisSnapshot,poolPercent,beliefPercent,type ThesisSnapshot,type ThesisRow} from '../thesis';
 import {ArrowLeft} from 'lucide-react';
 import PageHeader from '../components/PageHeader';
-import Select from '../components/ui/Select';
+import ChoiceList from '../components/ui/ChoiceList';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import {useLoadGate} from '../loading/gates';
 import {shares} from '../format';
@@ -81,7 +81,7 @@ export default function ThesisExplorer({namespace,event}:{namespace:PilotNamespa
       <div className="thesis-layout">
         <section className="thesis-panel thesis-view" aria-labelledby="thesis-view-title">
           <div className="thesis-section-head"><h2 id="thesis-view-title">Your view</h2><span className="chip">{closed?'Exploration only':'Same shared pool'}</span></div>
-          <div className="thesis-pair">{([['A',a],['B',b]] as const).map(([label,index])=><Select key={label} label={`Question ${label}`} value={String(index)}
+          <div className="thesis-pair">{([['A',a],['B',b]] as const).map(([label,index])=><ChoiceList key={label} label={`Question ${label}`} value={String(index)}
             options={questionOptions.map(o=>({...o,disabled:Number(o.value)===(label==='A'?b:a)}))}
             onChange={value=>label==='A'?choosePair(Number(value),b):choosePair(a,Number(value))}/>)}</div>
           <p className="thesis-caption">A is your assumption. B is the prediction you want to explore. Changing questions clears your estimates.</p>

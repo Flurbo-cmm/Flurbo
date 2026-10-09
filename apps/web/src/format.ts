@@ -15,3 +15,12 @@ export function relativeTime(seconds: number, nowSeconds = Date.now() / 1000) {
 export const CLOSING_SOON_SECONDS = 24 * 3600;
 
 export const shares = (value: string | number) => `${value} ${Number(value) === 1 ? 'share' : 'shares'}`;
+
+/** Short relative time for dense layouts, for example "in 1h 40m", "in 3d", "5m ago". The exact time goes in a title. */
+export function compactRelative(seconds: number, nowSeconds = Date.now() / 1000) {
+  const delta = Math.round(seconds - nowSeconds), abs = Math.abs(delta);
+  const minutes = Math.round(abs / 60), hours = Math.floor(minutes / 60);
+  const text = abs < 60 ? 'now' : minutes < 60 ? `${minutes}m` : hours < 24 ? `${hours}h${minutes % 60 ? ` ${minutes % 60}m` : ''}` : `${Math.round(abs / 86400)}d`;
+  if (text === 'now') return delta > 0 ? 'in under 1m' : 'just now';
+  return delta > 0 ? `in ${text}` : `${text} ago`;
+}

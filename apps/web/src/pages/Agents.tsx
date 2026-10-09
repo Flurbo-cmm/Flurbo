@@ -13,6 +13,8 @@ import { RuntimeCreateForm, RuntimeAgentDetail } from './AgentRuntime';
 import { ArrowLeft, Bot } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import StatusBadge from '../components/ui/StatusBadge';
+import ChoiceList from '../components/ui/ChoiceList';
+import SegmentedControl from '../components/ui/SegmentedControl';
 import { useLoadGate } from '../loading/gates';
 import './agents.css';
 
@@ -106,7 +108,7 @@ function AgentList() {
       <form onSubmit={create}>
         <h2>Create an assisted agent</h2>
         <label>Name<input value={name} onChange={e => setName(e.target.value)} maxLength={48} required placeholder="Assisted release agent"/></label>
-        <label>Market<select value={namespace} onChange={e => setNamespace(e.target.value)} required>{directory.map(d => <option key={d.namespace} value={d.namespace} disabled={!d.open}>{d.label}{!d.open?' · Unavailable for new trades':''}</option>)}</select></label>
+        <ChoiceList label="Market" value={namespace || null} options={directory.map(d => ({ value: d.namespace, label: d.label, text: d.label, disabled: !d.open, meta: d.open ? undefined : 'Unavailable for new trades' }))} onChange={setNamespace}/>
         <fieldset className="agents-choice"><legend>Mode</legend>
           <label><input type="radio" checked={mode === 'paper'} onChange={() => setMode('paper')}/>Paper only<small>Simulated trades. Nothing is sent on-chain.</small></label>
           <label><input type="radio" checked={mode === 'approval'} onChange={() => setMode('approval')}/>Propose for approval<small>Prepares real trades that you confirm in MetaMask.</small></label>
@@ -204,9 +206,9 @@ function ForecastForm({ market, disabled, onSubmit }: { market: Market; disabled
     <h2>Your forecast</h2>
     <p className="agents-fine">Give your own probabilities for two events and how often they happen together. These are your estimates, kept separate from market prices.</p>
     <div className="agents-pair">
-      <label>Event A<select value={a} onChange={e => setA(Number(e.target.value))}>{market.events.map(e => <option key={e.index} value={e.index} disabled={e.index === b}>{e.question}</option>)}</select></label>
+      <ChoiceList label="Event A" value={String(a)} options={market.events.map(e => ({ value: String(e.index), label: e.question, text: e.question, disabled: e.index === b }))} onChange={value => setA(Number(value))}/>
       <label>Chance A happens (%)<input inputMode="decimal" value={pA} onChange={e => setPA(e.target.value)} placeholder="62" required/></label>
-      <label>Event B<select value={b} onChange={e => setB(Number(e.target.value))}>{market.events.map(e => <option key={e.index} value={e.index} disabled={e.index === a}>{e.question}</option>)}</select></label>
+      <ChoiceList label="Event B" value={String(b)} options={market.events.map(e => ({ value: String(e.index), label: e.question, text: e.question, disabled: e.index === a }))} onChange={value => setB(Number(value))}/>
       <label>Chance B happens (%)<input inputMode="decimal" value={pB} onChange={e => setPB(e.target.value)} placeholder="57" required/></label>
       <label className="agents-wide">Chance both happen (%)<input inputMode="decimal" value={pBoth} onChange={e => setPBoth(e.target.value)} placeholder="45" required/>
         <small>{bounds ?? 'Enter both chances to see the valid range for "both".'}</small></label>
@@ -220,7 +222,7 @@ function ForecastForm({ market, disabled, onSubmit }: { market: Market; disabled
     <label>Why you expect this relationship<textarea value={explanation} onChange={e => setExplanation(e.target.value)} minLength={10} maxLength={1200} required/></label>
     <label>Uncertainty<input value={uncertainty} onChange={e => setUncertainty(e.target.value)} maxLength={600} required placeholder="What would change your view"/></label>
     <label>Assumptions (one per line, optional)<textarea value={assumptions} onChange={e => setAssumptions(e.target.value)} maxLength={2400}/></label>
-    <label>Your own confidence (self-reported, not calibrated)<select value={confidence} onChange={e => setConfidence(e.target.value as never)}><option value="">Not stated</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+    <SegmentedControl label="Your own confidence (self-reported, not calibrated)" value={confidence} options={[{ value: '', label: 'Not stated' }, { value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }]} onChange={value => setConfidence(value as typeof confidence)} block/>
     {error && <p className="state-inline error" role="alert">{error}</p>}
     <button className="button button-dark" disabled={disabled}>Preview decision</button>
   </form>;
@@ -260,7 +262,7 @@ function DecisionCard({ record, questions, market, profile, busy, hasLiveProposa
       <div className="agents-actions">
         <button className="button button-outline" disabled={busy || expired} onClick={paper}>Record paper trade</button>
         {profile.mode === 'approval' && <>
-          <label className="agents-inline">MetaMask wallet<LinkedWalletSelect value={owner} onChange={setOwner}/></label>
+          <LinkedWalletSelect value={owner} onChange={setOwner}/>
           {hasLiveProposal && <span className="agents-fine">A proposal from this decision is in progress or confirmed. Preview again for a new decision.</span>}
           <button className="button button-dark" disabled={busy || working || !owner || market.open === false || hasLiveProposal} onClick={async () => {
             setWorking(true); setError('');
@@ -278,7 +280,7 @@ function LinkedWalletSelect({ value, onChange }: { value: string; onChange: (v: 
   const [wallets, setWallets] = useState<string[]>([]);
   useEffect(() => { const c = new AbortController(); void linkedWallets(c.signal).then(v => setWallets(v.wallets)).catch(() => {}); return () => c.abort(); }, []);
   if (!wallets.length) return <span className="agents-fine">No linked MetaMask wallet. <Link href="/markets" className="text-link">Link one on Markets</Link></span>;
-  return <select value={value} onChange={e => onChange(e.target.value)}>{wallets.map(w => <option key={w} value={w}>{w.slice(0, 8)}...{w.slice(-6)}</option>)}</select>;
+  return <ChoiceList label="MetaMask wallet" value={value || null} options={wallets.map(w => ({ value: w, label: <span className="num">{w.slice(0, 8)}…{w.slice(-6)}</span>, text: w }))} onChange={onChange} className="agents-wallet-choice"/>;
 }
 
 // User-approved execution through the existing review, submission and recovery flow. The agent never signs.

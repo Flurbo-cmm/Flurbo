@@ -2,6 +2,8 @@ import {useEffect,useState} from 'react';
 import {formatEther,formatUnits,parseEther,parseUnits,encodeFunctionData,erc20Abi} from 'viem';
 import {TESTNET} from '../../server/network.mjs';
 import {discoverWallets,type BrowserWallet} from '../auth/wallet-choice';
+import TransactionSheet from '../components/ui/TransactionSheet';
+import type {SheetPhase} from '../sheet-state';
 
 // Send test MON and test AUSD from the member's own MetaMask to their agent's wallet. The Flurbo AUSD
 // dispenser only pays the wallet that calls it, so an agent wallet is funded by a normal transfer instead.
@@ -20,6 +22,7 @@ const RESERVE=parseEther('0.2');
 export default function AgentFunding({wallet}:{wallet:string}){
   const [balances,setBalances]=useState<{mon:bigint;ausd:bigint}|null>(null),[wallets,setWallets]=useState<BrowserWallet[]>([]);
   const [mon,setMon]=useState('0.5'),[ausd,setAusd]=useState('5'),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[hash,setHash]=useState('');
+  const [sheet,setSheet]=useState(false);
   const agent=wallet.toLowerCase();
   async function read(){
     try{
@@ -29,7 +32,7 @@ export default function AgentFunding({wallet}:{wallet:string}){
   }
   useEffect(()=>{void read();return discoverWallets(w=>setWallets(list=>[...list,w]));},[agent]);
   async function send(kind:'mon'|'ausd'){
-    if(busy)return;setBusy(true);setMessage('');setHash('');
+    if(busy)return;setBusy(true);setSheet(true);setMessage('');setHash('');
     try{
       const p=wallets[0]?.provider;if(!p)throw Error('Install or unlock MetaMask to send test funds.');
       const accounts=await p.request({method:'eth_requestAccounts'}) as string[];
@@ -49,9 +52,11 @@ export default function AgentFunding({wallet}:{wallet:string}){
       if(typeof sent!=='string'||!/^0x[0-9a-f]{64}$/i.test(sent))throw Error('MetaMask did not return a transaction.');
       setHash(sent);setMessage(`Sent. The agent wallet balance updates once the transfer confirms.`);
       setTimeout(()=>void read(),6000);
-    }catch(e){const x=e as {code?:number;message?:string};setMessage(x?.code===4001?'Cancelled in MetaMask. Nothing was sent.':x instanceof Error&&x.message?x.message:'The transfer could not be sent. Check MetaMask activity before trying again.');}
+    }catch(e){const x=e as {code?:number;message?:string};setSheet(false);setMessage(x?.code===4001?'Cancelled in MetaMask. Nothing was sent.':x instanceof Error&&x.message?x.message:'The transfer could not be sent. Check MetaMask activity before trying again.');}
     finally{setBusy(false);}
   }
+  const phase:SheetPhase=!sheet?'closed':busy?'wallet':'done';
+  const status=message?<p role="status" className="agents-fine">{message}{hash&&<> <a className="text-link" href={`https://testnet.monadscan.com/tx/${hash}`} target="_blank" rel="noreferrer">View transaction</a></>}</p>:null;
   const shown=(v:bigint,d:number)=>Number(d===18?formatEther(v):formatUnits(v,d)).toLocaleString(undefined,{maximumFractionDigits:3});
   return <div className="agents-funding">
     <h3>Fund this agent</h3>
@@ -65,6 +70,9 @@ export default function AgentFunding({wallet}:{wallet:string}){
       <label>Test AUSD to send<input inputMode="decimal" value={ausd} onChange={e=>setAusd(e.target.value)} disabled={busy}/></label>
       <button className="button button-outline" disabled={busy} onClick={()=>void send('ausd')}>Send test AUSD</button>
     </div>
-    {message&&<p role="status" className="agents-fine">{message}{hash&&<> <a className="text-link" href={`https://testnet.monadscan.com/tx/${hash}`} target="_blank" rel="noreferrer">View transaction</a></>}</p>}
+    {phase==='closed'&&status}
+    <TransactionSheet phase={phase} title="Fund this agent" onDismiss={()=>setSheet(false)} alert={status} actions={phase==='done'?<button className="btn btn-primary" onClick={()=>setSheet(false)}>Close</button>:null}>
+      <p className="market-caption">The transfer goes from your own MetaMask wallet to the agent wallet <span className="num">{agent.slice(0,6)}…{agent.slice(-4)}</span>. Flurbo never sees the agent's key.</p>
+    </TransactionSheet>
   </div>;
 }

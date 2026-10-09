@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import AgentFunding from './AgentFunding';
+import TransactionSheet from '../components/ui/TransactionSheet';
 import { ArrowLeft, Copy } from 'lucide-react';
 import StatusBadge from '../components/ui/StatusBadge';
 import Stepper, { type Step } from '../components/ui/Stepper';
@@ -134,11 +135,12 @@ function Controls({ id, policy, busy, act }: { id: string; policy: any; busy: bo
       <button className="button button-outline" disabled={busy} onClick={() => act(() => runtimeAdmin.setPolicy(id, { paused: !policy.paused }))}>{policy.paused ? 'Resume new actions' : 'Pause new actions'}</button>
       <button className="button button-outline" disabled={busy || confirmLive} onClick={() => policy.liveEnabled ? act(() => runtimeAdmin.setPolicy(id, { liveEnabled: false })) : setConfirmLive(true)}>{policy.liveEnabled ? 'Stop allowing live trades' : 'Allow live testnet trades'}</button>
     </div>
-    {confirmLive && !policy.liveEnabled && <div className="agents-confirm" role="group" aria-label="Confirm live testnet trades">
-      <p><strong>Allow this agent to send live testnet trades?</strong></p>
+    <TransactionSheet phase={confirmLive && !policy.liveEnabled ? 'review' : 'closed'} title="Allow this agent to send live testnet trades?" onDismiss={() => setConfirmLive(false)}>
+    <div className="agents-confirm" role="group" aria-label="Confirm live testnet trades">
       <p className="agents-fine">Its runtime can then spend test AUSD from the agent wallet on its own, within these Flurbo limits: {!policy.limits.maxTradeCostAtoms && !policy.limits.windows.length ? 'the defaults, 2 test AUSD per trade and 10 test AUSD per 24 hours' : <>{policy.limits.maxTradeCostAtoms ? `${amount(policy.limits.maxTradeCostAtoms)} test AUSD per trade` : 'no per-trade limit'}; {policy.limits.windows[0] ? `${amount(policy.limits.windows[0].atoms)} test AUSD per 24 hours` : 'no 24-hour limit'}</>}. The runtime also keeps its own local limits, and every trade must pass both. The runtime must be set to "mode": "live". You can stop it at any time.</p>
       <div className="agents-actions"><button className="btn btn-primary" disabled={busy} onClick={() => act(async () => { await runtimeAdmin.setPolicy(id, { liveEnabled: true }); setConfirmLive(false); })}>Confirm live testnet trades</button><button className="btn btn-secondary" onClick={() => setConfirmLive(false)}>Cancel</button></div>
-    </div>}
+    </div>
+    </TransactionSheet>
     <p className="agents-fine">Pause is an instruction. A compliant runtime reads it before each new action and stops starting trades within about a minute. It is not an on-chain freeze: a transaction already sent can still confirm, and the wallet key can still sign outside the runtime.</p>
     <p className="agents-fine">Live trades need both this setting and <code>"mode": "live"</code> in the runtime's own configuration. Until then it records paper decisions only. Currently: {policy.liveEnabled ? 'allowed here' : 'not allowed here'}.</p>
     <div className="agents-pair">

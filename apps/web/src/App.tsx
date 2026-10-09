@@ -2,13 +2,15 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Redirect, Route, Switch, useLocation } from "wouter";
 import Home from "./pages/Home";
-import Docs from './pages/Docs';
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./auth/context";
 import {usePreviewAccess} from './auth/preview-access';
 import BrandLogo from './components/BrandLogo';
 import SiteFooter from './components/SiteFooter';
+import ShortcutHelp from './components/ShortcutHelp';
+import PendingDock from './components/market/PendingDock';
+import WalletLinkSheet from './components/WalletLinkSheet';
 import { useLoadGate } from './loading/gates';
 import { rememberReturnPath } from './return-path';
 import { preloadRoutes, useRoutePage, type RouteKey } from './routes';
@@ -84,7 +86,7 @@ function Header() {
             <span className="nav-rule" aria-hidden="true" />
             <div className="nav-actions">
               {state.restoring ? null : signedIn ? <>
-                <span className="network-indicator"><i aria-hidden="true" /><span>Monad testnet<span className="network-detail">, test assets only</span></span></span>
+                <span className="network-indicator"><i aria-hidden="true" /><span>Monad testnet<span className="sr-only">, test assets only</span></span></span>
                 {isHome ? <Link href="/markets" className="btn btn-primary btn-sm nav-cta">Explore markets <ArrowUpRight size={15} strokeWidth={1.75} /></Link>
                   : <Link href="/" className="nav-login">About Flurbo</Link>}
               </> : <>
@@ -102,13 +104,16 @@ function Header() {
   );
 }
 
-function AppShell({ children, compactFooter = false }: { children: React.ReactNode; compactFooter?: boolean }) {
+function AppShell({ children, compactFooter = false, footer = true }: { children: React.ReactNode; compactFooter?: boolean; footer?: boolean }) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       {children}
-      <SiteFooter compact={compactFooter} />
+      {footer && <SiteFooter compact={compactFooter} />}
+      <PendingDock />
+      <WalletLinkSheet />
+      <ShortcutHelp />
     </div>
   );
 }
@@ -119,6 +124,22 @@ function AuthShell({ mode }: { mode: "login" | "signup" | "account" }) {
       <AuthPage mode={mode} />
     </AppShell>
   );
+}
+
+// Route components are declared once: an inline component would remount its page whenever the app re-renders.
+const HomeRoute = () => <AppShell><Home /></AppShell>;
+const LoginRoute = () => <AuthShell mode="login" />;
+const SignupRoute = () => <AuthShell mode="signup" />;
+const NotFoundRoute = () => <AppShell><NotFound /></AppShell>;
+
+// The guide is public but long, so it loads on demand like the signed-in pages.
+function DocsRoute() {
+  const route = useRoutePage('docs');
+  const Page = route.Page;
+  const gate = useLoadGate('docs', { pending: !Page && !route.error, error: route.error, label: 'Loading the guide', retry: route.error ? route.retry : undefined });
+  return <AppShell>{Page ? <Page /> : <main id="main" tabIndex={-1} className="page route-pending" aria-busy="true">
+    {!gate.covered && <><span className="progress-line" aria-hidden="true" /><p role="status" className="busy-text">Loading the guide...</p></>}
+  </main>}</AppShell>;
 }
 
 function AccountRoute() {
@@ -168,7 +189,7 @@ function AccountRoute() {
   const waiting = checking || loadingPage;
   const Page = route.Page;
   const busyText = state.restoring ? 'Checking your session...' : checkingAccess ? 'Checking your access...' : 'Loading the page...';
-  return <AppShell compactFooter>{waiting
+  return <AppShell compactFooter footer={location !== '/markets'}>{waiting
     ? <main id="main" tabIndex={-1} className="page route-pending" aria-busy="true">
         {!gate.covered && <><span className="progress-line" aria-hidden="true" /><p role="status" className="busy-text">{busyText}</p></>}
         {gate.covered && <p role="status" className="sr-only">{busyText}</p>}
@@ -220,10 +241,10 @@ export default function App() {
   }, [location]);
   return (
     <Switch>
-      <Route path="/" component={() => <AppShell><Home /></AppShell>} />
-      <Route path="/docs" component={() => <AppShell><Docs /></AppShell>} />
-      <Route path="/login" component={() => <AuthShell mode="login" />} />
-      <Route path="/signup" component={() => <AuthShell mode="signup" />} />
+      <Route path="/" component={HomeRoute} />
+      <Route path="/docs" component={DocsRoute} />
+      <Route path="/login" component={LoginRoute} />
+      <Route path="/signup" component={SignupRoute} />
       <Route path="/markets" component={AccountRoute} />
       <Route path="/oracle" component={LegacyOracleRoute} />
       <Route path="/oracle/:id" component={LegacyOracleRoute} />
@@ -242,7 +263,7 @@ export default function App() {
       <Route path="/events">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
       <Route path="/evidence">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
       <Route path="/metrics" component={AccountRoute} />
-      <Route component={() => <AppShell><NotFound /></AppShell>} />
+      <Route component={NotFoundRoute} />
     </Switch>
   );
 }

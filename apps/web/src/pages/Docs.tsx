@@ -40,22 +40,26 @@ export default function Docs() {
     sections.forEach(([id]) => { const node = document.getElementById(id); if (node) observer.observe(node); });
     return () => observer.disconnect();
   }, []);
+  // The guide loads after the address, so a section link lands once its content exists.
+  useEffect(() => { const id = decodeURIComponent(window.location.hash.slice(1)); if (id) document.getElementById(id)?.scrollIntoView(); }, []);
   const explore = state.address
     ? <Link href="/markets" className="btn btn-primary docs-explore">Explore markets <ArrowUpRight size={16} strokeWidth={1.75} /></Link>
     : <Link href="/signup" className="btn btn-primary docs-explore">Get early access <ArrowUpRight size={16} strokeWidth={1.75} /></Link>;
   return <main id="main" tabIndex={-1} className="docs-page page">
     <header className="docs-hero">
-      <h1>Understand the <span className="serif-accent">market.</span></h1>
+      <h1>Understand the market.</h1>
       <p className="lead">A guide to accounts, predictions and payouts on Flurbo.</p>
       <a className="docs-litepaper" href={LITEPAPER.href} type="application/pdf"><FileText size={18} strokeWidth={1.75} /><span>{LITEPAPER.label}</span><small>{LITEPAPER.detail}</small></a>
     </header>
     <nav className="docs-quickstart" aria-label="Choose a guide"><a href="#getting-started"><strong>Make your first prediction</strong><small>Account, invitation, test funds and MetaMask.</small></a><a href="#combinations"><strong>Combine your ideas</strong><small>Understand when AND, OR and other choices pay.</small></a><a href="#agents"><strong>Build an agent</strong><small>Developer setup in TypeScript, Python, Rust or C++.</small></a></nav>
     <div className="docs-layout">
       <aside className="docs-sidebar">
+        <details className="docs-contents" open><summary>Contents</summary>
         <nav aria-label="Documentation contents">
           <p className="docs-contents-title">On this page</p>
           {sections.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={active === id ? 'location' : undefined}>{label}</a>)}
         </nav>
+        </details>
         {explore}
       </aside>
       <article className="docs-article">
@@ -73,7 +77,7 @@ export default function Docs() {
             <li><strong>Link MetaMask once.</strong> Choose the wallet you want to trade with and sign the account-linking message. Its shares, trades and collected payouts stay in your Mera account's portfolio across devices, even when MetaMask is disconnected. Funds remain in the trading wallet. New to MetaMask? See <a href="#metamask">Install MetaMask</a>.</li>
             <li><strong>Return or switch wallets.</strong> Flurbo restores an already linked wallet when MetaMask still authorizes this site. Manage wallets from Your account, or switch on a trade. A new wallet needs its own linking signature. Unlocking MetaMask or reconnecting after permission is revoked can still require your approval.</li>
             <li><strong>Get test funds.</strong> Open <Link href="/fund">Get test funds</Link> to check your balances and the funding options available on this site. A starter test MON grant may be offered for your first linked wallet; otherwise use the Monad faucet linked there. A funded test AUSD dispenser allows a 50 AUSD claim once every 24 hours per wallet. The exact amounts are listed under <a href="#limits">Limits and allowances</a>.<DocsShot src={fundsShot} {...SHOT_SIZE['test-funds']} alt="Get test funds page with the trading wallet balances, a Get test MON step and a Get test AUSD step" caption="Get test funds: check balances and available funding options."/></li>
-            <li><strong>Choose a market.</strong> Check the question, close time and resolution rules. Select your answer and number of shares.<DocsShot src={marketsShot} {...SHOT_SIZE['markets']} alt="Markets list with three example questions, their status, close time and Yes and No prices" caption="Markets: each row shows the question, its status, close time and the cost of one Yes or No share. Example questions."/></li>
+            <li><strong>Choose a market.</strong> Check the question, close time and resolution rules. Select your answer and number of shares.<DocsShot src={marketsShot} {...SHOT_SIZE['markets']} alt="Markets list with three example questions, their status, close time and Yes and No prices" caption="Markets: each tile shows the question, its status, close time and the cost of one Yes or No share. Example questions."/></li>
             <li><strong>Review and confirm.</strong> Check the quoted cost and confirm in MetaMask. A purchase usually asks for two confirmations: first an approval for the exact amount of test AUSD, then the purchase itself.<DocsShot src={ticketShot} {...SHOT_SIZE['ticket-buy']} alt="Trade ticket at step 1 of 2, showing the amount to allow, payout if correct, possible loss and an Allow payment button" caption="The trade ticket at its first step: allow the exact amount, then buy."/></li>
           </ol>
           <p>The landing page and docs are public. Markets, funding and portfolio require a signed-in, approved Mera account. Creating a passkey does not submit an application. Your account page shows whether applications are available, pending or approved.</p>
