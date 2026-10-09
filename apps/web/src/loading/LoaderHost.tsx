@@ -118,6 +118,17 @@ export default function LoaderHost({ children }: { children: ReactNode }) {
     };
   }, [visible]);
 
+  // The reserved scrollbar gutter shows the root background; it matches the cover until the cover opens. Set from
+  // here rather than with a root :has() rule, which made every layout of the page several times slower.
+  const covering = visible && state.phase !== 'exiting';
+  useEffect(() => {
+    if (!covering) return;
+    const root = document.documentElement;
+    const previous = root.style.backgroundColor;
+    root.style.backgroundColor = 'var(--surface-inverse)';
+    return () => { root.style.backgroundColor = previous; };
+  }, [covering]);
+
   const retry = useCallback(() => {
     const target = activeGates().find((gate) => gate.status === 'error' && gate.retry) || activeGates().find((gate) => gate.retry);
     dispatch({ type: 'retry' });

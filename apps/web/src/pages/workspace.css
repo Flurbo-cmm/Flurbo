@@ -9,13 +9,13 @@
 .workspace-nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--lime); margin-left: auto; }
 .workspace-note { margin-top: 50px; border-top: 1px solid var(--line); padding-top: 28px; }
 .workspace-note p { margin: 20px 0; font-size: 21px; letter-spacing: -.07em; line-height: 1.2; }
-.workspace-note em { font-family: var(--serif); font-size: 24px; letter-spacing: -.03em; }
+.workspace-note em { font-family: var(--font-display); font-style: normal; font-size: 22px; font-kerning: none; }
 .workspace-note > span:last-child { display: block; font-size: 11px; color: var(--ink-soft); line-height: 1.6; }
 .workspace-signout { display: flex; align-items: center; gap: 9px; font-size: 12px; cursor: pointer; padding: 16px 0; }
 .workspace-body { min-width: 0; padding: 45px clamp(24px, 4vw, 64px) 24px; }
 .workspace-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 30px; }
 .workspace-heading h1 { font-size: clamp(38px, 4.2vw, 65px); font-weight: 500; letter-spacing: -.085em; line-height: 1.04; max-width: 720px; }
-.workspace-heading h1 em { font-family: var(--serif); font-weight: 400; letter-spacing: -.06em; }
+.workspace-heading h1 em { font-family: var(--font-display); font-style: normal; font-weight: 400; font-kerning: none; }
 .workspace-heading p { color: var(--ink-soft); margin-top: 16px; max-width: 520px; font-size: 13px; line-height: 1.7; }
 .workspace-network { flex-shrink: 0; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; border: 1px solid var(--line); border-radius: 30px; padding: 9px 11px; display: flex; align-items: center; gap: 7px; }
 .workspace-network i { width: 6px; height: 6px; border-radius: 50%; background: #718341; }
@@ -29,16 +29,14 @@
 .workspace-identity .button { font-size: 11px; padding: 13px 18px; min-height: 44px; }
 .workspace-identity .button:disabled { opacity: .65; cursor: default; }
 .workspace-footer { display: flex; justify-content: space-between; gap: 15px; margin-top: 38px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 10px; color: var(--ink-soft); }
-.workspace-footer span:first-child { font-family: var(--serif); font-style: italic; font-size: 17px; }
+.workspace-footer span:first-child { font-family: var(--font-display); font-size: 17px; font-kerning: none; }
 @media(max-width: 1100px) { .consumer-workspace { grid-template-columns: 185px minmax(0,1fr); } .workspace-sidebar { padding: 30px 14px; } .workspace-heading { flex-direction: column-reverse; } }
 @media(max-width: 760px) { .consumer-workspace { display: block; } .workspace-sidebar { border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 20px; gap: 0; } .workspace-sidebar > .eyebrow, .workspace-back, .workspace-note { display: none; } .workspace-sidebar nav { flex-direction: row; gap: 6px; overflow-x: auto; } .workspace-sidebar nav button { font-size: 10px; gap: 7px; flex: 1; white-space: nowrap; padding: 10px 8px; } .workspace-sidebar nav svg { width: 14px; } .workspace-nav-dot { display: none; } .workspace-signout { align-self: flex-end; padding: 12px 4px 0; } .workspace-body { padding: 28px 20px; } .workspace-identity { flex-wrap: wrap; padding: 17px; gap: 13px; } .workspace-identity .button { width: 100%; } .workspace-heading h1 { font-size: 43px; } .workspace-footer { flex-direction: column; } }
 
 .workspace-funding { padding: 1.25rem; margin: 1rem 0; border: 1px solid var(--line, #d8ddcf); border-radius: 1rem; background: #f5f5ec; }
 .workspace-funding summary { cursor: pointer; font-weight: 600; }
 .workspace-funding p { margin: 1rem 0; line-height: 1.6; }
-.workspace-funding code { overflow-wrap: anywhere; }
-.auth-wallet-option { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #d8ddcf; }
-.auth-wallet-option select, .workspace-funding select { display: block; width: 100%; padding: .7rem; margin: .5rem 0; }
+.workspace-funding code { overflow-wrap: anywhere; }.auth-wallet-option select, .workspace-funding select { display: block; width: 100%; padding: .7rem; margin: .5rem 0; }
 .learning-comparison summary > span { margin-left: .75rem; }
 .comparison-table { overflow-x: auto; margin: 1rem 0; }
 .comparison-table table { width: 100%; border-collapse: collapse; font-size: 12px; }

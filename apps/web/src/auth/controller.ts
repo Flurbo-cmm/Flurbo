@@ -1,14 +1,15 @@
-import {
-  createPasskeyWithPrfOutput, getPasskeyPrfOutput, createSecp256k1SigningSession,
-  getEvmAddress, isMeraError,
-  type Secp256k1SigningSession, type WebAuthnClient,
-} from "@category-labs/mera";
-import { HDKey, HARDENED_OFFSET } from "@scure/bip32";
-import { entropyToMnemonic, mnemonicToSeedSync } from "@scure/bip39";
-import { wordlist } from "@scure/bip39/wordlists/english.js";
+import type { Secp256k1SigningSession, WebAuthnClient } from "@category-labs/mera";
 import { SESSION_MS, type AuthPolicy } from "./policy.ts";
-import { hashMessage, hexToBytes, bytesToHex, serializeSignature, type Hex } from 'viem';
+import type { Hex } from 'viem';
 import type { SessionTransport } from './server-session.ts';
+
+// Passkey cryptography loads on demand: the session check every page makes does not need it.
+let passkeyCrypto: Promise<typeof import('./passkey-crypto.ts')> | undefined;
+export const loadPasskeyCrypto = () => {
+  passkeyCrypto ??= import('./passkey-crypto.ts');
+  passkeyCrypto.catch(() => { passkeyCrypto = undefined; });
+  return passkeyCrypto;
+};
 
 type StoragePort = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 type Remembered = { version: 1; rpId: string; credentialId: string; address: string };
@@ -18,36 +19,6 @@ export type AuthSnapshot = {
   signingExpiresAt: number | null; restoring: boolean;
   remembered: boolean; error: string | null; notice: string | null;
 };
-
-// Matches Mera's documented BIP-39 / BIP-44 EVM account recipe, index 0.
-// These derivation choices are part of account identity and must not change silently.
-export function deriveAccount(prfOutput: Uint8Array) {
-  if (prfOutput.length !== 32) throw new Error("Invalid account entropy");
-  let seed: Uint8Array | undefined;
-  let node: HDKey | undefined;
-  let key: Uint8Array | null = null;
-  let session: Secp256k1SigningSession | undefined;
-  try {
-    seed = mnemonicToSeedSync(entropyToMnemonic(prfOutput, wordlist));
-    node = HDKey.fromMasterSeed(seed);
-    for (const index of [44 + HARDENED_OFFSET, 60 + HARDENED_OFFSET, HARDENED_OFFSET, 0, 0]) {
-      const child: HDKey = node!.deriveChild(index);
-      node!.wipePrivateData();
-      node = child;
-    }
-    key = node!.privateKey;
-    if (!key) throw new Error("Account derivation failed");
-    session = createSecp256k1SigningSession({ privateKey: key });
-    return { session, address: getEvmAddress(session.publicKey) };
-  } catch (error) {
-    session?.end();
-    throw error;
-  } finally {
-    key?.fill(0);
-    node?.wipePrivateData();
-    seed?.fill(0);
-  }
-}
 
 const PRF_PROVIDERS = "Use Chrome or Edge with Google Password Manager, Safari with iCloud Keychain, or a recent 1Password";
 // The provider only reports missing PRF after it has saved a passkey, so explain how to remove it.
@@ -64,7 +35,8 @@ export async function prfExplicitlyUnsupported(credential: unknown = globalThis.
 }
 
 function friendlyError(error: unknown, creating: boolean): string {
-  if (isMeraError(error)) {
+  // Mera errors carry a stable code; checked by name so this module does not load the Mera SDK.
+  if (error instanceof Error && error.name === "MeraError" && "code" in error) {
     if (error.code === "PRF_UNAVAILABLE") return creating ? PRF_FAILED_SIGNUP_MESSAGE : PRF_FAILED_SIGNIN_MESSAGE;
     if (error.code === "PASSKEY_OPERATION_FAILED") return creating
       ? "Passkey setup was cancelled or could not finish. If your device saved a passkey, try Sign in before creating another."
@@ -176,8 +148,9 @@ export class AuthController {
     const generation = ++this.#generation;
     this.#update({ busy: true, signingExpiresAt: null, error: null, notice: null });
     let result: { credentialId: string; prfOutput: Uint8Array } | undefined;
-    let derived: ReturnType<typeof deriveAccount> | undefined;
+    let derived: { session: Secp256k1SigningSession; address: string } | undefined;
     try {
+      const { createPasskeyWithPrfOutput, getPasskeyPrfOutput, deriveAccount, signLoginChallenge } = await loadPasskeyCrypto();
       const label = name.trim().slice(0, 48) || "Flurbo account";
       result = mode === "signup"
         ? await createPasskeyWithPrfOutput({ rp: { id: this.policy.rpId, name: this.policy.local ? "Flurbo local test" : "Flurbo" },
@@ -199,8 +172,7 @@ export class AuthController {
       if (this.#transport) {
         const message = await this.#transport.challenge(derived.address);
         if (generation !== this.#generation) return false;
-        const signature = await derived.session.signDigest(hexToBytes(hashMessage(message)));
-        const login = await this.#transport.verify(serializeSignature({ r: bytesToHex(signature.compact.slice(0, 32)), s: bytesToHex(signature.compact.slice(32)), yParity: signature.recovery }));
+        const login = await this.#transport.verify(await signLoginChallenge(derived.session, message));
         if (generation !== this.#generation) { await this.#transport.logout(); return false; }
         if (login.address.toLowerCase() !== derived.address.toLowerCase() || login.expiresAt <= this.#now()) throw new Error('Login proof mismatch');
         loginExpiry = login.expiresAt;

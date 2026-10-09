@@ -1,7 +1,7 @@
 /* Docs: a reference layout. Sticky contents on wide screens, one prose column. */
 .docs-page { display: grid; gap: var(--s-8); }
 .docs-hero { display: grid; gap: var(--s-3); justify-items: start; padding-bottom: var(--s-8); border-bottom: 1px solid var(--rule); }
-.docs-hero h1 { font-size: clamp(32px, 4vw, 44px); line-height: 1.08; }
+.docs-hero h1 { font: 400 clamp(36px, 4.4vw, 52px)/1.04 var(--font-display); letter-spacing: 0; font-kerning: none; }
 .docs-litepaper { display: inline-flex; align-items: center; gap: var(--s-2); margin-top: var(--s-2); padding: 8px var(--s-3); border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); font-weight: 500; transition: border-color var(--t-fast) var(--ease-out); }
 .docs-litepaper:hover { border-color: var(--ink); }
 .docs-litepaper small { color: var(--ink-3); font-size: 13px; }
@@ -16,13 +16,16 @@
 .docs-sidebar { display: grid; gap: var(--s-6); }
 @media (min-width: 1024px) { .docs-sidebar { position: sticky; top: calc(var(--header-h) + var(--s-6)); max-height: calc(100dvh - var(--header-h) - var(--s-12)); overflow: auto; } }
 .docs-sidebar nav { display: grid; gap: 2px; }
+.docs-contents > summary { display: none; }
 .docs-contents-title { margin-bottom: var(--s-2); font-size: var(--text-overline); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .docs-sidebar nav a { display: block; padding: 7px var(--s-3); border-left: 2px solid transparent; color: var(--ink-2); font-size: 14px; line-height: 1.4; transition: color var(--t-fast), border-color var(--t-fast); }
 .docs-sidebar nav a:hover { color: var(--ink); }
 .docs-sidebar nav a[aria-current="location"] { border-left-color: var(--ink); color: var(--ink); font-weight: 600; }
 @media (max-width: 1023px) {
-  .docs-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-4); padding-bottom: var(--s-4); border-bottom: 1px solid var(--rule); }
-  .docs-contents-title { grid-column: 1 / -1; }
+  .docs-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-4); padding-bottom: var(--s-4); }
+  .docs-contents { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+  .docs-contents > summary { display: flex; }
+  .docs-contents-title { display: none; }
   .docs-sidebar nav a { padding: 8px 0; border-left: 0; }
   .docs-sidebar .docs-explore { justify-self: start; }
 }
@@ -58,15 +61,16 @@
 .docs-article details:last-of-type { border-bottom: 1px solid var(--rule); }
 .docs-article details > summary { min-height: 52px; }
 
-/* Step-by-step bot guide: commands scroll inside their own box so the page never scrolls sideways. */
-.docs-code { margin: var(--s-3) 0; padding: var(--s-3) var(--s-4); border-radius: var(--r-panel); background: var(--surface-sunken); overflow-x: auto; max-width: 100%; }
-.docs-code code { font-family: var(--mono); font-size: 0.875em; white-space: pre; }
+/* Step-by-step bot guide: long commands wrap inside their box so the page never scrolls sideways. */
+.docs-code { margin: var(--s-3) 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--rule); border-radius: var(--r-panel); background: var(--surface-sunken); max-width: 100%; }
+.docs-code code { font-family: var(--mono); font-size: 0.875em; white-space: pre-wrap; overflow-wrap: anywhere; }
 .docs-os { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--s-3); }
 .docs-os > div { min-width: 0; }
 .docs-os-label { font-size: 0.8125em; font-weight: 600; color: var(--ink-2); }
 .docs-guide > li > p { margin: var(--s-2) 0; }
 .docs-guide ol { padding-left: var(--s-5); margin: var(--s-2) 0; }
-.docs-table-wrap { overflow-x: auto; max-width: 100%; margin: var(--s-4) 0; }
+.docs-table-wrap { max-width: 100%; margin: var(--s-4) 0; }
+.docs-table td code { overflow-wrap: anywhere; }
 .docs-table { width: 100%; border-collapse: collapse; font-size: 0.9375em; }
 .docs-table th, .docs-table td { text-align: left; vertical-align: top; padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--rule); }
 /* Long inline addresses in the guide wrap instead of widening the page on phones. */

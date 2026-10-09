@@ -1,10 +1,10 @@
 import {marketQuestion,showcaseCopy} from '../showcase-copy';
 import {portfolioSources} from '../portfolio-sources';
 import EvidenceDisclosure from './EvidenceDisclosure';
-import {useEffect,useState,useCallback,useRef} from 'react';
+import {useEffect,useState,useCallback} from 'react';
 import {Link} from 'wouter';
 import {formatUnits} from 'viem';
-import {ArrowLeft,ArrowUpRight} from 'lucide-react';
+import {ArrowUpRight} from 'lucide-react';
 import {useAuth} from '../auth/context';
 import {pilotRequest,type PilotNamespace,type PilotState} from '../pilot';
 import {rememberedTradingWallet} from '../portfolio';
@@ -18,6 +18,9 @@ import PriceHistory from './PriceHistory';
 import StatusBadge,{type StatusKind} from '../components/ui/StatusBadge';
 import Stepper,{type Step} from '../components/ui/Stepper';
 import {useLoadGate} from '../loading/gates';
+import MarketShell,{type MarketTab} from '../components/market/MarketShell';
+import LinkedQuestions from '../components/market/LinkedQuestions';
+import ContractList from '../components/market/ContractList';
 import {CLOSING_SOON_SECONDS,exactTime,relativeTime} from '../format';
 import './market-detail.css';
 const date=exactTime;
@@ -42,13 +45,13 @@ export default function MarketDetail({namespace,event}:{namespace:PilotNamespace
   const [now,setNow]=useState(()=>Date.now()/1000);
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()/1000),1000);return()=>clearInterval(timer);},[]);
   function toggleChallenge(open:boolean){setChallengeOpen(open);const url=new URL(window.location.href);if(open)url.searchParams.set('challenge','1');else url.searchParams.delete('challenge');window.history.replaceState(null,'',url);if(open)setTimeout(()=>document.getElementById('challenge-form')?.scrollIntoView({block:'start',behavior:'smooth'}),0);}
-  const [quotes,setQuotes]=useState<{yes:string|null;no:string|null}|null>(null);
+  const [quotes,setQuotes]=useState<{yes:string|null;no:string|null}|null>(null),[poolQuotes,setPoolQuotes]=useState<{event:number;yes:string|null;no:string|null}[]>([]);
   const [owner,setOwner]=useState(()=>auth.address?rememberedTradingWallet(auth.address):'');
   const walletChanged=useCallback((address:string)=>setOwner(address),[]);
   const [initialYes]=useState(()=>new URLSearchParams(window.location.search).get('answer')!=='no');
   const confirmed=useCallback(()=>setAttempt(n=>n+1),[]);
   useEffect(()=>{const c=new AbortController();setError('');void pilotRequest<PilotState>('status',undefined,namespace,c.signal).then(s=>{if(!c.signal.aborted)setState(s);}).catch(()=>{if(!c.signal.aborted)setError('Market status could not be refreshed. Retry for a current view.');});return()=>c.abort();},[namespace,attempt]);
-  useEffect(()=>{const c=new AbortController();setQuotes(null);void pilotRequest<{prices:{event:number;yes:string|null;no:string|null}[]}>('markets',undefined,namespace,c.signal).then(v=>{if(!c.signal.aborted)setQuotes(v.prices.find(p=>p.event===event)||null);}).catch(()=>{});return()=>c.abort();},[namespace,event,attempt]);
+  useEffect(()=>{const c=new AbortController();setQuotes(null);void pilotRequest<{prices:{event:number;yes:string|null;no:string|null}[]}>('markets',undefined,namespace,c.signal).then(v=>{if(!c.signal.aborted){setQuotes(v.prices.find(p=>p.event===event)||null);setPoolQuotes(v.prices);}}).catch(()=>{});return()=>c.abort();},[namespace,event,attempt]);
   useEffect(()=>{const timer=setInterval(()=>{if(!document.hidden&&!busy)setAttempt(n=>n+1);},60000);return()=>clearInterval(timer);},[busy]);
   useEffect(()=>{try{sessionStorage.setItem('flurbo.trading.market',namespace);}catch{}},[namespace]);
   useEffect(()=>{const c=new AbortController();setPositions(null);setPositionError('');
@@ -65,16 +68,6 @@ export default function MarketDetail({namespace,event}:{namespace:PilotNamespace
   const question=state?.manifest.publication.draft.events[event],view=state&&question?settlementView(state,event):null;
   const tradingClosed=!!state&&(state.resolved||now>=state.manifest.publication.draft.closesAt);
   const gate=useLoadGate('market',{pending:!state&&!error,label:'Loading this market'});
-  // The ticket column stays in view only while it fits; a taller column scrolls with the page.
-  const [stick,setStick]=useState(false);
-  const observer=useRef<ResizeObserver|null>(null),recheck=useRef<()=>void>(()=>{});
-  const sidebar=useCallback((node:HTMLElement|null)=>{
-    observer.current?.disconnect();observer.current=null;
-    if(!node||typeof ResizeObserver==='undefined')return;
-    const check=()=>setStick(window.innerWidth>=1024&&node.scrollHeight<window.innerHeight-96);recheck.current=check;
-    observer.current=new ResizeObserver(check);observer.current.observe(node);check();
-  },[]);
-  useEffect(()=>{const onResize=()=>recheck.current();window.addEventListener('resize',onResize);return()=>{window.removeEventListener('resize',onResize);observer.current?.disconnect();};},[]);
   useEffect(()=>{if(question)document.title=`${marketQuestion(question)} | flurbo`;},[question]);
 
   const c=state?.cases[event];
@@ -88,57 +81,53 @@ export default function MarketDetail({namespace,event}:{namespace:PilotNamespace
     {key:'payout',title:'Payouts',meta:state.delivered?<Link href="/portfolio" className="text-link">Collect in Portfolio</Link>:state.manifest.publication.draft.events.length>1?`Open after every question in the shared pool is settled, from ${date(view.payoutsFrom)}`:'Open after the shared pool is settled on-chain',state:state.delivered?'done':'upcoming'},
   ]:[];
 
-  return <main id="main" tabIndex={-1} className="page markets-page market-detail" aria-busy={!state&&!error}>
-    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/markets" className="link-back"><ArrowLeft aria-hidden="true" strokeWidth={1.75}/>All markets</Link><Link href="/fund" className="text-link">Get test funds</Link></nav>
+  if(!question||!view||!state||!c)return <main id="main" tabIndex={-1} className="market-page" aria-busy={!state&&!error}>
+    <nav className="market-topbar" aria-label="Breadcrumb"><Link href="/markets" className="link-back">All markets</Link><Link href="/fund" className="text-link">Get test funds</Link></nav>
     {error&&<p role="alert" className="state-inline error">{error}</p>}
-    {!state&&!error&&<div className="detail-skeleton" aria-hidden="true"><span className="skeleton" style={{height:34,width:'70%'}}/><span className="skeleton skeleton-line" style={{width:'40%'}}/><div className="detail-columns"><span className="skeleton" style={{height:360}}/><span className="skeleton" style={{height:420}}/></div></div>}
+    {!state&&!error&&<div className="detail-skeleton" aria-hidden="true"><span className="skeleton" style={{height:34,width:'70%'}}/><span className="skeleton skeleton-line" style={{width:'40%'}}/><div className="market-columns"><span className="skeleton" style={{height:360}}/><span className="skeleton" style={{height:420}}/></div></div>}
     {!state&&!error&&<p role="status" className="sr-only">Loading this market...</p>}
     {!state&&!error&&!gate.covered&&<span className="progress-line" aria-hidden="true"/>}
     {state&&!question&&<div className="state-block"><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div>}
-    {question&&view&&state&&c&&<>
-      <header className="detail-heading">
-        <span className="chip">{state.manifest.publication.mode==='rehearsal'?'Scripted practice':'Real event'}</span>
-        <h1>{marketQuestion(question)}</h1>
-        {showcaseCopy(question)&&<p className="lead">{showcaseCopy(question)!.description}</p>}
-        <dl className="detail-meta">
-          <div><dt>Status</dt><dd><StatusBadge kind={statusKind(view.title,c.phase,view.closes-now)}>{error?'Status unavailable':view.title}</StatusBadge></dd></div>
-          <div><dt>{tradingClosed?'Trading closed':'Trading closes'}</dt><dd><time dateTime={new Date(view.closes*1000).toISOString()}>{relativeTime(view.closes,now)}</time><small>{date(view.closes)}</small></dd></div>
-          <div><dt>Results expected from</dt><dd><time dateTime={new Date(view.expectedFrom*1000).toISOString()}>{relativeTime(view.expectedFrom,now)}</time><small>{date(view.expectedFrom)}</small></dd></div>
-          {quotes&&!tradingClosed&&<div><dt>Buy one share</dt><dd className="num">Yes {quotes.yes===null?'closed':Number(cash(quotes.yes)).toFixed(3)} · No {quotes.no===null?'closed':Number(cash(quotes.no)).toFixed(3)}<small>test AUSD, not probabilities</small></dd></div>}
-        </dl>
-      </header>
-      <div className="detail-columns">
-        <aside ref={sidebar} className={`detail-sidebar${stick?' is-sticky':''}`} aria-label="Trade and position">
-          {challengeOpen?<section className="detail-panel" id="challenge-form"><Pilot key={'challenge'+namespace+event} namespace={namespace} challenge={{event}} onBusy={setBusy} onTradeConfirmed={confirmed}/><button className="btn btn-secondary" disabled={busy} onClick={()=>toggleChallenge(false)}>Back to market</button></section>
-            :<section className="detail-panel detail-trade" aria-label="Trade this market">{quotes&&!tradingClosed&&<div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{quotes.yes===null?'Closed':cash(quotes.yes)+' AUSD'}</strong></div><div><span>No</span><strong>{quotes.no===null?'Closed':cash(quotes.no)+' AUSD'}</strong></div><p className="market-caption">Price per share, test AUSD. Exact quote before you confirm.</p></div>}<Pilot key={namespace+event} namespace={namespace} consumer={{event,yes:initialYes}} tradingClosed={tradingClosed} onBusy={setBusy} onTradeConfirmed={confirmed} onTradingWalletChange={walletChanged}/></section>}
-          <section className="detail-panel detail-position" aria-label="Your position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></Link></div><p className="market-caption">Across your trading and agent wallets</p>
-            {positionError?<p role="alert" className="state-inline error">{positionError}</p>:positions?<dl className="position-rows">{positions.map(p=><div key={p.mask}><dt>{p.mask==='2'?'Yes':'No'}</dt><dd><strong>{cash(p.quantity)} shares</strong><small>{p.payoutAtoms===null?(BigInt(p.quantity)===0n?'No position':tradingClosed?'Awaiting settlement':'Open for trading'):`${cash(p.payoutAtoms)} test AUSD to collect`}</small></dd></div>)}</dl>:<div className="position-rows" aria-hidden="true"><span className="skeleton" style={{height:40}}/><span className="skeleton" style={{height:40}}/></div>}
-            {!positions&&!positionError&&<p role="status" className="sr-only">Loading your shares…</p>}
-            <p className="market-caption">View results and collect payouts in your portfolio.</p>
-          </section>
-          <section className="detail-panel detail-thesis"><h2>Build your thesis</h2><p>Express a view about two questions. Compare it with the pool and see what each possible outcome would pay.</p><Link className="btn btn-secondary" href={marketHref(namespace,event)+'/thesis'}>Explore your view</Link></section>
-        </aside>
-        <div className="detail-primary">
-          {showcaseCopy(question)&&<ShowcaseSource state={state} event={event} namespace={namespace}/>}
-          <PriceHistory namespace={namespace} event={event} pool={state.manifest.pool} refresh={attempt}/>
-          <details className="detail-panel detail-connect"><summary>Explore how these markets connect</summary><p className="market-caption">Read-only. Conditional and joint chances implied by the pool. It does not place a trade.</p><WhatIf namespace={namespace} manifest={state.manifest}/></details>
-          <section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={statusKind(view.title,c.phase,view.closes-now)}>{view.title}</StatusBadge></div><p>{view.description}</p>
-            <Stepper steps={steps} label="Settlement steps"/>
-            {c.phase>0&&<div className="detail-challenge"><p>Proposed answer: <strong>{outcomes[c.proposal]}</strong></p>
-              {['evidenceHash','counterEvidenceHash'].map((key,i)=>{const hash=c[key as 'evidenceHash'|'counterEvidenceHash'];return /^0x0{64}$/.test(hash)?null:<EvidenceDisclosure key={key} namespace={namespace} hash={hash} label={i?'Read challenge evidence':'Read proposed answer evidence'}/>;})}
-              {c.phase===1&&<><p className="market-caption">Challenge bond: {cash(state.manifest.publication.bondAtoms)} test AUSD, plus network fees.</p>{Math.max(now,state.snapshot.timestamp)<Number(c.challengeUntil)?<button className="btn btn-primary" disabled={busy||challengeOpen||!!error} onClick={()=>toggleChallenge(true)}>Challenge proposed answer</button>:<p>The challenge period has ended.</p>}</>}
-              {c.phase===2&&<p>The answer is disputed. The testnet reviewer panel decides the outcome.</p>}
-              {c.phase===3&&<p>The result is final. Challenges are closed.</p>}
-              {c.phase>=2&&accountWallets.includes(c.disputer.toLowerCase())&&!challengeOpen&&<button className="btn btn-secondary" disabled={busy} onClick={()=>toggleChallenge(true)}>View your challenge</button>}
-            </div>}
-            <details className="disclosure"><summary>Settlement details</summary><p>Observation ends {date(view.observes)}. Last checked {date(state.snapshot.timestamp)}.</p><p>Disputes or missing evidence can delay settlement. All events in this shared pool must resolve before payouts.</p></details>
-            <div className="cluster"><button className="btn btn-secondary btn-sm" onClick={()=>setAttempt(n=>n+1)}>Refresh status</button></div>
-          </section>
-          <section className="detail-panel"><h2>What decides the answer?</h2><p>{state.manifest.publication.mode!=='rehearsal'?'The published source and the rules below determine the answer.':'This is a practice event with a scripted outcome, using test funds.'}</p>{!showcaseCopy(question)&&<a className="text-link" href={question.source.referenceUrl} target="_blank" rel="noreferrer">View source <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a>}{checkedSource&&<div className="settlement-source"><h3>What settlement reads</h3><p>{checkedSource.request==='GET'?'Settlement reads exactly this record. You and your agents can open or fetch it too, before the result is decided.':'Settlement reads these Ethereum node endpoints. They answer JSON-RPC requests, so open them with an Ethereum client rather than a browser.'}</p><ul>{checkedSource.urls.map(url=><li key={url}><code>{url}</code></li>)}</ul><p className="field-help">Rule: {checkedSource.method}</p></div>}<details className="disclosure"><summary>Read the resolution rules</summary><p>Published question: {question.question}</p><h3>Yes</h3><p>{question.yesRule}</p><h3>No</h3><p>{question.noRule}</p><h3>If there is no clear result</h3><p>{state.manifest.publication.draft.exceptionPolicy}</p><p>{state.manifest.publication.draft.disputePolicy}</p><p>The current testnet dispute wallets are controlled by the Flurbo operator.</p></details></section>
-          <details className="detail-panel"><summary>Shared pool details</summary><dl className="facts"><dt>Pool balance</dt><dd>{cash(state.poolCash)} test AUSD</dd><dt>Required payouts</dt><dd>{cash(state.requiredCollateral)} test AUSD</dd></dl><p className="market-caption">These totals cover the shared pool, not just this question.</p><a className="text-link" href={`https://testnet.monadscan.com/address/${state.manifest.pool}`} target="_blank" rel="noreferrer">View pool <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a></details>
-        </div>
-      </div>
-    </>}
     {!state&&error&&<button className="btn btn-primary" onClick={()=>setAttempt(n=>n+1)}>Retry</button>}
   </main>;
+  const events=state.manifest.publication.draft.events;
+  const kind=statusKind(view.title,c.phase,view.closes-now);
+  const viewerChallenge=c.phase>=2&&accountWallets.includes(c.disputer.toLowerCase());
+  const defaultTab:MarketTab=tradingClosed||c.phase>0||viewerChallenge||challengeOpen?'timeline':events.length>1?'linked':'proof';
+  const linkedItems=events.map((e,i)=>({e,i})).filter(({i})=>i!==event).map(({e,i})=>({key:e.id,question:marketQuestion(e),href:marketHref(namespace,i),yes:poolQuotes.find(p=>p.event===i)?.yes??null}));
+  const timeline=<section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={kind}>{view.title}</StatusBadge></div><p>{view.description}</p>
+    <Stepper steps={steps} label="Settlement steps"/>
+    {c.phase>0&&<div className="detail-challenge"><p>Proposed answer: <strong>{outcomes[c.proposal]}</strong></p>
+      {['evidenceHash','counterEvidenceHash'].map((key,i)=>{const hash=c[key as 'evidenceHash'|'counterEvidenceHash'];return /^0x0{64}$/.test(hash)?null:<EvidenceDisclosure key={key} namespace={namespace} hash={hash} label={i?'Read challenge evidence':'Read proposed answer evidence'}/>;})}
+      {c.phase===1&&<><p className="market-caption">Challenge bond: {cash(state.manifest.publication.bondAtoms)} test AUSD, plus network fees.</p>{Math.max(now,state.snapshot.timestamp)<Number(c.challengeUntil)?<button className="btn btn-primary" disabled={busy||challengeOpen||!!error} onClick={()=>toggleChallenge(true)}>Challenge proposed answer</button>:<p>The challenge period has ended.</p>}</>}
+      {c.phase===2&&<p>The answer is disputed. The testnet reviewer panel decides the outcome.</p>}
+      {c.phase===3&&<p>The result is final. Challenges are closed.</p>}
+      {viewerChallenge&&!challengeOpen&&<button className="btn btn-secondary" disabled={busy} onClick={()=>toggleChallenge(true)}>View your challenge</button>}
+    </div>}
+    <details className="disclosure"><summary>Settlement details</summary><p>Observation ends {date(view.observes)}. Last checked {date(state.snapshot.timestamp)}.</p><p>Disputes or missing evidence can delay settlement. All events in this shared pool must resolve before payouts.</p></details>
+    <div className="cluster"><button className="btn btn-secondary btn-sm" onClick={()=>setAttempt(n=>n+1)}>Refresh status</button></div>
+  </section>;
+  const proof=<div className="proof-panel">
+    {showcaseCopy(question)&&<ShowcaseSource state={state} event={event} namespace={namespace}/>}
+    <section className="detail-panel"><h2>What decides the answer?</h2><p>{state.manifest.publication.mode!=='rehearsal'?'The published source and the rules below determine the answer.':'This is a practice event with a scripted outcome, using test funds.'}</p>{!showcaseCopy(question)&&<a className="text-link" href={question.source.referenceUrl} target="_blank" rel="noreferrer">View source <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a>}{checkedSource&&<div className="settlement-source"><h3>What settlement reads</h3><p>{checkedSource.request==='GET'?'Settlement reads exactly this record. You and your agents can open or fetch it too, before the result is decided.':'Settlement reads these Ethereum node endpoints. They answer JSON-RPC requests, so open them with an Ethereum client rather than a browser.'}</p><ul>{checkedSource.urls.map(url=><li key={url}><code>{url}</code></li>)}</ul><p className="field-help">Rule: {checkedSource.method}</p></div>}<details className="disclosure"><summary>Read the resolution rules</summary><p>Published question: {question.question}</p><h3>Yes</h3><p>{question.yesRule}</p><h3>No</h3><p>{question.noRule}</p><h3>If there is no clear result</h3><p>{state.manifest.publication.draft.exceptionPolicy}</p><p>{state.manifest.publication.draft.disputePolicy}</p><p>The current testnet dispute wallets are controlled by the Flurbo operator.</p></details></section>
+    <ContractList rows={[{label:'Pool',value:state.manifest.pool,href:`https://testnet.monadscan.com/address/${state.manifest.pool}`},{label:'Resolver',value:state.manifest.resolver,href:`https://testnet.monadscan.com/address/${state.manifest.resolver}`},{label:'Rules hash',value:state.manifest.rulesHash}]}/>
+    <details className="detail-panel"><summary>Shared pool details</summary><dl className="facts"><dt>Pool balance</dt><dd>{cash(state.poolCash)} test AUSD</dd><dt>Required payouts</dt><dd>{cash(state.requiredCollateral)} test AUSD</dd></dl><p className="market-caption">These totals cover the shared pool, not just this question.</p><a className="text-link" href={`https://testnet.monadscan.com/address/${state.manifest.pool}`} target="_blank" rel="noreferrer">View pool <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a></details>
+  </div>;
+  const linked=events.length>1?<LinkedQuestions current={{yes:quotes?.yes??null}} items={linkedItems}>
+    <section className="detail-panel detail-connect"><WhatIf namespace={namespace} manifest={state.manifest}/></section>
+    <p className="linked-thesis"><Link className="btn btn-secondary" href={marketHref(namespace,event)+'/thesis'}>Build your thesis</Link><span className="market-caption">Compare your view of two questions with the pool and see what each outcome would pay.</span></p>
+  </LinkedQuestions>:undefined;
+  const ticket=<>
+    {challengeOpen?<section className="detail-panel" id="challenge-form"><Pilot key={'challenge'+namespace+event} namespace={namespace} challenge={{event}} onBusy={setBusy} onTradeConfirmed={confirmed}/><button className="btn btn-secondary" disabled={busy} onClick={()=>toggleChallenge(false)}>Back to market</button></section>
+      :<section className="detail-panel detail-trade" aria-label="Trade this market"><Pilot key={namespace+event} namespace={namespace} consumer={{event,yes:initialYes}} tradingClosed={tradingClosed} onBusy={setBusy} onTradeConfirmed={confirmed} onTradingWalletChange={walletChanged}/></section>}
+    <section className="detail-panel detail-position" aria-label="Your position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></Link></div><p className="market-caption">Across your trading and agent wallets</p>
+      {positionError?<p role="alert" className="state-inline error">{positionError}</p>:positions?<dl className="position-rows leaders">{positions.map(p=><div key={p.mask}><dt>{p.mask==='2'?'Yes':'No'}</dt><dd><strong>{cash(p.quantity)} shares</strong><small>{p.payoutAtoms===null?(BigInt(p.quantity)===0n?'No position':tradingClosed?'Awaiting settlement':'Open for trading'):`${cash(p.payoutAtoms)} test AUSD to collect`}</small></dd></div>)}</dl>:<div className="position-rows" aria-hidden="true"><span className="skeleton" style={{height:40}}/><span className="skeleton" style={{height:40}}/></div>}
+      {!positions&&!positionError&&<p role="status" className="sr-only">Loading your shares…</p>}
+    </section>
+  </>;
+  return <MarketShell kind={state.manifest.publication.mode==='rehearsal'?'Scripted practice':'Real event'} question={marketQuestion(question)} lead={showcaseCopy(question)?.description}
+    status={<StatusBadge kind={kind}>{error?'Status unavailable':view.title}</StatusBadge>} closes={{at:view.closes,closed:tradingClosed}} results={view.expectedFrom}
+    prices={quotes&&!tradingClosed?quotes:null} watchKey={namespace+question.id} alert={error?<p role="alert" className="state-inline error">{error}</p>:undefined}
+    chart={<PriceHistory namespace={namespace} event={event} pool={state.manifest.pool} refresh={attempt}/>}
+    linked={linked} linkedCount={events.length} timeline={timeline} proof={proof} defaultTab={defaultTab} ticket={ticket}/>;
 }

@@ -2,7 +2,9 @@ import { ArrowLeft, ArrowUpRight, Copy, LogOut } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "../auth/context";
+import { loadPasskeyCrypto } from "../auth/controller";
 import { takeReturnPath } from "../return-path";
+import { ContourMark } from '../components/BrandLogo';
 import './auth.css';
 
 type AuthMode = "login" | "signup" | "account";
@@ -19,6 +21,8 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
   // One destination per visit: the page a signed-out visitor opened, otherwise the account page.
   const next = () => (destination.current ??= takeReturnPath() ?? '/access');
   useEffect(() => { if (active && !state.busy) navigate(next()); }, [active, state.busy, navigate]);
+  // Load passkey cryptography while the page is read, so the button reaches the browser prompt without a wait.
+  useEffect(() => { void loadPasskeyCrypto().catch(() => undefined); }, []);
   const localHref = policy.localUrl ? new URL(isLogin ? "/login" : "/signup", policy.localUrl).href : undefined;
 
   async function authenticate(chooseAnother = false) {
@@ -38,6 +42,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
       {!isLogin && !active && <ol className="auth-steps" aria-label="Preview access steps">
         <li aria-current="step"><span>1</span>Create account</li><li><span>2</span>Request access</li><li><span>3</span>Approval</li>
       </ol>}
+      <svg className="auth-mark" viewBox="4 3 54 54" aria-hidden="true" focusable="false"><ContourMark /></svg>
       <header className="auth-heading">
         <h1>{active ? "A familiar way in." : isLogin ? "Your view. Your account." : "Create your Flurbo account."}</h1>
         <p className="lead">{active ? "Your passkey opens the same account each time. Keep access to it through your password manager."
@@ -78,9 +83,11 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
           </div>
         </form>}
         {state.error && <p className="callout callout-danger" role="alert">{state.error}</p>}
-        <p className="small muted">Your Mera passkey is your Flurbo login. Testnet access requires approval. Once approved, connect MetaMask to trade.</p>
         <p className="auth-switch">{isLogin ? "New to Flurbo?" : "Already have a passkey?"} <Link href={isLogin ? "/signup" : "/login"} className="text-link">{isLogin ? "Create an account" : "Sign in"}</Link></p>
-        <p className="small muted">Some devices ask you to confirm twice during setup. A compatible passkey provider is required. <a href="https://mera.category.xyz/authenticator-support/" target="_blank" rel="noreferrer">Check device support</a>.</p>
+        <details className="disclosure auth-more"><summary>About passkeys</summary>
+          <p className="small muted">Your Mera passkey is your Flurbo login. Testnet access requires approval. Once approved, connect MetaMask to trade.</p>
+          <p className="small muted">Some devices ask you to confirm twice during setup. A compatible passkey provider is required. <a href="https://mera.category.xyz/authenticator-support/" target="_blank" rel="noreferrer">Check device support</a>.</p>
+        </details>
       </section>}
       {state.notice && <p className="field-help" role="status">{state.notice}</p>}
     </main>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/context';
+import TransactionSheet from '../components/ui/TransactionSheet';
 import { discoverWallets, type BrowserWallet } from '../auth/wallet-choice';
 import { checkLearningReceipt, connectOperator, LearningError, pendingKey, readPending, submitLearning,
   type Pending, type Provider, type Review } from '../learning/execution';
@@ -13,7 +14,7 @@ export default function LearningExecution({ review, onInvalidate, onConfirmed }:
   const [selected, setSelected] = useState(0);
   const [connected, setConnected] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false), [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState('');
   const [hashInput, setHashInput] = useState('');
   const [acknowledged, setAcknowledged] = useState(false);
@@ -69,7 +70,7 @@ export default function LearningExecution({ review, onInvalidate, onConfirmed }:
   async function submit() {
     if (operating.current || !review || !provider.current || !connected || pending || storageError) return;
     if (!navigator.locks) { setNotice('This browser cannot protect concurrent wallet submissions. Use a browser with Web Locks support.'); return; }
-    operating.current = true; setBusy(true);
+    operating.current = true; setBusy(true); setSubmitting(true);
     const chosen = provider.current, expectedGeneration = generation.current;
     const account = controller.getSnapshot().address;
     try {
@@ -81,7 +82,7 @@ export default function LearningExecution({ review, onInvalidate, onConfirmed }:
         if (live.current) { invalidate.current(); setNotice('Transaction submitted. Waiting for two canonical confirmations and the matching contract event.'); }
       });
     } catch (reason) { if (live.current) { invalidate.current(); setNotice(message(reason)); } }
-    finally { operating.current = false; if (live.current) setBusy(false); }
+    finally { operating.current = false; if (live.current) { setBusy(false); setSubmitting(false); } }
   }
   async function check() {
     if (operating.current || !provider.current || !connected) return;
@@ -129,7 +130,10 @@ export default function LearningExecution({ review, onInvalidate, onConfirmed }:
     {review && !pending && <button className="button button-dark" disabled={busy || !connected || storageError || Date.now() >= review.expiresAt * 1000} onClick={() => void submit()}>
       {busy ? 'Checking wallet...' : review.action === 'approval_required' ? 'Confirm AUSD approval in wallet' : 'Confirm pricing update in wallet'}
     </button>}
-    {notice && <p role="status">{notice}</p>}
+    {notice && !submitting && <p role="status">{notice}</p>}
+    <TransactionSheet phase={submitting ? 'wallet' : 'closed'} title="Confirm with your deployer wallet" alert={notice ? <p role="status">{notice}</p> : null}>
+      <p>{review?.action === 'approval_required' ? 'Confirm the AUSD approval in your deployer wallet.' : 'Confirm the pricing update in your deployer wallet.'}</p>
+    </TransactionSheet>
     {pending && <div>
       <p>{pending.hash ? <>Tracking <a href={`https://testnet.monadscan.com/tx/${pending.hash}`} target="_blank" rel="noreferrer"><code>{pending.hash}</code></a></> : 'Wallet confirmation is open or its submission result is unknown. Check wallet activity before doing anything else.'}</p>
       <button className="button button-dark" disabled={busy || !connected || !pending.hash} onClick={() => void check()}>Check confirmation</button>

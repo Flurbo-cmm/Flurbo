@@ -1,10 +1,10 @@
-/* Global refinements that sit on top of the V2 token, base and component layers. */
+/* Global refinements that sit on top of the token, base and component layers. */
 strong, b { font-weight: 600; }
-.section-light { background: var(--bg); color: var(--ink); }
 .logo { display: block; }
 .route-pending { display: grid; gap: var(--s-3); align-content: start; min-height: 50vh; }
 .not-found { display: grid; gap: var(--s-4); justify-items: start; padding-top: var(--s-16); padding-bottom: var(--s-24); }
-.not-found h1 { font-size: clamp(34px, 4.4vw, 48px); }
+.not-found-mark { width: 48px; height: auto; color: var(--ink); }
+.not-found h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(36px, 4.4vw, 56px); letter-spacing: 0; font-kerning: none; }
 /* Grid tracks must never grow past their container because of a wide table or long word. */
 .stack, .stack-lg, .detail-panel, .detail-primary, .detail-sidebar, .consumer-ticket, .ticket-controls, .ticket-review,
 .combination-body, .combination-builder, .panel, .access-card, .application-form, .funding-card, .markets-page, .page-header-copy { grid-template-columns: minmax(0, 1fr); }

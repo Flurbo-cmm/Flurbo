@@ -1,4 +1,7 @@
-/* Flurbo V2 design tokens. Light only by design: forest, ivory and lime are the brand. */
+/* Ledger tokens. Light only by design: forest ink, ivory paper and one lime highlighter are the brand. */
+@font-face { font-family: "Space Grotesk Fallback"; src: local("Arial"); size-adjust: 104%; ascent-override: 94%; descent-override: 28%; line-gap-override: 0%; }
+@font-face { font-family: "Plex Mono Fallback"; src: local("Courier New"); size-adjust: 100%; ascent-override: 102%; descent-override: 27%; line-gap-override: 0%; }
+
 :root {
   color-scheme: light;
 
@@ -21,12 +24,16 @@
   --rule-strong: rgba(20, 39, 29, 0.24);
   --control-border: #7f8981;
   --rule-inverse: rgba(245, 244, 236, 0.18);
+  --hairline: 1px solid var(--rule);
+  --hairline-strong: 1px solid var(--rule-strong);
 
-  /* Accent and semantics */
+  /* Accent and semantics. Up and down color price changes only, always with a sign and an arrow. */
   --lime: #d9f76d;
   --lime-soft: #eef8c9;
   --danger: #9a3324;
   --danger-soft: #f6e3de;
+  --up: #2f6b3c;
+  --down: #9a3324;
 
   /* Legacy names kept so operator pages keep rendering */
   --ivory: var(--bg);
@@ -38,19 +45,24 @@
   --line-light: var(--rule-inverse);
 
   /* Type */
-  --sans: "Space Grotesk", "Segoe UI", Arial, sans-serif;
-  --serif: "Cormorant Garamond", Georgia, serif;
-  --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-  --text-display: clamp(40px, 5.2vw, 56px);
-  --text-h1: clamp(28px, 3.2vw, 36px);
-  --text-h2: 24px;
-  --text-h3: 18px;
-  --text-lead: 18px;
+  --font-ui: "Space Grotesk", "Space Grotesk Fallback", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", "Plex Mono Fallback", ui-monospace, monospace;
+  /* Every rule that sets the display face also sets font-kerning: none. Its kerning table made each page layout several times slower, and the pixel grid does not need it. */
+  --font-display: "Geist Pixel", "Plex Mono Fallback", ui-monospace, monospace;
+  --sans: var(--font-ui);
+  --mono: var(--font-num);
+  --text-display: clamp(40px, 4.3vw, 62px);
+  --text-h1: clamp(24px, 2.6vw, 32px);
+  --text-title: clamp(32px, 3.4vw, 44px);
+  --text-h2: 18px;
+  --text-h3: 16px;
+  --text-lead: 17px;
   --text-body: 15px;
   --text-small: 13px;
   --text-label: 13px;
-  --text-overline: 12px;
-  --text-figure: 28px;
+  --text-overline: 11px;
+  --text-figure: 15px;
+  --text-figure-lg: 28px;
 
   /* Space (4px base) */
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
@@ -58,17 +70,27 @@
 
   /* Layout */
   --container: 1200px;
+  --wide: 1360px;
   --gutter: 16px;
   --w-prose: 68ch;
   --w-task: 720px;
   --w-form: 440px;
   --header-h: 56px;
+  --subnav-h: 44px;
+  --tile-h: 124px;
+  --tile-h-compact: 68px;
+  --tile-min-w: 272px;
+  --board-gap: 12px;
 
-  /* Shape */
-  --r-chip: 4px;
-  --r-control: 8px;
-  --r-panel: 12px;
+  /* Shape: tags 2, controls and tiles 4, panels and sheets 8. No pills. */
+  --r-tag: 2px;
+  --r-chip: 2px;
+  --r-control: 4px;
+  --r-tile: 4px;
+  --r-panel: 8px;
+  --r-sheet: 8px;
   --shadow-pop: 0 8px 24px rgba(20, 39, 29, 0.12), 0 1px 2px rgba(20, 39, 29, 0.08);
+  --shadow-sheet: 0 24px 48px rgba(20, 39, 29, 0.18), 0 2px 6px rgba(20, 39, 29, 0.10);
 
   /* Controls */
   --control-sm: 32px;
@@ -83,11 +105,15 @@
   --t-fast: 140ms;
   --t-base: 200ms;
   --t-enter: 240ms;
+  --t-flash: 600ms;
 
   /* Layers */
   --z-header: 30;
+  --z-subnav: 31;
   --z-popover: 40;
+  --z-dock: 45;
   --z-toast: 50;
+  --z-sheet: 55;
   --z-loader: 60;
   --z-skip: 70;
 }

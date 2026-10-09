@@ -10,8 +10,6 @@ async function asset(route:any,path:string){
   const relative=path.startsWith('/assets/')?path.slice(1):'index.html';
   return route.fulfill({body:await readFile(new URL('../dist/'+relative,import.meta.url)),contentType:relative.endsWith('.js')?'text/javascript':relative.endsWith('.css')?'text/css':relative.endsWith('.woff2')?'font/woff2':'text/html'});
 }
-// Waits a bounded time for the rendered result of a keyboard action.
-const expanded=(select:any,value:'true'|'false')=>select.and(select.page().locator(`[aria-expanded="${value}"]`)).waitFor({timeout:5000});
 async function thesisPage(browser:any,options:any={}){
   const f=pilotFixture(Math.floor(Date.now()/1000),4),context=await browser.newContext({viewport:{width:1440,height:1000},...options}),page=await context.newPage(),errors:string[]=[];
   // Practice collections are addressed by pool; this mode keeps the real-event wording.
@@ -31,29 +29,23 @@ async function thesisPage(browser:any,options:any={}){
   return {page,context,errors};
 }
 
-test('select and segmented controls work from the keyboard and fall back to native controls on touch',{skip},async()=>{
+test('choice lists and segmented controls work from the keyboard and stay native controls on touch',{skip},async()=>{
   const {chromium}=await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href),browser=await chromium.launch({headless:true,executablePath:process.env.FLURBO_TEST_BROWSER});
   try{
     const {page,errors}=await thesisPage(browser);
-    const select=page.getByRole('combobox',{name:'Question B',exact:true});
-    await select.waitFor();
+    const choices=page.getByRole('group',{name:'Question B',exact:true});
+    await choices.waitFor();
     await page.locator('.contour-loader').waitFor({state:'detached'});
     assert.equal(await page.locator('.app-root').evaluate((e:HTMLElement)=>e.inert),false,'the page is interactive');
-    const before=await select.innerText();
-    await select.focus();
-    assert.equal(await select.evaluate((e:Element)=>e===document.activeElement),true,'the combobox has focus before any key is sent');
+    const chosen=()=>choices.locator('label:has(input:checked)').innerText();
+    const before=await chosen();
+    const checked=choices.getByRole('radio',{checked:true});
+    await checked.focus();
+    assert.equal(await checked.evaluate((e:Element)=>e===document.activeElement),true,'the chosen question has focus before any key is sent');
     await page.keyboard.press('ArrowDown');
-    await expanded(select,'true');
-    const listbox=page.getByRole('listbox');await listbox.waitFor();
-    assert.ok(await select.getAttribute('aria-activedescendant'),'the active option is announced while focus stays on the button');
-    await page.keyboard.press('Escape');
-    await expanded(select,'false');
-    assert.equal(await select.innerText(),before,'Escape closes without changing the choice');
-    await page.keyboard.press('ArrowDown');await expanded(select,'true');
-    await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
-    await expanded(select,'false');
-    assert.notEqual(await select.innerText(),before,'arrows and Enter choose another question');
-    assert.equal(await page.evaluate(()=>document.activeElement?.getAttribute('role')),'combobox','focus returns to the select');
+    await page.waitForFunction(()=>(document.activeElement as HTMLInputElement|null)?.checked===true);
+    assert.notEqual(await chosen(),before,'arrow keys choose another question');
+    assert.equal(await page.evaluate(()=>(document.activeElement as HTMLInputElement|null)?.type),'radio','focus stays on the choices');
 
     const group=page.getByRole('radiogroup',{name:"A's selected answer"});
     const yes=group.getByRole('radio',{name:'Yes',exact:true}),no=group.getByRole('radio',{name:'No',exact:true});
@@ -71,8 +63,8 @@ test('select and segmented controls work from the keyboard and fall back to nati
     const touch=await thesisPage(browser,{viewport:{width:390,height:844},isMobile:true,hasTouch:true});
     const coarse=await touch.page.evaluate(()=>matchMedia('(pointer: coarse)').matches);
     assert.equal(coarse,true,'the touch fixture reports a coarse pointer');
-    const native=touch.page.getByLabel('Question B',{exact:true});await native.waitFor();
-    assert.equal(await native.evaluate((e:Element)=>e.tagName),'SELECT','touch devices get the native select');
+    const native=touch.page.getByRole('group',{name:'Question B',exact:true});await native.waitFor();
+    assert.ok(await native.getByRole('radio').count()>1,'touch devices get native radio choices, not a dropdown');
     assert.equal(await touch.page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     assert.deepEqual(touch.errors,[]);
   }finally{await browser.close();}

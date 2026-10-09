@@ -2,6 +2,9 @@
 .access-page { display: grid; gap: var(--s-6); align-content: start; }
 .access-page .page-header { margin-bottom: var(--s-2); }
 .access-card { display: grid; gap: var(--s-4); align-content: start; }
+/* One page of sections: hairlines separate account, wallets and notices instead of boxes. */
+.access-page > .panel.access-card { padding: 0 0 var(--s-6); border: 0; border-bottom: 1px solid var(--rule); border-radius: 0; background: none; }
+.access-page #notices { scroll-margin-top: calc(var(--header-h) + var(--s-4)); }
 .access-card > .status { justify-self: start; padding-left: 0; }
 .access-card h2 { font-size: 22px; }
 .access-card p { color: var(--ink-2); }
@@ -9,7 +12,10 @@
 .access-progress { flex: 1 0 100%; max-width: 240px; }
 .access-note { color: var(--ink-3) !important; font-size: 14px; }
 .access-note a { text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
-.access-identity { display: grid; gap: var(--s-2); padding: var(--s-4); border-radius: var(--r-control); background: var(--surface-sunken); }
+.access-identity { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 4px var(--s-3); padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.access-identity .field-label { color: var(--ink-2); font-size: 13px; }
+.access-identity code { font-size: 13px; }
+@media (max-width: 639px) { .access-identity { grid-template-columns: minmax(0, 1fr); } }
 .access-identity code { overflow-wrap: anywhere; }
 .access-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-4); padding-top: var(--s-2); }
 

@@ -9,14 +9,13 @@ export default function SiteFooter({ compact = false }: { compact?: boolean }) {
       <div className="site-footer-inner">
         <div className="footer-brand">
           <Link href="/" aria-label="Flurbo home" className="brand-link"><BrandLogo title="Flurbo" /></Link>
-          {!compact && <p>One pool. More possibilities.</p>}
         </div>
         <nav className="footer-links" aria-label="Footer">
           <Link href="/docs">Docs</Link>
           <a href={LITEPAPER.href} type="application/pdf">{LITEPAPER.label} <span className="muted">({LITEPAPER.detail})</span></a>
           <a href="/#how-it-works">How it works</a>
         </nav>
-        <p className="footer-note">Monad testnet. Test assets only.</p>
+        <p className="footer-note">Monad testnet preview. Test assets only.</p>
       </div>
     </footer>
   );

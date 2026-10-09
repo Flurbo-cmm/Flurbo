@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'wouter';
+import { hybridPendingKey, readHybridPending, type HybridPending } from '../pending-readers';
 import { ArrowLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { decodeFunctionData, formatEther, formatUnits, parseAbi, parseUnits } from 'viem';
 import { appFetch } from '../platform-fetch';
@@ -11,6 +12,13 @@ import SegmentedControl from '../components/ui/SegmentedControl';
 import QuantityStepper from '../components/ui/QuantityStepper';
 import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
 import Stepper, { type Step } from '../components/ui/Stepper';
+import TransactionSheet from '../components/ui/TransactionSheet';
+import MarketShell, { type MarketTab } from '../components/market/MarketShell';
+import LinkedQuestions from '../components/market/LinkedQuestions';
+import ContractList from '../components/market/ContractList';
+import ComboPicker from '../components/market/ComboPicker';
+import { sheetPhase } from '../sheet-state';
+import { boardPrice } from '../board-cache';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { hybridNamespace } from '../portfolio-groups';
@@ -57,23 +65,14 @@ type Quote = { action: 'quote'; buyAtoms: string; maxCostAtoms: string;
   sellAtoms: string | null; minProceedsAtoms: string | null;
   cashAtoms: string; allowanceAtoms: string; holdingsAtoms: string };
 type PositionRead = { action: 'position'; holdingsAtoms: string; payoutAtoms: string | null };
-type Pending = { hash: string | null; owner: string; id: string; action: string; chainId: number;
-  approvalSelection?: string; claim?: { scope: number; mask: string } };
+type Pending = HybridPending;
 
 const date = (seconds: number) => new Date(seconds * 1000).toLocaleString(undefined,
   { dateStyle: 'medium', timeStyle: 'short' });
 const cash = (atoms: string) => formatUnits(BigInt(atoms), 6);
 const labels = ['Waiting', 'No', 'Yes', 'Void'];
-const pendingKey = 'flurbo.hybrid.pending.v1';
-const readPending = (): Pending | null => {
-  try {
-    const item = JSON.parse(sessionStorage.getItem(pendingKey) || 'null');
-    return (item?.hash === null || /^0x[0-9a-f]{64}$/i.test(item?.hash))
-      && /^0x[0-9a-f]{40}$/i.test(item?.owner)
-      && typeof item.id === 'string' && [10143,11155111].includes(item.chainId)
-      && (item.claim === undefined || (Number.isInteger(item.claim?.scope) && /^[1-9]\d{0,2}$/.test(item.claim?.mask))) ? item : null;
-  } catch { return null; }
-};
+const pendingKey = hybridPendingKey;
+const readPending = readHybridPending;
 const friendly = (error: unknown) => {
   const value = error as { code?: number; message?: string };
   return value?.code === 4001 ? 'Transaction cancelled in MetaMask.'
@@ -435,189 +434,205 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const canSell = !!currentQuote?.sellAtoms && BigInt(currentQuote.holdingsAtoms) >= quantityAtoms;
   const quotedAtoms = mode === 'buy' ? currentQuote?.buyAtoms : currentQuote?.sellAtoms;
   const perShare = quotedAtoms && quantityAtoms > 0n ? formatUnits(BigInt(quotedAtoms) * 1_000_000n / quantityAtoms, 6) : null;
-  return <main id="main" tabIndex={-1} className="page markets-page market-detail oracle-page">
-    <nav className="detail-breadcrumb" aria-label="Breadcrumb"><Link href="/markets" className="link-back"><ArrowLeft size={18}/>All markets</Link><Link href="/fund" className="text-link">Get test funds</Link></nav>
-    {!market ? <div className="state-block"><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div> : <>
-      <header className="detail-heading"><span className="chip">Real event</span><h1>{market.question}</h1>
-        <dl className="detail-meta"><div><dt>Status</dt><dd><StatusBadge kind={status}>{statusText}</StatusBadge></dd></div>
-          <div><dt>Trading closes</dt><dd>{date(market.closesAt)}</dd></div>
-          <div><dt>Results expected from</dt><dd>{date(market.observationEndsAt)}</dd></div>
-          {summary && !closed && <div><dt>Buy one share</dt><dd>Yes {summary.prices.yes ? Number(cash(summary.prices.yes)).toFixed(3) : 'unavailable'} · No {summary.prices.no ? Number(cash(summary.prices.no)).toFixed(3) : 'unavailable'}<small>test AUSD, not probabilities</small></dd></div>}</dl>
-      </header>
-      <div className="detail-columns"><div className="detail-primary">
-        {!snapshot && !error && <p role="status">Reading this market...</p>}
-        <PriceHistory hybridId={id} event={0} pool={market.pool} refresh={refresh}/>
-        {others.length > 0 && <HybridConnections market={market} markets={markets}/>}
-        {snapshot && <><section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={status}>{statusText}</StatusBadge></div>
-          <p>{reality ? 'Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers and Kleros hears disputes.'
-            : 'Your shares stay in your wallet while the event runs. The source rule fixes the answer. Kleros hears a challenged answer.'}</p><Stepper steps={steps} label="Settlement steps"/>
-          {reality?.court && <p className="market-caption">Kleros case #{reality.court.disputeId}: {reality.court.periodLabel}.
-            {reality.court.periodEndsAt ? ` Ends ${date(reality.court.periodEndsAt)}.` : ''}
-            {reality.court.period === 2 && reality.court.votesCast < reality.court.votesNeeded ? ' Waiting for the juror vote.' : ''}</p>}
-          {reality && <p className="market-caption">
-            <a className="text-link" href={reality.links.reality} target="_blank" rel="noreferrer">Reality.eth question <ArrowUpRight size={14}/></a>
-            {reality.links.courtContract && <> · <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court contract on Etherscan <ArrowUpRight size={14}/></a></>}
-            {reality.links.questionTx && <> · <a className="text-link" href={reality.links.questionTx} target="_blank" rel="noreferrer">Question transaction <ArrowUpRight size={14}/></a></>}</p>}
-          {reality && hasRealityAnswer && <p>Current Reality.eth answer: <strong>{reality.answerLabel}</strong>. {canArbitrate ? `Challenge before ${date(reality.finalizesAt)}.` : ''}</p>}
-          {reality?.pendingArbitration && <p>The answer is under Kleros review. Payout waits for the final Reality.eth result.</p>}
-          {snapshot.phase === 1 && <p>Proposed answer: <strong>{labels[snapshot.proposal]}</strong>. Challenge before {date(snapshot.challengeUntil)}.</p>}
-          {snapshot.phase === 2 && <p>{/^0x0{64}$/i.test(snapshot.sourceCaseId)
-            ? 'Kleros case requested. If a case cannot be linked before the published deadline, this question becomes Void.'
-            : 'Kleros case linked. The result waits for its final ruling.'}</p>}
-          {snapshot.phase === 3 && <p>Final answer: <strong>{labels[snapshot.result]}</strong>.</p>}
-          <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={15}/>Refresh status</button>
-        </section>
-        <section className="detail-panel"><h2>What decides the answer?</h2><p>{reality ? 'The published Reality.eth question receives bonded answers. Kleros can rule on a challenged answer.'
-          : 'The published source and exact rule for this question determine the provisional answer.'}</p>
-          {reality && snapshot.ruleURI && <p><a className="text-link" href={snapshot.ruleURI} target="_blank" rel="noreferrer">Published rule <ArrowUpRight size={14}/></a></p>}
-          {snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
-          <dl className="facts"><dt>Reader</dt><dd>{snapshot.source?.adapter || 'Reality.eth'}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
-            {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : 'Not recorded yet'}</dd></>
-            : <><dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></>}</dl>
-          {reality && <p className="market-caption">Question ID: {reality.questionId}. A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted.</p>}
-        </section>{others.length > 0 && <section className="detail-panel detail-thesis"><h2>Build your thesis</h2><p>Put your estimates beside the pool's joint outcomes and current combined-share quotes.</p><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Explore your view</Link></section>}</>}
-      </div><aside className="detail-sidebar">
-        <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each winning share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
-          {error && <p className="state-inline error" role="alert">{error}</p>}
-          {notice && <p className="state-inline" role="status">{notice}</p>}
-          {summary && !closed && <div className="detail-holdings detail-quotes"><div><span>Yes</span><strong>{summary.prices.yes ? `${cash(summary.prices.yes)} AUSD` : 'Unavailable'}</strong></div><div><span>No</span><strong>{summary.prices.no ? `${cash(summary.prices.no)} AUSD` : 'Unavailable'}</strong></div></div>}
-          <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot?.user ? `${cash(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs each trade and bond you review'}</small></div>
-            <button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
-          {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }}/>
-            <SegmentedControl label="Your answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => { setSide(value); setPlan(null); }}/>
-            <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
-            {others.length > 0 && <details><summary>Combine with another prediction</summary><label>Second question<select value={extra1} onChange={e => { setExtra1(e.target.value); setExtra2(''); }}><option value="">None</option>{others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>
-              {extra1 && <SegmentedControl label="Second answer" value={extra1Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra1Side(value === 'no' ? 'no' : 'yes')}/>}
-              {extra1 && <label>Third question<select value={extra2} onChange={e => setExtra2(e.target.value)}><option value="">None</option>{others.filter(item => item.id !== extra1).map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>}
-              {extra2 && <SegmentedControl label="Third answer" value={extra2Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra2Side(value === 'no' ? 'no' : 'yes')}/>}</details>}
-            {extra1 && <label>How the answers combine<select value={combinationRule} onChange={event => setCombinationRule(event.target.value as 'AND' | 'OR' | 'EXACTLY_ONE')}><option value="AND">Both answers (AND)</option><option value="OR">At least one answer (OR)</option><option value="EXACTLY_ONE">Exactly one answer</option></select></label>}
-            {owner && <div className="ticket-quote-state" aria-live="polite">
-              {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
-              <button type="button" className="btn btn-quiet ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
-            </div>}
-            {currentQuote && !plan && <div className="ticket-review" aria-label="Current prediction quote">
-              <h3>{mode === 'buy' ? 'Review your purchase' : 'Review your sale'}</h3>
-              <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'} · {extra1 ? `${combinationRule.replace('_', ' ')} · ` : ''}{claim.map(item => `${markets.find(question => question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question'}: ${item.side === 'yes' ? 'Yes' : 'No'}`).join(' · ')}</p>
-              {quotedAtoms && <dl className="review-figures">
-                <div className="review-cost"><dt>{mode === 'buy' ? 'Quoted cost' : 'Quoted proceeds'}</dt><dd>{cash(quotedAtoms)} test AUSD</dd></div>
-                <div><dt>Average per share</dt><dd>{perShare} test AUSD</dd></div>
-                <div><dt>{mode === 'buy' ? 'Gross payout if correct' : 'Shares leaving your wallet'}</dt><dd>{mode === 'buy' ? `${shares} test AUSD` : `${shares} shares`}</dd></div>
-                <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
-                <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
-              </dl>}
-              <p>0.5% price tolerance. A fresh quote is checked when you review the transaction. A winning share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
-              {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
-              {mode === 'sell' && !canSell && <p role="status">This wallet does not hold enough shares of the selected prediction to sell.</p>}
-              <button className="btn btn-primary" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
-                { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button>
-            </div>}</>}
-          {plan && ['approve', 'buy', 'sell', 'redeem'].includes(plan.action) && <section className="ticket-review" aria-label="Transaction review">
-            <h3>{plan.action === 'approve' ? 'Step 1 of 2: allow this payment' : plan.action === 'buy' ? 'Review your purchase' : plan.action === 'sell' ? 'Review your sale' : 'Review your payout'}</h3>
-            <p className="review-claim">{plan.reason}</p>
-            <dl className="review-figures">
-              {plan.amountAtoms && <div className="review-cost"><dt>{plan.action === 'approve' ? 'Allow up to' : plan.action === 'buy' ? 'Spend up to' : plan.action === 'sell' ? 'Receive at least' : 'Expected payout'}</dt>
-                <dd>{cash(plan.action === 'buy' ? plan.maxCostAtoms || plan.amountAtoms : plan.action === 'sell' ? plan.minimumReceivedAtoms || plan.amountAtoms : plan.amountAtoms)} test AUSD</dd></div>}
-              {plan.action === 'buy' && <><div><dt>Payout if correct</dt><dd>{shares} test AUSD</dd></div><div><dt>Possible loss</dt><dd>Up to {cash(plan.maxCostAtoms || plan.amountAtoms || '0')} test AUSD plus network fees</dd></div></>}
-            </dl>
-            <p>{plan.action === 'approve' ? 'Approval alone does not buy shares. After it confirms, the purchase review appears here.' : 'Check this amount before confirming in MetaMask.'}</p>
-            {plan.expiresAt && <p className="market-caption">Review expires {date(plan.expiresAt)}.</p>}
-            <details><summary>Transaction details</summary><p>Network: {plan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</p><p>Destination: <span className="mono">{plan.transaction.to}</span></p></details>
-            <button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{plan.action === 'approve' ? 'Allow payment' : plan.action === 'buy' ? `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}` : plan.action === 'sell' ? 'Sell shares' : 'Collect payout'}</button>
-            <button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel review</button>
-          </section>}
-          {pending && ['approve', 'buy', 'sell', 'redeem'].includes(pending.action) && <section className="ticket-review ticket-pending" aria-label="Pending transaction">
-            <h3>Waiting for confirmation</h3>
-            {pending.id !== id && <p>A transaction from another market needs confirmation before another trade.</p>}
-            <p>{pending.hash ? 'Your transaction was sent. Confirmation is checked automatically, including after a reload.'
-              : 'MetaMask did not return a transaction hash. Check its activity before submitting anything else.'}</p>
-            {pending.hash ? <p className="mono">{pending.hash}</p> : <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
-            {!pending.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
-              const saved = { ...pending, hash: pendingHash };
-              sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);
-            }}>Track transaction</button>}
-            {pending.hash && <button className="btn btn-secondary" disabled={busy || !provider} onClick={() => {
-              pollCount.current = 0; setPollPaused(false); run(checkPending);
-            }}>{pollPaused ? 'Check confirmation' : 'Check now'}</button>}
-            {!provider && <button className="btn btn-secondary" disabled={busy} onClick={() => run(() => connect())}>Reconnect MetaMask</button>}
-            {pollPaused && <p className="field-help">Automatic checks paused. You can check again without resubmitting the trade.</p>}
-          </section>}
-          {completed && <section className="ticket-review ticket-done"><h3>{completed === 'buy' ? 'Purchase complete' : completed === 'sell' ? 'Sale complete' : 'Payout collected'}</h3>
-            <p>Your transaction is confirmed. The position is refreshing.</p><Link href="/portfolio" className="btn btn-primary">View portfolio</Link>
-            <button className="btn btn-secondary" onClick={() => setCompleted('')}>Make another trade</button></section>}
-          {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
-            {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
-              && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
-                { side: answer, quantity: answer === 'yes' ? snapshot.user?.yesShares : snapshot.user?.noShares }))}>Collect {answer} payout</button>)}
-            {others.length > 0 && <details open={combinationLink}><summary>Collect a combined prediction</summary>
-              <p className="market-caption">Select the same questions and answers you bought. Holdings and payout are read from the pool.</p>
-              <SegmentedControl label="This answer" value={side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setSide(value === 'no' ? 'no' : 'yes')}/>
-              <label>Second question<select value={extra1} onChange={e => { setExtra1(e.target.value); setExtra2(''); }}><option value="">Choose a question</option>{others.map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>
-              {extra1 && <SegmentedControl label="Second answer" value={extra1Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra1Side(value === 'no' ? 'no' : 'yes')}/>}
-              {extra1 && <label>Third question<select value={extra2} onChange={e => setExtra2(e.target.value)}><option value="">None</option>{others.filter(item => item.id !== extra1).map(item => <option key={item.id} value={item.id}>{item.question}</option>)}</select></label>}
-              {extra2 && <SegmentedControl label="Third answer" value={extra2Side} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} onChange={value => setExtra2Side(value === 'no' ? 'no' : 'yes')}/>}
-              <label>How the answers combine<select value={combinationRule} onChange={event => setCombinationRule(event.target.value as 'AND' | 'OR' | 'EXACTLY_ONE')}><option value="AND">Both answers (AND)</option><option value="OR">At least one answer (OR)</option><option value="EXACTLY_ONE">Exactly one answer</option></select></label>
-              {extra1 && <p>{combinedPosition ? `${cash(combinedPosition.holdingsAtoms)} shares held · ${cash(combinedPosition.payoutAtoms || '0')} test AUSD payable` : 'Reading this selection...'}</p>}
-              {extra1 && combinedPosition && BigInt(combinedPosition.holdingsAtoms) > 0n
-                && BigInt(combinedPosition.payoutAtoms || '0') > 0n
-                && <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
-                  { side, rule: combinationRule, claim, quantity: combinedPosition.holdingsAtoms }))}>Collect combined payout</button>}
-            </details>}</>}
-          <details className="disclosure"><summary>How this market works</summary><p>Trades use test AUSD on Monad. Settlement follows the published source route. Challenged results go to Kleros.</p></details></div></section>
-        {snapshot?.route === 'mechanical' && snapshot.phase === 1 && snapshot.marketNow < snapshot.challengeUntil && <section className="detail-panel"><h2>Challenge this answer</h2><p>Submit a different answer and a {cash(snapshot.bondAtoms)} test AUSD bond. A challenged answer goes to Kleros.</p>
-          <label>Alternative answer<select value={counter} onChange={e => setCounter(Number(e.target.value))}><option value={0}>Choose answer</option>{[1, 2, 3].filter(value => value !== snapshot.proposal).map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></label>
-          <label>Evidence title<input value={challenge.name} onChange={e => setChallenge(old => ({ ...old, name: e.target.value }))}/></label>
-          <label>What is wrong with the proposed answer?<textarea value={challenge.description} onChange={e => setChallenge(old => ({ ...old, description: e.target.value }))}/></label>
-          <label>Public source URL<input type="url" value={challenge.sourceURL} onChange={e => setChallenge(old => ({ ...old, sourceURL: e.target.value }))}/></label>
-          <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(saveChallengeEvidence)}>Save evidence</button>
-          {challengeEvidence && <><a href={challengeEvidence.uri} target="_blank" rel="noreferrer">Read saved evidence</a><button className="btn btn-primary" disabled={!owner || !counter || busy || !!pending} onClick={() => run(() => prepare('challenge',
-            { counter, evidenceHash: challengeEvidence.hash, evidenceURI: challengeEvidence.uri }))}>Review challenge</button></>}
-        </section>}
-        {canAnswer && <section className="detail-panel"><h2>{hasRealityAnswer ? 'Post another answer' : 'Submit an answer'}</h2>
-          <p>Reality.eth accepts a bonded answer on Sepolia. A different answer must at least double the current bond. If it contradicts Flurbo's published source reading, Flurbo requests Kleros arbitration automatically; you can also request it yourself. Needs Sepolia ETH for the bond and gas.</p>
-          <label>Answer<select value={realityAnswer} onChange={e => setRealityAnswer(e.target.value as 'yes'|'no'|'void')}><option value="yes">Yes</option><option value="no">No</option><option value="void">Void</option></select></label>
-          <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)}/></label>
-          <p className="market-caption">Minimum now: {formatEther(BigInt(reality!.nextBondWei))} Sepolia ETH. If another answer arrives first, your transaction may revert.</p>
-          <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('answer', { answer: realityAnswer, bondEth }))}>Review answer and bond</button>
-        </section>}
-        {canArbitrate && <section className="detail-panel"><h2>Challenge this answer</h2><p>Request Kleros arbitration within the Reality.eth answer window. The fee is {formatEther(BigInt(reality!.disputeFeeWei))} Sepolia ETH. Needs Sepolia ETH for the fee and gas.</p>
-          <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('arbitrate'))}>Review Kleros challenge fee</button>
-        </section>}
-        {reality?.pendingArbitration && reality.disputeStatus === arbitration.ruled && <section className="detail-panel"><h2>Complete the Kleros ruling</h2><p>Kleros has ruled. Report its result to Reality.eth from your wallet so the answer can finalize.</p>
-          <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></section>}
-        {reality?.pendingArbitration && <section className="detail-panel"><h2>Submit evidence to Kleros</h2><p>Evidence is public and can be read by jurors. {reality.links.courtContract ? <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court case #{reality.disputeId}</a> : <>Court case #{reality.disputeId}</>}.</p>
-          <label>Evidence title<input value={challenge.name} onChange={e => setChallenge(old => ({ ...old, name: e.target.value }))}/></label>
-          <label>What does this show?<textarea value={challenge.description} onChange={e => setChallenge(old => ({ ...old, description: e.target.value }))}/></label>
-          <label>Public source URL<input type="url" value={challenge.sourceURL} onChange={e => setChallenge(old => ({ ...old, sourceURL: e.target.value }))}/></label>
-          <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(saveChallengeEvidence)}>Save evidence</button>
-          {challengeEvidence && <><a href={challengeEvidence.uri} target="_blank" rel="noreferrer">Read saved evidence</a><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('evidence', { hash: challengeEvidence.hash }))}>Review evidence submission</button></>}
-        </section>}
-        {reality?.pendingArbitration && reality.disputeStatus === arbitration.disputed && reality.court?.appeal && <section className="detail-panel"><h2>Kleros appeal</h2><p>Contributions are paid in Sepolia ETH. Current ruling: <strong>{['Refuse to rule (Void)', 'No', 'Yes'][reality.court.currentRuling ?? 0]}</strong>. Full funding: {formatEther(BigInt(reality.court.appeal.winnerTotalWei))} ETH for the current ruling, {formatEther(BigInt(reality.court.appeal.loserTotalWei))} ETH for another ruling (until {date(reality.court.appeal.loserEnd)}).</p>
-          <label>Ruling<select value={appealRuling} onChange={e => setAppealRuling(Number(e.target.value))}><option value={0}>Refuse to rule</option><option value={1}>No</option><option value={2}>Yes</option></select></label>
-          <label>Contribution in Sepolia ETH<input inputMode="decimal" value={appealEth} onChange={e => setAppealEth(e.target.value)}/></label>
-          <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('appeal', { ruling: appealRuling, amountEth: appealEth }))}>Review appeal contribution</button>
-        </section>}
-        {reality && reality.disputeStatus >= arbitration.ruled && <section className="detail-panel"><h2>Appeal rewards</h2><p>If you funded an appeal, claim eligible rewards after the court permits withdrawal.</p>
-          <label>Ruling<select value={appealRuling} onChange={e => setAppealRuling(Number(e.target.value))}><option value={0}>Refuse to rule</option><option value={1}>No</option><option value={2}>Yes</option></select></label>
-          <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling: appealRuling }))}>Check appeal rewards</button>
-        </section>}
-        {reality?.finalized && owner && !/^0x0{64}$/i.test(reality.historyHash) && <section className="detail-panel"><h2>Reality.eth answer bonds</h2><p>If this wallet posted an answer, process the answer history to credit eligible bond winnings.</p>
-          <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('claimWinnings'))}>Review bond claim</button></section>}
-        {reality && BigInt(reality.creditedEthWei) > 0n && <section className="detail-panel"><h2>Reality.eth bond credit</h2><p>{formatEther(BigInt(reality.creditedEthWei))} Sepolia ETH is ready to withdraw.</p>
-          <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('withdrawReality'))}>Review ETH withdrawal</button></section>}
-        {snapshot?.user && BigInt(snapshot.user.bondCreditsAtoms) > 0n && <section className="detail-panel"><h2>Bond credit</h2><p>{cash(snapshot.user.bondCreditsAtoms)} test AUSD is ready to collect.</p><button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('withdrawBond'))}>Review withdrawal</button></section>}
-        {plan && !['approve', 'buy', 'sell', 'redeem'].includes(plan.action) && <section className="detail-panel"><h2>Review transaction</h2><p>{plan.reason}</p><dl className="facts"><dt>Network</dt><dd>{plan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd><dt>To</dt><dd>{plan.transaction.to}</dd></dl><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{plan.action === 'approveBond' ? 'Allow challenge bond' : 'Confirm in MetaMask'}</button><button className="btn btn-secondary" disabled={busy} onClick={() => setPlan(null)}>Cancel</button></section>}
-        {pending && !['approve', 'buy', 'sell', 'redeem'].includes(pending.action) && <section className="detail-panel"><h2>Transaction pending</h2>
-          {pending.id !== id && <p>A transaction from another market needs confirmation before the next one.</p>}
-          <p>{pending.hash || 'Check MetaMask activity for the transaction hash.'}</p>
-          {!pending.hash && <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
-          {!pending.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
-            const saved = { ...pending, hash: pendingHash };
-            sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);
-          }}>Track transaction</button>}
-          {pending.hash && <button className="btn btn-secondary" disabled={busy || !provider} onClick={() => run(checkPending)}>Check confirmation</button>}</section>}
-        <section className="detail-panel detail-position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight size={15}/></Link></div>
-          <p>Yes {cash(snapshot?.user?.yesShares || '0')} shares · No {cash(snapshot?.user?.noShares || '0')} shares.</p></section>
-      </aside></div>
-    </>}
+  if (!market) return <main id="main" tabIndex={-1} className="market-page">
+    <nav className="market-topbar" aria-label="Breadcrumb"><Link href="/markets" className="link-back"><ArrowLeft aria-hidden="true" strokeWidth={1.75}/>All markets</Link><Link href="/fund" className="text-link">Get test funds</Link></nav>
+    <div className="state-block"><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div>
   </main>;
+  const tradeActions = ['approve', 'buy', 'sell', 'redeem'];
+  const tradePlan = plan && tradeActions.includes(plan.action) ? plan : null, settlementPlan = plan && !tradeActions.includes(plan.action) ? plan : null;
+  const tradePending = pending && tradeActions.includes(pending.action) ? pending : null, settlementPending = pending && !tradeActions.includes(pending.action) ? pending : null;
+  const tradePhase = sheetPhase({ review: tradePlan, pending: tradePending, completed, walletRequest: busy && !!tradePlan });
+  const settlementPhase = sheetPhase({ review: settlementPlan, pending: settlementPending, completed: false, walletRequest: busy && !!settlementPlan });
+  const sheetOpen = tradePhase !== 'closed' || settlementPhase !== 'closed';
+  const errorAlert = error ? <p className="state-inline error" role="alert">{error}</p> : null;
+  const yesNo = [{ value: 'yes' as const, label: 'Yes' }, { value: 'no' as const, label: 'No' }];
+  const rulingOptions = [{ value: '0', label: 'Refuse to rule' }, { value: '1', label: 'No' }, { value: '2', label: 'Yes' }];
+  const ruleOptions = [{ value: 'AND' as const, label: 'Both (AND)' }, { value: 'OR' as const, label: 'At least one (OR)' }, { value: 'EXACTLY_ONE' as const, label: 'Exactly one' }];
+  const combo = { extra1, extra2, extra1Side, extra2Side };
+  const setCombo = (next: typeof combo) => { setExtra1(next.extra1); setExtra2(next.extra2); setExtra1Side(next.extra1Side); setExtra2Side(next.extra2Side); };
+  const challengeOpen = snapshot?.route === 'mechanical' && snapshot.phase === 1 && snapshot.marketNow < snapshot.challengeUntil;
+  const defaultTab: MarketTab = closed || !!snapshot?.resolved || (snapshot?.phase ?? 0) > 0 || canAnswer || canArbitrate || !!reality?.pendingArbitration ? 'timeline' : others.length > 0 ? 'linked' : 'proof';
+  const pendingBody = (item: Pending) => <>
+    {item.id !== id && <p>A transaction from another market needs confirmation before {tradeActions.includes(item.action) ? 'another trade' : 'the next one'}.</p>}
+    <p>{item.hash ? 'Your transaction was sent. Confirmation is checked automatically, including after a reload.' : 'MetaMask did not return a transaction hash. Check its activity before submitting anything else.'}</p>
+    {item.hash ? <p className="mono-break">{item.hash}</p> : <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
+    {pollPaused && <p className="field-help">Automatic checks paused. You can check again without resubmitting the trade.</p>}
+  </>;
+  const pendingActions = (item: Pending) => <>
+    {!item.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
+      const saved = { ...item, hash: pendingHash };
+      sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);
+    }}>Track transaction</button>}
+    {!provider && <button className="btn btn-secondary" disabled={busy} onClick={() => run(() => connect())}>Reconnect MetaMask</button>}
+    {item.hash && <button className="btn btn-secondary" disabled={busy || !provider} onClick={() => {
+      pollCount.current = 0; setPollPaused(false); run(checkPending);
+    }}>{pollPaused ? 'Check confirmation' : 'Check now'}</button>}
+  </>;
+  const timeline = snapshot ? <section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={status}>{statusText}</StatusBadge></div>
+    <p>{reality ? 'Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers and Kleros hears disputes.'
+      : 'Your shares stay in your wallet while the event runs. The source rule fixes the answer. Kleros hears a challenged answer.'}</p><Stepper steps={steps} label="Settlement steps"/>
+    {reality?.court && <p className="market-caption">Kleros case #{reality.court.disputeId}: {reality.court.periodLabel}.
+      {reality.court.periodEndsAt ? ` Ends ${date(reality.court.periodEndsAt)}.` : ''}
+      {reality.court.period === 2 && reality.court.votesCast < reality.court.votesNeeded ? ' Waiting for the juror vote.' : ''}</p>}
+    {reality && <p className="market-caption settlement-links">
+      <a className="text-link" href={reality.links.reality} target="_blank" rel="noreferrer">Reality.eth question <ArrowUpRight size={14}/></a>
+      {reality.links.courtContract && <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court contract on Etherscan <ArrowUpRight size={14}/></a>}
+      {reality.links.questionTx && <a className="text-link" href={reality.links.questionTx} target="_blank" rel="noreferrer">Question transaction <ArrowUpRight size={14}/></a>}</p>}
+    {reality && hasRealityAnswer && <p>Current Reality.eth answer: <strong>{reality.answerLabel}</strong>. {canArbitrate ? `Challenge before ${date(reality.finalizesAt)}.` : ''}</p>}
+    {reality?.pendingArbitration && <p>The answer is under Kleros review. Payout waits for the final Reality.eth result.</p>}
+    {snapshot.phase === 1 && <p>Proposed answer: <strong>{labels[snapshot.proposal]}</strong>. Challenge before {date(snapshot.challengeUntil)}.</p>}
+    {snapshot.phase === 2 && <p>{/^0x0{64}$/i.test(snapshot.sourceCaseId)
+      ? 'Kleros case requested. If a case cannot be linked before the published deadline, this question becomes Void.'
+      : 'Kleros case linked. The result waits for its final ruling.'}</p>}
+    {snapshot.phase === 3 && <p>Final answer: <strong>{labels[snapshot.result]}</strong>.</p>}
+    <p className="market-caption">Each payout needs every question in this shared pool to be final.</p>
+    <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={15}/>Refresh status</button>
+    {challengeOpen && <div className="oracle-settlement-action"><h3>Challenge this answer</h3><p>Submit a different answer and a {cash(snapshot.bondAtoms)} test AUSD bond. A challenged answer goes to Kleros.</p>
+      <SegmentedControl label="Alternative answer" value={String(counter)} options={[1, 2, 3].filter(value => value !== snapshot.proposal).map(value => ({ value: String(value), label: labels[value] }))} onChange={value => setCounter(Number(value))} block/>
+      <label>Evidence title<input value={challenge.name} onChange={e => setChallenge(old => ({ ...old, name: e.target.value }))}/></label>
+      <label>What is wrong with the proposed answer?<textarea value={challenge.description} onChange={e => setChallenge(old => ({ ...old, description: e.target.value }))}/></label>
+      <label>Public source URL<input type="url" value={challenge.sourceURL} onChange={e => setChallenge(old => ({ ...old, sourceURL: e.target.value }))}/></label>
+      <p className="market-caption">Saving evidence publishes it publicly. Include public information only. Saving evidence does not submit a challenge.</p>
+      <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(saveChallengeEvidence)}>Save evidence</button>
+      {challengeEvidence && <><a href={challengeEvidence.uri} target="_blank" rel="noreferrer">Read saved evidence</a><button className="btn btn-primary" disabled={!owner || !counter || busy || !!pending} onClick={() => run(() => prepare('challenge',
+        { counter, evidenceHash: challengeEvidence.hash, evidenceURI: challengeEvidence.uri }))}>Review challenge</button></>}
+    </div>}
+    {canAnswer && <div className="oracle-settlement-action"><h3>{hasRealityAnswer ? 'Post another answer' : 'Submit an answer'}</h3>
+      <p>Reality.eth accepts a bonded answer on Sepolia. A different answer must at least double the current bond. If it contradicts Flurbo's published source reading, Flurbo requests Kleros arbitration automatically; you can also request it yourself. Needs Sepolia ETH for the bond and gas.</p>
+      <SegmentedControl label="Answer" value={realityAnswer} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'void', label: 'Void' }]} onChange={value => setRealityAnswer(value as 'yes'|'no'|'void')} block/>
+      <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)}/></label>
+      <p className="market-caption">Minimum now: {formatEther(BigInt(reality!.nextBondWei))} Sepolia ETH. If another answer arrives first, your transaction may revert.</p>
+      <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('answer', { answer: realityAnswer, bondEth }))}>Review answer and bond</button>
+    </div>}
+    {canArbitrate && <div className="oracle-settlement-action"><h3>Challenge this answer</h3><p>Request Kleros arbitration within the Reality.eth answer window. The fee is {formatEther(BigInt(reality!.disputeFeeWei))} Sepolia ETH. Needs Sepolia ETH for the fee and gas.</p>
+      <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('arbitrate'))}>Review Kleros challenge fee</button>
+    </div>}
+    {reality?.pendingArbitration && reality.disputeStatus === arbitration.ruled && <div className="oracle-settlement-action"><h3>Complete the Kleros ruling</h3><p>Kleros has ruled. Report its result to Reality.eth from your wallet so the answer can finalize.</p>
+      <button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('finalizeArbitration'))}>Review ruling report</button></div>}
+    {reality?.pendingArbitration && <div className="oracle-settlement-action"><h3>Submit evidence to Kleros</h3><p>Evidence is public and can be read by jurors. Saving evidence does not submit it. {reality.links.courtContract ? <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court case #{reality.disputeId}</a> : <>Court case #{reality.disputeId}</>}.</p>
+      <label>Evidence title<input value={challenge.name} onChange={e => setChallenge(old => ({ ...old, name: e.target.value }))}/></label>
+      <label>What does this show?<textarea value={challenge.description} onChange={e => setChallenge(old => ({ ...old, description: e.target.value }))}/></label>
+      <label>Public source URL<input type="url" value={challenge.sourceURL} onChange={e => setChallenge(old => ({ ...old, sourceURL: e.target.value }))}/></label>
+      <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(saveChallengeEvidence)}>Save evidence</button>
+      {challengeEvidence && <><a href={challengeEvidence.uri} target="_blank" rel="noreferrer">Read saved evidence</a><button className="btn btn-primary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('evidence', { hash: challengeEvidence.hash }))}>Review evidence submission</button></>}
+    </div>}
+    {reality?.pendingArbitration && reality.disputeStatus === arbitration.disputed && reality.court?.appeal && <div className="oracle-settlement-action"><h3>Kleros appeal</h3><p>Contributions are paid in Sepolia ETH. Current ruling: <strong>{['Refuse to rule (Void)', 'No', 'Yes'][reality.court.currentRuling ?? 0]}</strong>. Full funding: {formatEther(BigInt(reality.court.appeal.winnerTotalWei))} ETH for the current ruling, {formatEther(BigInt(reality.court.appeal.loserTotalWei))} ETH for another ruling (until {date(reality.court.appeal.loserEnd)}).</p>
+      <SegmentedControl label="Ruling" value={String(appealRuling)} options={rulingOptions} onChange={value => setAppealRuling(Number(value))} block/>
+      <label>Contribution in Sepolia ETH<input inputMode="decimal" value={appealEth} onChange={e => setAppealEth(e.target.value)}/></label>
+      <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('appeal', { ruling: appealRuling, amountEth: appealEth }))}>Review appeal contribution</button>
+    </div>}
+    {reality && reality.disputeStatus >= arbitration.ruled && <div className="oracle-settlement-action"><h3>Appeal rewards</h3><p>If you funded an appeal, claim eligible rewards after the court permits withdrawal.</p>
+      <SegmentedControl label="Ruling" value={String(appealRuling)} options={rulingOptions} onChange={value => setAppealRuling(Number(value))} block/>
+      <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('claimAppeal', { ruling: appealRuling }))}>Check appeal rewards</button>
+    </div>}
+    {reality?.finalized && owner && !/^0x0{64}$/i.test(reality.historyHash) && <div className="oracle-settlement-action"><h3>Reality.eth answer bonds</h3><p>If this wallet posted an answer, process the answer history to credit eligible bond winnings.</p>
+      <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('claimWinnings'))}>Review bond claim</button></div>}
+    {reality && BigInt(reality.creditedEthWei) > 0n && <div className="oracle-settlement-action"><h3>Reality.eth bond credit</h3><p>{formatEther(BigInt(reality.creditedEthWei))} Sepolia ETH is ready to withdraw.</p>
+      <button className="btn btn-secondary" disabled={!owner || busy || !!pending} onClick={() => run(() => prepare('withdrawReality'))}>Review ETH withdrawal</button></div>}
+    {snapshot.user && BigInt(snapshot.user.bondCreditsAtoms) > 0n && <div className="oracle-settlement-action"><h3>Bond credit</h3><p>{cash(snapshot.user.bondCreditsAtoms)} test AUSD is ready to collect.</p><button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('withdrawBond'))}>Review withdrawal</button></div>}
+    <TransactionSheet phase={settlementPhase} network={(settlementPlan?.transaction.chainId ?? settlementPending?.chainId) === 11155111 ? 'Sepolia' : 'Monad testnet'} title={settlementPhase === 'pending' ? 'Transaction pending' : 'Review transaction'}
+      hash={settlementPending?.hash} onDismiss={() => setPlan(null)} alert={settlementPhase !== 'closed' ? errorAlert : undefined}
+      actions={settlementPending ? pendingActions(settlementPending) : settlementPlan ? <><button className="btn btn-ghost" disabled={busy} onClick={() => setPlan(null)}>Cancel</button><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{settlementPlan.action === 'approveBond' ? 'Allow challenge bond' : 'Confirm in MetaMask'}</button></> : null}>
+      {settlementPending ? pendingBody(settlementPending) : settlementPlan ? <><p>{settlementPlan.reason}</p><dl className="leaders"><div><dt>Network</dt><dd>{settlementPlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd></div><div><dt>To</dt><dd className="mono-break">{settlementPlan.transaction.to}</dd></div></dl></> : null}
+    </TransactionSheet>
+  </section> : <p role="status">Reading this market...</p>;
+  const proof = snapshot ? <div className="proof-panel">
+    <section className="detail-panel"><h2>What decides the answer?</h2><p>{reality ? 'The published Reality.eth question receives bonded answers. Kleros can rule on a challenged answer.'
+      : 'The published source and exact rule for this question determine the provisional answer.'}</p>
+      {reality && snapshot.ruleURI && <p><a className="text-link" href={snapshot.ruleURI} target="_blank" rel="noreferrer">Published rule <ArrowUpRight size={14}/></a></p>}
+      {snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
+      <dl className="facts"><dt>Reader</dt><dd>{snapshot.source?.adapter || 'Reality.eth'}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
+        {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : 'Not recorded yet'}</dd></>
+          : <><dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></>}</dl>
+      {reality && <p className="market-caption">A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted and can misreport until verified cross-chain delivery is added.</p>}
+    </section>
+    <ContractList rows={[
+      { label: 'Pool', value: snapshot.pool, href: `https://testnet.monadscan.com/address/${snapshot.pool}` },
+      { label: 'Resolver', value: snapshot.resolver, href: `https://testnet.monadscan.com/address/${snapshot.resolver}` },
+      { label: 'Rules hash', value: snapshot.rulesHash },
+      ...(reality ? [{ label: 'Reality.eth', value: reality.reality, href: `https://sepolia.etherscan.io/address/${reality.reality}` },
+        { label: 'Arbitrator', value: reality.arbitrator, href: `https://sepolia.etherscan.io/address/${reality.arbitrator}` },
+        { label: 'Question ID', value: reality.questionId }] : []),
+    ]}/>
+  </div> : <p role="status" className="sr-only">Reading this market...</p>;
+  const linked = others.length > 0 ? <LinkedQuestions current={{ yes: summary?.prices.yes ?? null }} items={others.map(item => ({ key: item.id, question: item.question, href: `/markets/hybrid/${item.pool}/${item.eventIndex}`, yes: boardPrice(auth.address, `hybrid:${item.id}`) }))}>
+    <HybridConnections market={market} markets={markets}/>
+    <p className="linked-thesis"><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Build your thesis</Link><span className="market-caption">Put your estimates beside the pool's joint outcomes and current combined-share quotes.</span></p>
+  </LinkedQuestions> : undefined;
+  const ticket = <>
+    <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each correct share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
+      {!sheetOpen && errorAlert}
+      {notice && <p className="state-inline" role="status">{notice}</p>}
+      <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot?.user ? `${cash(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs each trade and bond you review'}</small></div>
+        <button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
+      {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }} block/>
+        <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>
+        <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
+        {others.length > 0 && <details className="oracle-combination"><summary>Combine with another prediction</summary><ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
+        {extra1 && <SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/>}
+        {owner && <div className="ticket-quote-state" aria-live="polite">
+          {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
+          <button type="button" className="text-link ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
+        </div>}
+        {currentQuote && !plan && <div className="ticket-review ticket-quote" aria-label="Current prediction quote">
+          <h3>{mode === 'buy' ? 'Review your purchase' : 'Review your sale'}</h3>
+          <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'} · {extra1 ? `${combinationRule.replace('_', ' ')} · ` : ''}{claim.map(item => `${markets.find(question => question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question'}: ${item.side === 'yes' ? 'Yes' : 'No'}`).join(' · ')}</p>
+          {quotedAtoms && <dl className="review-figures leaders">
+            <div className="review-cost"><dt>{mode === 'buy' ? 'Quoted cost' : 'Quoted proceeds'}</dt><dd>{cash(quotedAtoms)} test AUSD</dd></div>
+            <div><dt>Average per share</dt><dd>{perShare} test AUSD</dd></div>
+            <div><dt>{mode === 'buy' ? 'Gross payout if correct' : 'Shares leaving your wallet'}</dt><dd>{mode === 'buy' ? `${shares} test AUSD` : `${shares} shares`}</dd></div>
+            <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
+            <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
+          </dl>}
+          <p className="market-caption">0.5% price tolerance. A fresh quote is checked when you review the transaction. A correct share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
+          {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
+          {mode === 'sell' && !canSell && <p role="status">This wallet does not hold enough shares of the selected prediction to sell.</p>}
+          <button className="btn btn-primary btn-block" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
+            { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button>
+        </div>}</>}
+      <TransactionSheet phase={tradePhase} hash={tradePending?.hash}
+        title={tradePending ? 'Waiting for confirmation' : tradePlan ? (tradePlan.action === 'approve' ? 'Step 1 of 2: allow this payment' : tradePlan.action === 'buy' ? 'Review your purchase' : tradePlan.action === 'sell' ? 'Review your sale' : 'Review your payout') : completed === 'buy' ? 'Purchase complete' : completed === 'sell' ? 'Sale complete' : 'Payout collected'}
+        onDismiss={tradePlan ? () => setPlan(null) : completed ? () => setCompleted('') : undefined} alert={tradePhase !== 'closed' ? errorAlert : undefined}
+        steps={tradePlan?.action === 'approve' ? [{ label: 'Allow payment', current: true }, { label: `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}`, current: false }] : undefined}
+        actions={tradePending ? pendingActions(tradePending)
+          : tradePlan ? <><button className="btn btn-ghost" disabled={busy} onClick={() => setPlan(null)}>Cancel review</button><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{tradePlan.action === 'approve' ? 'Allow payment' : tradePlan.action === 'buy' ? `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}` : tradePlan.action === 'sell' ? 'Sell shares' : 'Collect payout'}</button></>
+          : completed ? <><button className="btn btn-secondary" onClick={() => setCompleted('')}>Make another trade</button><Link href="/portfolio" className="btn btn-primary">View portfolio</Link></> : null}>
+        {tradePending ? <section aria-label="Pending transaction">{pendingBody(tradePending)}</section>
+          : tradePlan ? <section aria-label="Transaction review">
+            <p className="review-claim">{tradePlan.reason}</p>
+            <dl className="review-figures leaders">
+              {tradePlan.amountAtoms && <div className="review-cost"><dt>{tradePlan.action === 'approve' ? 'Allow up to' : tradePlan.action === 'buy' ? 'Spend up to' : tradePlan.action === 'sell' ? 'Receive at least' : 'Expected payout'}</dt>
+                <dd>{cash(tradePlan.action === 'buy' ? tradePlan.maxCostAtoms || tradePlan.amountAtoms : tradePlan.action === 'sell' ? tradePlan.minimumReceivedAtoms || tradePlan.amountAtoms : tradePlan.amountAtoms)} test AUSD</dd></div>}
+              {tradePlan.action === 'buy' && <><div><dt>Payout if correct</dt><dd>{shares} test AUSD</dd></div><div><dt>Possible loss</dt><dd>Up to {cash(tradePlan.maxCostAtoms || tradePlan.amountAtoms || '0')} test AUSD plus network fees</dd></div></>}
+            </dl>
+            <p>{tradePlan.action === 'approve' ? 'Approval alone does not buy shares. After it confirms, the purchase review appears here.' : 'Check this amount before confirming in MetaMask.'}</p>
+            {tradePlan.expiresAt && <p className="market-caption">Review expires {date(tradePlan.expiresAt)}.</p>}
+            <details><summary>Transaction details</summary><p>Network: {tradePlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</p><p>Destination: <span className="mono-break">{tradePlan.transaction.to}</span></p></details>
+          </section>
+          : completed ? <section className="ticket-done"><p>Your transaction is confirmed. The position is refreshing.</p><p className="market-caption"><a className="text-link" href="/access#notices">Email me when this settles</a></p></section> : null}
+      </TransactionSheet>
+      {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
+        {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
+          && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
+            { side: answer, quantity: answer === 'yes' ? snapshot.user?.yesShares : snapshot.user?.noShares }))}>Collect {answer} payout</button>)}
+        {others.length > 0 && <details open={combinationLink}><summary>Collect a combined prediction</summary>
+          <p className="market-caption">Select the same questions and answers you bought. Holdings and payout are read from the pool.</p>
+          <SegmentedControl label="This answer" value={side} options={yesNo} onChange={value => setSide(value === 'no' ? 'no' : 'yes')} block/>
+          <ComboPicker others={others} value={combo} onChange={setCombo} legend="Other questions in the combination"/>
+          <SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/>
+          {extra1 && <p>{combinedPosition ? `${cash(combinedPosition.holdingsAtoms)} shares held · ${cash(combinedPosition.payoutAtoms || '0')} test AUSD payable` : 'Reading this selection...'}</p>}
+          {extra1 && combinedPosition && BigInt(combinedPosition.holdingsAtoms) > 0n
+            && BigInt(combinedPosition.payoutAtoms || '0') > 0n
+            && <button className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
+              { side, rule: combinationRule, claim, quantity: combinedPosition.holdingsAtoms }))}>Collect combined payout</button>}
+        </details>}</>}
+      <details className="disclosure"><summary>How this market works</summary><p>Trades use test AUSD on Monad. Settlement follows the published source route. Challenged results go to Kleros.</p></details></div></section>
+    <section className="detail-panel detail-position" aria-label="Your position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight size={15}/></Link></div>
+      <dl className="position-rows leaders"><div><dt>Yes</dt><dd>{cash(snapshot?.user?.yesShares || '0')} shares</dd></div><div><dt>No</dt><dd>{cash(snapshot?.user?.noShares || '0')} shares</dd></div></dl></section>
+  </>;
+  return <MarketShell kind="Real event" question={market.question} status={<StatusBadge kind={status}>{statusText}</StatusBadge>} closes={{ at: market.closesAt, closed }} results={market.observationEndsAt}
+    prices={summary && !closed ? summary.prices : null} watchKey={`hybrid:${id}`} className="oracle-page"
+    alert={!snapshot && !error ? <p role="status" className="sr-only">Reading this market...</p> : undefined}
+    chart={<PriceHistory hybridId={id} event={0} pool={market.pool} refresh={refresh}/>}
+    linked={linked} linkedCount={others.length + 1} timeline={timeline} proof={proof} defaultTab={defaultTab} ticket={ticket}/>;
 }

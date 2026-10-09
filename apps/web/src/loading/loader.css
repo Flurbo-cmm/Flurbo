@@ -1,27 +1,32 @@
 .app-root { display: contents; }
-/* The reserved scrollbar gutter is painted with the root background; match the cover until it opens. */
-html:has(.contour-loader:not([data-phase="exiting"])) { background: var(--surface-inverse); }
 .contour-loader { position: fixed; inset: 0; z-index: var(--z-loader); overflow: hidden; color: var(--on-inverse); }
-.contour-panel { position: absolute; top: 0; bottom: 0; background: var(--surface-inverse); will-change: transform, opacity; }
+.contour-panel { position: absolute; top: 0; bottom: 0; overflow: hidden; background: var(--surface-inverse); will-change: transform, opacity; }
 .contour-panel-left { left: 0; width: calc(50% + 1px); }
 .contour-panel-right { right: 0; width: 50%; }
+.contour-tone { position: absolute; top: 0; width: 100vw; height: 100%; pointer-events: none; }
+.contour-panel-left .contour-tone { left: 0; }
+.contour-panel-right .contour-tone { right: 0; }
 .contour-stage { position: absolute; inset: 0; width: 100%; height: 100%; }
 .contour-stage g { will-change: transform, opacity; }
 .contour-loader[data-phase="waiting"] .contour-stage g, .contour-loader[data-phase="failed"] .contour-stage g { will-change: auto; }
+.contour-status { position: absolute; left: 50%; margin: 0; transform: translateX(-50%); color: var(--on-inverse-2); font: 400 12px/1 var(--font-num); letter-spacing: 0.04em; white-space: nowrap; }
+.contour-progress-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rule-inverse); }
+.contour-progress-bar > span { display: block; height: 100%; background: var(--lime); transition: width var(--t-base) var(--ease-out); }
 .contour-progress { position: absolute; left: 50%; display: grid; justify-items: center; gap: 10px; transform: translateX(-50%); width: min(240px, 70vw); }
-.contour-progress-track { display: block; width: 160px; height: 2px; border-radius: 2px; background: var(--rule-inverse); overflow: hidden; }
+.contour-progress-track { display: block; width: 160px; height: 2px; background: var(--rule-inverse); overflow: hidden; }
 .contour-progress-track > span { display: block; height: 100%; background: var(--lime); }
-.contour-progress-label, .contour-slow { color: var(--on-inverse-2); font-size: 13px; text-align: center; }
+.contour-progress-label, .contour-slow { color: var(--on-inverse-2); font: 400 12px/1.5 var(--font-num); text-align: center; }
 .contour-slow { position: absolute; left: 50%; width: min(420px, calc(100vw - 48px)); margin: 0; transform: translateX(-50%); animation: contour-fade 240ms var(--ease-out); }
 .contour-failure {
   position: absolute; left: 50%; top: 50%; display: grid; gap: var(--s-3); width: min(440px, calc(100vw - 2 * var(--gutter)));
+  padding: var(--s-6); border: 1px solid var(--rule-inverse); border-radius: var(--r-panel); background: var(--surface-inverse);
   transform: translate(-50%, -50%); text-align: left; animation: contour-fade 160ms var(--ease-out);
 }
-.contour-failure h2 { color: var(--on-inverse); font-size: 22px; }
+.contour-failure h2 { color: var(--on-inverse); font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1.1; letter-spacing: 0; font-kerning: none; }
 .contour-failure p { color: var(--on-inverse-2); }
 .contour-failure-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-4); margin-top: var(--s-2); }
 .contour-loader .contour-leave { color: var(--on-inverse); text-decoration-color: var(--rule-inverse); }
-.contour-loader :focus-visible { outline-color: var(--lime); }
+.contour-loader :focus-visible { outline-color: var(--lime); box-shadow: none; }
 .contour-plain .contour-panel { animation: contour-fade 160ms var(--ease-out); }
 .contour-plain-logo { position: absolute; left: 50%; top: 50%; width: min(220px, 56vw); transform: translate(-50%, -50%); }
 .contour-plain-logo svg { width: 100%; height: auto; }

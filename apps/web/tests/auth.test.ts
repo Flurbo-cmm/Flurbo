@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AuthController, deriveAccount } from "../src/auth/controller.ts";
+import { AuthController } from "../src/auth/controller.ts";
+import { deriveAccount } from "../src/auth/passkey-crypto.ts";
 import { authPolicy, PASSKEY_HOST, COMPANY_PASSKEY_HOST, SESSION_MS } from "../src/auth/policy.ts";
 import type { WebAuthnClient } from "@category-labs/mera";
 

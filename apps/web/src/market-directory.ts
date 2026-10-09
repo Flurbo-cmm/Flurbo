@@ -1,6 +1,6 @@
-import {appFetch} from './platform-fetch';
-import {takeEarly} from './prefetch';
-import {isPracticeNamespace,type PilotNamespace,type PilotState} from './pilot';
+import {appFetch} from './platform-fetch.ts';
+import {takeEarly} from './prefetch.ts';
+import {isPracticeNamespace,type PilotNamespace,type PilotState} from './pilot.ts';
 export type MarketGroup={namespace:PilotNamespace;label:string;pool:string;closesAt:number};
 export type OracleMarket={id:string;pool:string;poolTitle:string;eventIndex:number;question:string;closesAt:number;observationEndsAt:number};
 export type OracleMarketSummary={schema:'flurbo.oracle-market.v1';id:string;pool:string;marketNow:number;funded:boolean;resolved:boolean;prices:{yes:string|null;no:string|null}};

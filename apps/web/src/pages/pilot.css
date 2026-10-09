@@ -1,34 +1,36 @@
 /* Trade ticket, challenge and payout forms. Transaction values are shown exactly. */
 .consumer-ticket { display: grid; gap: var(--s-4); }
 .ticket-head { display: grid; gap: 4px; }
-.ticket-head h2 { font-size: 18px; }
-.consumer-ticket .ticket-wallet, .pilot-form .ticket-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
-.ticket-wallet > div { display: grid; gap: 2px; }
-.ticket-wallet strong { font-size: 14px; font-weight: 600; }
-.ticket-wallet strong.mono { font-family: var(--mono); }
-.ticket-wallet small { color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
-.ticket-note { padding: var(--s-2) var(--s-3); border-radius: var(--r-control); background: var(--lime-soft); font-size: 13px; }
+.ticket-head h2 { font-size: 17px; }
+.consumer-ticket .ticket-wallet, .pilot-form .ticket-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--bg); }
+.ticket-wallet > div { display: grid; gap: 2px; min-width: 0; }
+.ticket-wallet strong { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.ticket-wallet strong.mono { font-family: var(--font-num); }
+.ticket-wallet small { color: var(--ink-3); font: 400 12px/1.3 var(--font-num); }
+.ticket-note { padding: var(--s-2) var(--s-3); border: 1px solid var(--ink); border-radius: var(--r-control); background: var(--lime-soft); font-size: 13px; }
 .ticket-controls { display: grid; gap: var(--s-4); }
 .segmented-field { display: grid; gap: 6px; min-width: 0; }
 .quantity-stepper { display: grid; grid-template-columns: var(--control-md) minmax(0, 1fr) var(--control-md); gap: var(--s-2); }
-.quantity-stepper input { text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ticket-status { font-size: 14px; color: var(--ink-2); min-height: 1lh; }
+.quantity-stepper .btn { border-color: var(--rule-strong); }
+.quantity-stepper input { text-align: center; font-family: var(--font-num); font-size: 16px !important; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ticket-status { font-size: 14px; color: var(--ink-2); min-height: 1lh; display: flex; gap: 6px; align-items: flex-start; }
+.ticket-status svg { width: 16px; height: 16px; margin-top: 2px; }
+.ticket-status-error { color: var(--danger); }
 .ticket-status:empty { display: none; }
 .ticket-quote-state { display: grid; gap: 6px; }
 .ticket-quote-state p:empty { display: none; }
 .ticket-refresh { justify-self: start; font-size: 14px; }
-.ticket-review { display: grid; gap: var(--s-3); padding: var(--s-5); border: 1px solid var(--ink); border-radius: var(--r-panel); background: var(--bg); animation: disclose var(--t-base) var(--ease-out); }
+.ticket-review { display: grid; gap: var(--s-3); min-width: 0; }
+.consumer-ticket > .ticket-review, .ticket-quote { padding: var(--s-4); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--bg); }
 .ticket-review h3 { font-size: 16px; }
 .ticket-review p { color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
 .review-claim { color: var(--ink) !important; font-weight: 500; }
-.review-figures { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); margin: 0; }
-.review-figures > div { display: grid; gap: 2px; padding: var(--s-3); border-radius: var(--r-control); background: var(--surface-sunken); }
-.review-figures .review-cost { grid-column: 1 / -1; background: var(--lime-soft); }
-.review-figures dt { color: var(--ink-2); font-size: 12px; }
-.review-figures dd { margin: 0; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.review-figures .review-cost dd { font-size: 20px; }
-.ticket-done { border-color: var(--rule-strong); }
-.ticket-pending { border-color: var(--rule-strong); }
+.review-figures { margin: 0; gap: 8px; }
+.leaders.review-figures > .review-cost { display: grid; gap: 4px; padding: 10px 12px 12px; margin-bottom: 4px; border: 1px solid var(--ink); border-radius: var(--r-control); background: var(--lime-soft); }
+.review-figures .review-cost::before { display: none; }
+.leaders.review-figures > .review-cost dt { color: var(--ink-2); font-size: 13px; }
+.leaders.review-figures > .review-cost dd { text-align: left; font: 500 22px/1.1 var(--font-num); letter-spacing: -0.01em; }
+.review-impact-large dd { color: var(--danger); }
 .ticket-position { font-size: 14px; }
 .closed-ticket { display: grid; gap: var(--s-3); justify-items: start; }
 .closed-ticket h2 { font-size: 18px; }

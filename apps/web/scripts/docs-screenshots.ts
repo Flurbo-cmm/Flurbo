@@ -144,7 +144,7 @@ await mkdir(OUT,{recursive:true});
 try{
   // Sign-up with a passkey name.
   let page=await open(false);await page.goto(origin+'/signup');await ready(page);
-  await shotRange(page,'signup',page.getByRole('heading',{level:1}).locator('xpath=..'),page.getByText('Back to flurbo'),page.getByText('Check device support'),24);await page.close();
+  await shotRange(page,'signup',page.getByRole('heading',{level:1}).locator('xpath=..'),page.getByText('Back to flurbo'),page.locator('.auth-more'),24);await page.close();
 
   // Account approved, with the linked trading wallet.
   page=await open(true);await page.goto(origin+'/access');await ready(page);await page.getByText('Access approved').first().waitFor();
@@ -155,9 +155,9 @@ try{
   // main fills the tall capture window, so stop at the last step instead of its bottom edge.
   await shotRange(page,'test-funds',page.locator('main'),page.getByText('Back to markets'),page.getByRole('button',{name:'Request test AUSD'}),24);await page.close();
 
-  // Markets list.
+  // The market board, one screen.
   page=await open(true);await page.goto(origin+'/markets');await ready(page);await page.getByText(manifest.publication.draft.events[0].question.slice(0,30)).first().waitFor();
-  await shotRange(page,'markets',page.locator('main'),page.getByRole('heading',{level:1}),page.getByText('How combined predictions work'),24);
+  await shotRange(page,'markets',page.locator('main'),page.getByRole('navigation',{name:'Market categories'}),page.locator('.market-card').last(),16);
 
   // One question: the trade ticket with its first step, then a combination, then the settlement timeline.
   await page.goto(origin+'/markets/pilot/0');await ready(page);
@@ -171,6 +171,7 @@ try{
   await page.getByText('Step 1 of 2: allow this payment').waitFor({timeout:20000});
   await builder.locator('details').evaluateAll((list:any[])=>list.forEach(d=>{d.open=false;}));
   await shot(page,'ticket-combination',builder);
+  await page.getByRole('tab',{name:'Timeline'}).click();
   await shot(page,'settlement-timeline',page.locator('section.detail-settlement'));
   await page.close();
 
@@ -188,7 +189,9 @@ try{
   await shot(page,'agent-research',page.getByRole('region',{name:'Research settings'}));
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Allow live testnet trades'}).click();
-  await shot(page,'agent-live',page.getByRole('region',{name:'Controls'}));
+  await page.waitForTimeout(400);
+  await shot(page,'agent-live',page.getByRole('dialog',{name:'Allow this agent to send live testnet trades?'}));
+  await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Activity',exact:true}).click();
   await page.locator('details.agents-assumptions').filter({hasText:'Evidence'}).first().evaluate((d:any)=>{d.open=true;});
   await shot(page,'agent-activity',page.getByRole('region',{name:'Decisions'}));

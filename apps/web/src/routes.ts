@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 // Signed-in pages load on demand so the public pages stay light. A page starts
 // loading while the session and access checks run, so the loader covers both.
 const loaders = {
+  docs: () => import('./pages/Docs'),
   markets: () => import('./pages/Markets'),
   agents: () => import('./pages/Agents'),
   access: () => import('./pages/AccessPage'),

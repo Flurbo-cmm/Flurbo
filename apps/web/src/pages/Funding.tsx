@@ -8,6 +8,8 @@ import {useAuth} from '../auth/context';
 import {discoverWallets, type BrowserWallet} from '../auth/wallet-choice';
 import {walletKey, tradingWalletKey} from '../portfolio';
 import {TESTNET} from '../../server/network.mjs';
+import TransactionSheet from '../components/ui/TransactionSheet';
+import type {SheetPhase} from '../sheet-state';
 import './funding.css';
 
 type Network = typeof TESTNET & {flurboFaucet?:boolean;starterMon?:string|null};
@@ -38,6 +40,8 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
   const [network,setNetwork]=useState<Network|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const [balances,setBalances]=useState<{ausd:bigint;mon:bigint;stock:bigint;nextClaim:bigint}|null>(null);
   const [pending,setPending]=useState<Pending|null>(null),[checking,setChecking]=useState(false),[uncertain,setUncertain]=useState(false);
+  // The sheet follows only the request started on this visit; a request restored after reload stays on the page.
+  const [sheet,setSheet]=useState(false);
   const providerRef=useRef<BrowserWallet['provider']|null>(null), generation=useRef(0), checkingRef=useRef(false), busyRef=useRef(false);
   const key='flurbo.faucet.pending.v1:'+state.address;
   useEffect(()=>discoverWallets(w=>setWallets(old=>old.some(v=>v.provider===w.provider)?old:[...old,w])),[]);
@@ -107,7 +111,7 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
   async function requestFunds() {
     if(busyRef.current||!owner||!network||pending||uncertain)return;busyRef.current=true;setBusy(true);
     const version=generation.current,p=providerRef.current;let sending=false;
-    setMessage('Confirm the test AUSD request in MetaMask.');
+    setSheet(true);setMessage('Confirm the test AUSD request in MetaMask.');
     try{
       if(!p)throw Error('Select MetaMask first.');
       const block=await rpc('eth_getBlockByNumber',['latest',false]);
@@ -127,7 +131,7 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
       const saved={hash,owner,faucet:network.faucet};
       try{localStorage.setItem(key,JSON.stringify(saved));}catch{}
       setPending(saved);setMessage('Request sent. Waiting for confirmation…');
-    }catch(e){if(sending&&(e as any)?.code!==4001)setUncertain(true);setMessage(fundingError(e,sending));}
+    }catch(e){if(sending&&(e as any)?.code!==4001)setUncertain(true);setSheet(false);setMessage(fundingError(e,sending));}
     finally{busyRef.current=false;setBusy(false);}
   }
   // Free test MON is sent automatically once when an account links its first wallet. The page shows
@@ -168,17 +172,20 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
   const monReady=!!balances&&balances.mon>0n, ausdReady=!!balances&&balances.ausd>0n;
   // Say why the request button is disabled; the dispenser and cooldown cases have their own messages above.
   const blockedReason=busy||empty||cooldown||uncertain?'':!owner?'Connect and link your MetaMask wallet above first.':pending?'Your last request is still being checked. Use Check status below.':!correctChain?'Switch MetaMask to Monad testnet first.':!balances?'Balances are loading. If this persists, refresh balances.':balances.mon===0n?'Get test MON first. Balances update when you return to this page, or use Refresh balances.':'';
+  const fundingPhase:SheetPhase=!sheet?'closed':busy?'wallet':pending?'pending':'done';
+  const status=message?<p role="status" className="state-inline">{message}</p>:null;
   const content=<div className="funding-card">
-    <section className="panel funding-wallet" aria-label="Your trading wallet">
-      <div className="panel-head"><h2>Your trading wallet</h2>{owner&&<code className="address funding-address" title={owner}>{owner.slice(0,8)}…{owner.slice(-6)}</code>}</div>
+    <ol className="funding-steps">
+      <li className={owner?'done':''}><section className="funding-wallet" aria-label="Your trading wallet">
+      <div className="funding-step-head"><h2><span className="funding-step-index" aria-hidden="true">1</span>Link your trading wallet</h2><span className={owner?'status':'status status-attention'}>{owner?'Done':'Needed'}</span></div>
+      {owner&&<code className="address funding-address" title={owner}>{owner.slice(0,8)}…{owner.slice(-6)}</code>}
       <p className="muted">Test funds go to MetaMask. Your Mera account keeps you signed in.</p>
       {balances&&<dl className="funding-balances"><div><dt>Trading balance</dt><dd>{formatUnits(balances.ausd,6)} AUSD</dd></div><div><dt>MON balance, for transaction fees</dt><dd>{Number(formatUnits(balances.mon,18)).toFixed(4)} MON</dd></div></dl>}
       {owner&&!balances&&<div className="funding-balances" aria-hidden="true"><span className="skeleton" style={{height:44}}/><span className="skeleton" style={{height:44}}/></div>}
       <div className="funding-actions"><button className={owner?'btn btn-secondary':'btn btn-primary'} disabled={busy||!network} onClick={()=>void connect(!!owner)}>{busy?'Check MetaMask...':owner?'Switch wallet':walletStatus==='checking'?'Checking wallet...':walletStatus==='unlinked'?'Link selected wallet':'Connect MetaMask'}</button>{owner&&<button className="text-link" disabled={busy} onClick={()=>void readBalances().catch(e=>setMessage(fundingError(e)))}>Refresh balances</button>}{owner&&!correctChain&&<button className="btn btn-secondary" disabled={busy} onClick={()=>void connect()}>Switch to Monad testnet</button>}</div>
-    </section>
-    <ol className="funding-steps">
-      <li className={monReady?'done':''}><div className="funding-step-head"><h2><span className="funding-step-index" aria-hidden="true">1</span>Get test MON</h2><span className={monReady?'status':'status status-attention'}>{monReady?'Done':'Needed'}</span></div>{monReady&&<p className="funding-ready">You have test MON for network fees.</p>}<p>MON pays the small network fee. Use the MetaMask address shown above.</p>{network?.starterMon&&owner&&balances&&balances.mon<100_000_000_000_000_000n&&starter&&<p role="status" className="field-help">{starter.note??(starter.status==='sent'?(balances.mon===0n?`Flurbo sent you ${network.starterMon} test MON for network fees. It arrives within a minute; your balance updates automatically.`:'Your free test MON has been used. Use the Monad faucet for more.'):starter.status==='exhausted'?"Today's free test MON has run out. Use the Monad faucet, or try again tomorrow.":'')}</p>}<div className="funding-actions">{network?.starterMon&&owner&&balances&&balances.mon<100_000_000_000_000_000n&&starter?.status==='available'&&<button className="btn btn-primary" disabled={busy} onClick={()=>void requestStarterMon()}>Send me {network.starterMon} test MON</button>}<a className="btn btn-secondary" href={TESTNET.monFaucet} target="_blank" rel="noreferrer">Open MON faucet <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a>{owner&&<button className="text-link" onClick={()=>void navigator.clipboard.writeText(owner).then(()=>setMessage('MetaMask address copied.')).catch(()=>setMessage('Copy the MetaMask address shown above.'))}>Copy wallet address</button>}</div></li>
-      <li className={ausdReady?'done':''}><div className="funding-step-head"><h2><span className="funding-step-index" aria-hidden="true">2</span>Get test AUSD</h2><span className={ausdReady?'status':'status status-attention'}>{ausdReady?'Done':'Needed'}</span></div>{ausdReady&&<p className="funding-ready">Your wallet has test AUSD. You can review a prediction or top up below.</p>}<p>{network?.flurboFaucet?'Request 50 AUSD, once every 24 hours per wallet.':'Request test tokens from the AUSD faucet.'}</p>
+    </section></li>
+      <li className={monReady?'done':''}><div className="funding-step-head"><h2><span className="funding-step-index" aria-hidden="true">2</span>Get test MON</h2><span className={monReady?'status':'status status-attention'}>{monReady?'Done':'Needed'}</span></div>{monReady&&<p className="funding-ready">You have test MON for network fees.</p>}<p>MON pays the small network fee. Use the MetaMask address shown above.</p>{network?.starterMon&&owner&&balances&&balances.mon<100_000_000_000_000_000n&&starter&&<p role="status" className="field-help">{starter.note??(starter.status==='sent'?(balances.mon===0n?`Flurbo sent you ${network.starterMon} test MON for network fees. It arrives within a minute; your balance updates automatically.`:'Your free test MON has been used. Use the Monad faucet for more.'):starter.status==='exhausted'?"Today's free test MON has run out. Use the Monad faucet, or try again tomorrow.":'')}</p>}<div className="funding-actions">{network?.starterMon&&owner&&balances&&balances.mon<100_000_000_000_000_000n&&starter?.status==='available'&&<button className="btn btn-primary" disabled={busy} onClick={()=>void requestStarterMon()}>Send me {network.starterMon} test MON</button>}<a className="btn btn-secondary" href={TESTNET.monFaucet} target="_blank" rel="noreferrer">Open MON faucet <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a>{owner&&<button className="text-link" onClick={()=>void navigator.clipboard.writeText(owner).then(()=>setMessage('MetaMask address copied.')).catch(()=>setMessage('Copy the MetaMask address shown above.'))}>Copy wallet address</button>}</div></li>
+      <li className={ausdReady?'done':''}><div className="funding-step-head"><h2><span className="funding-step-index" aria-hidden="true">3</span>Get test AUSD</h2><span className={ausdReady?'status':'status status-attention'}>{ausdReady?'Done':'Needed'}</span></div>{ausdReady&&<p className="funding-ready">Your wallet has test AUSD. You can review a prediction or top up below.</p>}<p>{network?.flurboFaucet?'Request 50 AUSD, once every 24 hours per wallet.':'Request test tokens from the AUSD faucet.'}</p>
         {empty&&<p role="status">The test AUSD dispenser needs a refill. Please try again later.</p>}
         {cooldown&&<p>Next request: {new Date(Number(balances!.nextClaim)*1000).toLocaleString()}.</p>}
         <div className="funding-actions"><button className="btn btn-primary btn-lg" disabled={busy||!!pending||uncertain||!owner||!correctChain||!balances||balances.mon===0n||!!empty||!!cooldown} onClick={()=>void requestFunds()}>Request test AUSD</button></div>
@@ -186,7 +193,13 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
       </li>
     </ol>
     {pending&&<div className="funding-actions"><a className="text-link" href={`${TESTNET.explorer}/tx/${pending.hash}`} target="_blank" rel="noreferrer">View faucet transaction <ArrowUpRight aria-hidden="true" strokeWidth={1.75}/></a><button className="btn btn-secondary" disabled={checking} onClick={()=>void checkStatus()}>Check status</button></div>}
-    {message&&<p role="status" className="state-inline">{message}</p>}
+    {fundingPhase==='closed'&&status}
+    <TransactionSheet phase={fundingPhase} title="Get test AUSD" hash={pending?.hash??null} onDismiss={()=>setSheet(false)} onMinimize={()=>setSheet(false)} alert={status}
+      actions={fundingPhase==='done'?<><button className="btn btn-secondary" onClick={()=>setSheet(false)}>Close</button><Link href="/markets" className="btn btn-primary">Browse markets</Link></>:null}>
+      {fundingPhase==='wallet'&&<p className="market-caption">MetaMask asks you to call the Flurbo test AUSD dispenser from your trading wallet. The only cost is a small test MON network fee.</p>}
+      {fundingPhase==='pending'&&pending&&<p className="market-caption">Confirmation is checked automatically. You can hide this and keep using the page. <a className="text-link" href={`${TESTNET.explorer}/tx/${pending.hash}`} target="_blank" rel="noreferrer">Open in Monad explorer</a></p>}
+      {fundingPhase==='done'&&<p className="market-caption">Your balances above refresh on their own.</p>}
+    </TransactionSheet>
     {uncertain&&<button className="btn btn-secondary" onClick={()=>{setUncertain(false);setMessage('Refresh balances before requesting again.');}}>I checked MetaMask activity</button>}
     {!expanded&&<Link href="/markets" className="text-link">Back to markets</Link>}
   </div>;

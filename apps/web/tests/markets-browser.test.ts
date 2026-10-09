@@ -109,6 +109,7 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     await page.getByRole('link',{name:'No: Will the concert sell out?',exact:true}).click();
     assert.equal(new URL(page.url()).pathname,'/markets/'+namespace+'/1');
     assert.equal(await page.locator('.market-card').count(),0);
+    await page.getByRole('tab',{name:'Timeline'}).click();
     await page.getByRole('region',{name:'Settlement timeline'}).waitFor();
     const chart=page.getByRole('region',{name:'Price history',exact:true});
     await chart.getByRole('img').waitFor();
@@ -316,6 +317,7 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     assert.equal(await page.getByRole('heading',{name:'Challenge this answer'}).count(),0);
     assert.equal(await page.getByRole('radio',{name:'No'}).getAttribute('aria-checked'),'true');
     await page.getByRole('region',{name:'Price history',exact:true}).waitFor();
+    await page.getByRole('tab',{name:'Timeline'}).click();
     await page.getByRole('heading',{name:'From prediction to payout'}).waitFor();
     if(process.env.FLURBO_TEST_ORACLE_SCREENSHOT)await page.screenshot({path:process.env.FLURBO_TEST_ORACLE_SCREENSHOT,fullPage:true});
     if(process.env.FLURBO_TEST_ORACLE_MOBILE_SCREENSHOT){await page.setViewportSize({width:390,height:844});await page.screenshot({path:process.env.FLURBO_TEST_ORACLE_MOBILE_SCREENSHOT,fullPage:true});await page.setViewportSize({width:1440,height:1000});}
@@ -333,6 +335,7 @@ for(const namespace of ['practice-'+'22'.repeat(20)])test('consumer markets pres
     await page.getByRole('button',{name:'Review Kleros challenge fee'}).click();
     assert.equal(arbitrationPrepared,true);
     await page.getByRole('heading',{name:'Review on Sepolia'}).waitFor();
+    await page.keyboard.press('Escape');
     await page.getByRole('link',{name:'All markets'}).click();
     await page.getByRole('heading',{name:'Will the new cafe open?',exact:true}).waitFor();
     login=false;const before=reads;await page.goto('https://flurbo.singu.online/markets');await page.waitForURL('**/login');assert.equal(reads,before);
