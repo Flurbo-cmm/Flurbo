@@ -1,21 +1,23 @@
 #!/usr/bin/env node
 // Rule check: run a draft settlement rule against its live source before a market is prepared.
 //
-//   node apps/web/scripts/check-settlement-rule.mjs <rule-or-rules.json> [--closes-at <unix seconds>]
+//   node apps/web/scripts/check-settlement-rule.mjs <rule-or-rules.json> [--closes-at <unix seconds>] [--proof <capture.json>]...
 //
 // Prints, for each rule: whether it is valid, its rule hash, what each source returns right now, and whether the
 // market would still be a prediction. Nothing is signed, stored or sent anywhere except the source requests.
+// A credentialed source (proof-http.v1) is never fetched: pass sample proof captures with --proof to check them.
 // Exit codes: 0 fine, 1 invalid rule, 2 the answer is already public, 3 a source could not be read.
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { settlementRuleAuthoringIssues, settlementRuleHash, settlementTimeline, validateSettlementRule } from '../server/settlement-rules.mjs';
 import { parseSettlementCapture, retrieveSettlementCapture } from '../server/settlement-evidence.mjs';
+import { inspectProofCapture } from '../server/settlement-readers.mjs';
 
 const WAITING = new Set(['VALUE_MISSING', 'EVM_BLOCK_NOT_YET_AVAILABLE', 'EVM_NOT_FINAL', 'EXTRACTION_MISSING_FIELD']);
 const iso = seconds => new Date(seconds * 1000).toISOString();
 
-export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), closesAt = null, request = fetch } = {}) {
+export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), closesAt = null, request = fetch, proofs = [] } = {}) {
   let rule;
   try { rule = validateSettlementRule(raw); } catch (error) { return { eventId: raw?.eventId ?? null, status: 'invalid', message: error.message }; }
   const issues = settlementRuleAuthoringIssues(rule);
@@ -27,6 +29,14 @@ export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), clos
     catch (error) { report.status = 'invalid'; report.message = error.message; return report; }
   }
   for (const url of rule.source.urls) {
+    if (rule.source.adapter === 'proof-http.v1') {
+      if (!proofs.length) report.sources.push({ url, result: 'proof-required' });
+      for (const proof of proofs) {
+        try { const { value, timestampS, signers } = inspectProofCapture(rule, proof); report.sources.push({ url, result: 'proof-valid', value, signedAt: iso(timestampS), signers }); }
+        catch (error) { report.sources.push({ url, result: 'proof-invalid', reason: error.reason ?? 'PROOF_INVALID' }); report.status = 'source-error'; }
+      }
+      continue;
+    }
     const row = { url };
     try {
       const capture = await retrieveSettlementCapture(rule, url, { request, now: () => now });
@@ -59,12 +69,14 @@ export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), clos
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const [file, ...rest] = process.argv.slice(2);
-  if (!file) { console.error('Usage: node apps/web/scripts/check-settlement-rule.mjs <rule-or-rules.json> [--closes-at <unix seconds>]'); process.exit(1); }
+  if (!file) { console.error('Usage: node apps/web/scripts/check-settlement-rule.mjs <rule-or-rules.json> [--closes-at <unix seconds>] [--proof <capture.json>]...'); process.exit(1); }
   const at = rest.indexOf('--closes-at'), closesAt = at >= 0 ? Number(rest[at + 1]) : null;
+  const proofs = [];
+  for (let i = 0; i < rest.length; i++) if (rest[i] === '--proof') proofs.push(JSON.parse(await readFile(rest[++i], 'utf8')));
   const input = JSON.parse(await readFile(file, 'utf8'));
   const rules = Array.isArray(input) ? input : Array.isArray(input.settlementRules) ? input.settlementRules : [input];
   const reports = [];
-  for (const rule of rules) reports.push(await checkRule(rule, { closesAt }));
+  for (const rule of rules) reports.push(await checkRule(rule, { closesAt, proofs }));
   console.log(JSON.stringify(reports, null, 2));
   process.exit(Math.max(0, ...reports.map(r => ({ ok: 0, invalid: 1, 'already-public': 2, 'source-error': 3 })[r.status])));
 }

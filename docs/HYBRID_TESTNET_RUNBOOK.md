@@ -19,9 +19,11 @@ A linked Kleros case can hold up every payout in its shared pool if the court ne
 
 ## Source coverage
 
-The mechanical route currently uses the existing verified adapters: public JSON API, CSV/SDMX/JSON-stat tables, anchored HTML text, and EVM RPC. A publisher-specific rule must name the event, record, finality or revision policy, and exact extraction field before listing a market. The first sample below uses two quantities from the same Monad testnet block.
+The mechanical route uses these verified adapters: public JSON API (`json-api.v1`, and `json-api.v2` for POST queries, derived values and time filters), CSV/SDMX/JSON-stat tables, anchored HTML text, EVM RPC, RSS/Atom/XML feeds (`xml-feed.v1`), official PDF text (`pdf-text.v1`), and credentialed sources through a TLS proof (`proof-http.v1`). A publisher-specific rule must name the event, record, finality or revision policy, and exact extraction field before listing a market. The first sample below uses two quantities from the same Monad testnet block.
 
-Official sports feeds can be configured through public JSON only after a league-specific fixture ID, final status, score type, postponement rule, and correction policy are tested. Election and statistics feeds can use the existing table readers where a certified release and revision vintage are explicit. Other chain families, PDF-only documents, browser-rendered public pages, and login/key-gated zkTLS proofs are not implemented by this version. Do not advertise those categories as automatic or publish questions using them yet. The build order and rejection criteria are in [SETTLEMENT_ROUTING_V4.md](SETTLEMENT_ROUTING_V4.md).
+Official sports feeds can be configured through public JSON only after a league-specific fixture ID, final status, score type, postponement rule, and correction policy are tested. Election and statistics feeds can use the existing table readers where a certified release and revision vintage are explicit. A feed that needs an API key or a login uses `proof-http.v1`: the source credential never reaches Render, an operator-run prover uploads a Reclaim proof inside the capture window, and the rule must give a window of at least six hours. Follow [PROOF_READER_RUNBOOK.md](PROOF_READER_RUNBOOK.md). The proof reader has not yet settled a listed pool end to end, so treat the first proof pool as a trial.
+
+`pdf-text.v1` and `xml-feed.v1` commit the exact parser version in the rule and refuse to read if the installed version differs. Never upgrade `pdfjs-dist` or `fast-xml-parser` while a rule using it is live; a new parser version means new rules. Bitcoin and Solana readers, pages that only render with JavaScript, and multi-source medians are not implemented. Do not advertise those categories as automatic or publish questions using them. The build order and rejection criteria are in [SETTLEMENT_ROUTING_V4.md](SETTLEMENT_ROUTING_V4.md).
 
 ## Wallets, funds, and hosting
 
@@ -41,6 +43,7 @@ The existing Render Redis, Resend, and settlement bot settings remain in use. Fo
 | `FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI` | Optional cap on the Kleros arbitration fee the keeper pays, default `20000000000000000` |
 | `FLURBO_HYBRID_JUROR_ADDRESS` | Optional public address of the operator juror. `/healthz` and the ACTION email then show the juror's unvoted seats and the exact `castVote` command |
 | `FLURBO_HYBRID_ALERTS_ENABLED=true` | Operator emails for hybrid pools (see "Operator emails" below). Needs `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_EMAIL_FROM` and `FLURBO_MONITOR_RESEND_KEY` |
+| `FLURBO_PROOF_SUBMIT_TOKEN` | Bearer token (32 to 128 URL-safe characters) for the proof upload endpoint. Needed only when a listed pool uses `proof-http.v1`; without it the endpoint stays off and `/healthz` shows `proof_captures: disabled` |
 
 `FLURBO_SETTLEMENT_BOT=true` and `FLURBO_NOTIFY_ENABLED=true` continue to drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
 

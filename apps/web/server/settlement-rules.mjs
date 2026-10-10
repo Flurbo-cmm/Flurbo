@@ -4,7 +4,7 @@ import { validateReaderConfig } from './settlement-readers.mjs';
 export const SETTLEMENT_SCHEMA = 'flurbo.settlement-rule.v1';
 // General readers (settlement-readers.mjs) are configured by each rule. Defined here, not imported, so either
 // module can be loaded first despite their mutual import.
-export const GENERAL_ADAPTERS = ['json-api.v1', 'stat-table.v1', 'html-text.v1', 'evm-rpc.v1'];
+export const GENERAL_ADAPTERS = ['json-api.v1', 'stat-table.v1', 'html-text.v1', 'evm-rpc.v1', 'proof-http.v1', 'json-api.v2', 'pdf-text.v1', 'xml-feed.v1'];
 export const SETTLEMENT_ADAPTERS = ['json-record.v1', 'bls-employment-html.v1', 'fomc-statement-html.v1', 'usgs-earthquake-count.v1', ...GENERAL_ADAPTERS];
 const operators = ['gt', 'gte', 'lt', 'lte', 'eq'];
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -117,6 +117,8 @@ export function settlementRuleAuthoringIssues(rule) {
     && rule.timing.scheduledAt - end < SNAPSHOT_SETTLE_SECONDS)
     issues.push(`The capture window opens ${Math.round((rule.timing.scheduledAt - end) / 60)} minutes after the observed interval ends. `
       + `Sources add and revise records late, so open it at least ${SNAPSHOT_SETTLE_SECONDS / 3600} hours after the interval.`);
+  if (rule.source.adapter === 'proof-http.v1' && rule.timing.publicationCutoff - rule.timing.scheduledAt < 6 * 3600)
+    issues.push('Proof captures come from an operator-run prover. Give the capture window at least 6 hours.');
   return issues;
 }
 export function assertSettlementRuleAuthoring(rule) {

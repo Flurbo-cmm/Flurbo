@@ -1,1 +1,1 @@
-{"name":"@flurbo/source-proofs","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs"},"dependencies":{"@reclaimprotocol/js-sdk":"5.8.2","@reclaimprotocol/zk-fetch":"1.1.0"}}
+{"name":"@flurbo/source-proofs","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs","prove":"node prove.mjs","circuits":"node node_modules/@reclaimprotocol/zk-symmetric-crypto/lib/scripts/download-files"},"dependencies":{"@reclaimprotocol/js-sdk":"5.8.2","@reclaimprotocol/zk-fetch":"1.1.0"}}

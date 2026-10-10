@@ -21,10 +21,11 @@ import {memberNotices,noticeDelivery} from './member-notices.mjs';
 import {handleAlchemyWebhook, getAlchemyActivities} from './alchemy-webhook.mjs';
 import { EVIDENCE_PATH } from './oracle-integration.mjs';
 import { HYBRID_PORTFOLIO_INPUT_ERRORS } from './hybrid-portfolio.mjs';
+import { MAX_PROOF_SUBMISSION_BYTES, PROOF_CAPTURE_PATH } from './proof-captures.mjs';
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null } = {}) {
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
   const links = walletLinks({command:store.command,isReserved:wallet=>agents?agents.isAgentWallet(wallet):false,reservedKey:store.command?agentWalletKey:null});
@@ -106,6 +107,19 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         res.end(value);
       } catch { send(res, 404, { error: 'Rule unavailable' }); }
       return;
+    }
+    if (req.url === PROOF_CAPTURE_PATH) {
+      if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
+      if (!proofCaptures) return send(res, 404, { error: 'Proof submission unavailable' });
+      try { limits.localTake('proof-capture-submit', 30); } catch { return send(res, 429, { error: 'Too many requests' }); }
+      let text = '';
+      req.setEncoding('utf8');
+      for await (const chunk of req) {
+        text += chunk;
+        if (text.length > MAX_PROOF_SUBMISSION_BYTES) return send(res, 413, { error: 'Payload too large' });
+      }
+      const result = await proofCaptures.submit({ authorization: req.headers.authorization || '', body: text });
+      return send(res, result.status, result.body);
     }
     if (req.url === '/api/alchemy/webhook') {
       if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
