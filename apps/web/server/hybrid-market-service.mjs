@@ -172,6 +172,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     return { schema: 'flurbo.hybrid-snapshot.v1', ...list().find(item => item.id === route.id),
       resolver: route.resolver, eventHash: route.eventHash,
       rulesHash: route.record.rulesHash, adapter: route.record.adapter,
+      ruleAdapter: route.event.rule?.source.adapter ?? null,
       source: route.event.route === 'mechanical' ? {
         publisher: route.event.rule.source.publisher, urls: route.event.rule.source.urls,
         adapter: route.event.rule.source.adapter } : route.event.source,

@@ -21,6 +21,7 @@ import { sheetPhase } from '../sheet-state';
 import { boardPrice } from '../board-cache';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
+import { credentialedReader, readerName } from '../reader-names';
 import { hybridNamespace } from '../portfolio-groups';
 import PriceHistory from './PriceHistory';
 import { HybridConnections } from './HybridAnalysis';
@@ -36,7 +37,7 @@ const tradeAbi = parseAbi(['function buy(uint32,uint256,uint128,uint128,uint256)
 type Market = { id: string; pool: string; poolTitle: string; eventIndex: number;
   question: string; route: 'mechanical' | 'reality'; closesAt: number; observationEndsAt: number };
 type Snapshot = Market & { schema: string; resolver: string; eventHash: string; rulesHash: string;
-  adapter: string; source: { publisher?: string; urls?: string[]; adapter?: string };
+  adapter: string; ruleAdapter?: string | null; source: { publisher?: string; urls?: string[]; adapter?: string };
   marketNow: number; funded: boolean; resolved: boolean; delivered: boolean;
   assertionDeadline: number; reportDeadline: number; bondAtoms: string;
   phase: number; proposal: number; counter: number; result: number;
@@ -536,12 +537,14 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       {settlementPending ? pendingBody(settlementPending) : settlementPlan ? <><p>{settlementPlan.reason}</p><dl className="leaders"><div><dt>Network</dt><dd>{settlementPlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd></div><div><dt>To</dt><dd className="mono-break">{settlementPlan.transaction.to}</dd></div></dl></> : null}
     </TransactionSheet>
   </section> : <p role="status">Reading this market...</p>;
+  const readerAdapter = snapshot?.ruleAdapter ?? snapshot?.source?.adapter;
   const proof = snapshot ? <div className="proof-panel">
     <section className="detail-panel"><h2>What decides the answer?</h2><p>{reality ? 'The published Reality.eth question receives bonded answers. Kleros can rule on a challenged answer.'
       : 'The published source and exact rule for this question determine the provisional answer.'}</p>
       {reality && snapshot.ruleURI && <p><a className="text-link" href={snapshot.ruleURI} target="_blank" rel="noreferrer">Published rule <ArrowUpRight size={14}/></a></p>}
-      {snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
-      <dl className="facts"><dt>Reader</dt><dd>{snapshot.source?.adapter || 'Reality.eth'}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
+      {credentialedReader(readerAdapter) ? <p className="market-caption">This source needs credentials. The evidence holds a TLS proof of its response.</p>
+        : snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
+      <dl className="facts"><dt>Reader</dt><dd>{readerName(readerAdapter)}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
         {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : 'Not recorded yet'}</dd></>
           : <><dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></>}</dl>
       {reality && <p className="market-caption">A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted and can misreport until verified cross-chain delivery is added.</p>}

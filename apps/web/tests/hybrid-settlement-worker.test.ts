@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRealityObservation, hybridRealityOutcome, hybridSettlementCatalog, hybridSettlementWorker,
+import { buildRealityObservation, hybridCaptureStep, hybridRealityOutcome, hybridSettlementCatalog, hybridSettlementWorker,
   nextHybridAction, nextHybridActions, planRealityAnswer, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
 import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
@@ -10,6 +10,7 @@ import { keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 import { at, account, catalog, pool, realityCatalog, resolver } from './hybrid-catalog-fixture.ts';
+import { proofRule } from './proof-fixture.ts';
 const state = (phase: number, challengeUntil = 0, arbitrationUntil = 0,
   sourceCaseId = `0x${'0'.repeat(64)}`) =>
   ({ phase, challengeUntil, arbitrationUntil, sourceCaseId });
@@ -267,4 +268,18 @@ test('answerer withdraws its Reality credit once', async () => {
   const dust = workerFixture({ realityBalance: 10n ** 14n - 1n });
   await dust.build().tick();
   assert.equal(dust.writes.some(call => call.functionName === 'withdraw'), false);
+});
+
+test('credentialed rules wait for an uploaded proof', () => {
+  const proof = proofRule(), start = proof.timing.scheduledAt, end = proof.timing.publicationCutoff;
+  assert.equal(hybridCaptureStep(proof, start - 1, false), 'outside-window');
+  assert.equal(hybridCaptureStep(proof, end + 1, false), 'outside-window');
+  assert.equal(hybridCaptureStep(proof, start + 60, true), 'retained');
+  assert.equal(hybridCaptureStep(proof, start + 60, false), 'proof-pending');
+  assert.equal(hybridCaptureStep(proof, start, false), 'proof-pending');
+  assert.equal(hybridCaptureStep(proof, end, false), 'proof-pending');
+  const chain = catalog().pools[0].prepared.draft.events[0].rule;
+  assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt + 1, false), 'fetch');
+  assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt + 1, true), 'retained');
+  assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt - 1, false), 'outside-window');
 });

@@ -1,15 +1,28 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { getAddress } from 'viem';
 import { evmBlockEvents } from './create-hybrid-evm-pilot.mjs';
 import { realityQuestionText } from './prepare-hybrid-pilot.mjs';
-import { settlementRuleHash } from '../server/settlement-rules.mjs';
+import { assertSettlementRuleAuthoring, settlementRuleHash } from '../server/settlement-rules.mjs';
 import { hybridArbitrator, SEPOLIA_KLEROS_SUBCOURT3, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
+
+// Custom rules replace the default chain-block questions. Each becomes one Reality question whose text links its rule.
+function ruleEvents(rules, { closesAt, timeout }) {
+  if (!Array.isArray(rules) || rules.length < 2 || rules.length > 32) throw Error('Provide 2 to 32 rules');
+  if (new Set(rules.map(rule => rule?.eventId)).size !== rules.length) throw Error('Rule event IDs must be distinct');
+  return rules.map(rule => {
+    assertSettlementRuleAuthoring(rule);
+    if (rule.timing.challengePeriod !== timeout) throw Error(`${rule.eventId}: the rule challenge period must equal the timeout`);
+    if (rule.timing.assertionPeriod !== 3600 || rule.timing.observationEndsAt <= closesAt)
+      throw Error(`${rule.eventId}: the rule needs a 3600 second assertion period and an end after the close time`);
+    return { id: rule.eventId, question: rule.question, observationEndsAt: rule.timing.observationEndsAt, rule };
+  });
+}
 
 export function createHybridRealityPilot({ creator, proposer, relay, closesAt, origin, timeout = 3600,
   minBondWei = '100000000000000', arbitrator = SEPOLIA_KLEROS_SUBCOURT3,
-  title = 'Monad testnet Reality reader pool' }) {
+  title = 'Monad testnet Reality reader pool', rules = null }) {
   if (!hybridArbitrator(arbitrator)) throw Error('Choose a supported Kleros arbitrator proxy');
   if (typeof title !== 'string' || title.length < 8 || title.length > 120)
     throw Error('Choose a title of 8 to 120 characters');
@@ -23,7 +36,7 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
     || !/^[1-9]\d*$/.test(minBondWei))
     throw Error('Choose three distinct wallets, a close time 2 hours to 14 days away and an https origin');
   const [deployer, proposerWallet, relayWallet] = addresses;
-  const items = evmBlockEvents({ closesAt, challengePeriod: timeout }).map(item => {
+  const items = (rules === null ? evmBlockEvents({ closesAt, challengePeriod: timeout }) : ruleEvents(rules, { closesAt, timeout })).map(item => {
     const ruleURI = `${origin}/api/hybrid/rules/0x${settlementRuleHash(item.rule)}`;
     return { ...item, ruleURI, questionText: realityQuestionText(item.question, ruleURI) };
   });
@@ -50,11 +63,12 @@ export function askCommand(template, index, templatePath) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const [creator, proposer, relay, close, origin, output, arbitrator, title] = process.argv.slice(2);
+  const [creator, proposer, relay, close, origin, output, arbitrator, title, rulesFile] = process.argv.slice(2);
   if (!output || !/^[1-9]\d*$/.test(close || ''))
-    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE]');
+    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE] [RULES.json]  (use "" to skip ARBITRATOR or TITLE)');
   const template = createHybridRealityPilot({ creator, proposer, relay, closesAt: Number(close), origin,
-    ...(arbitrator ? { arbitrator } : {}), ...(title ? { title } : {}) });
+    ...(arbitrator ? { arbitrator } : {}), ...(title ? { title } : {}),
+    ...(rulesFile ? { rules: JSON.parse(await readFile(rulesFile, 'utf8')) } : {}) });
   await writeFile(output, JSON.stringify(template, null, 2) + '\n', { flag: 'wx' });
   template.questions.forEach((_, index) => console.log(askCommand(template, index, output)));
   console.log(JSON.stringify({ status: 'template_created', questions: template.questions.length,

@@ -135,6 +135,8 @@ test('reality snapshot includes rule URI and the automatic answer', async () => 
   assert.equal(first.automaticAnswer.outcome, 2);
   assert.deepEqual(Object.keys(first.automaticAnswer).sort(), ['evidenceURI', 'observedAt', 'outcome']);
   assert.equal(first.ruleURI, events[0].source.ruleURI);
+  assert.equal(first.ruleAdapter, 'json-api.v1');
   const second = await service.snapshot(`${poolAddress}-1`);
   assert.equal(second.automaticAnswer, null);
+  assert.equal(second.ruleAdapter, 'json-api.v1');
 });

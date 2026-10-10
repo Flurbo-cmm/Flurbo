@@ -26,6 +26,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | `config/collections.json` | Committed list of pools and their settlement modes |
 | `config/markets` | Batch market specifications |
 | `workflows/cre` | Rule preparation, checks, deployment verification, registry edits |
+| `integrations/source-proofs` | Operator-run prover for credentialed sources (`proof-http.v1`); runs on the operator's machine, never on Render. See [PROOF_READER_RUNBOOK.md](PROOF_READER_RUNBOOK.md) |
 | `packages/sdk*` | TypeScript, Python, Rust and C++ member agents |
 | `protocol`, `crates/flurbo-core` | Interchange fixtures and Rust reference calculations |
 | `.github/workflows/checks.yml` | Code checks; scheduled settlement workflows are excluded |
@@ -88,6 +89,7 @@ Keep actual secret values in Render or another secret manager, never in Git. The
 | Access and mail | `FLURBO_APPLICATIONS_ENABLED`, `FLURBO_APPLICATIONS_CODE_SECRET`, `FLURBO_APPLICATIONS_RESEND_KEY`, `FLURBO_APPLICATIONS_EMAIL_FROM`, `FLURBO_APPLICATIONS_EMAIL_DAILY_LIMIT`, `FLURBO_TESTNET_APPROVED_ACCOUNTS`, `FLURBO_TESTING_OPERATOR_ACCOUNT`, `FLURBO_NOTIFY_ENABLED`, `FLURBO_NOTIFY_DAILY_LIMIT` |
 | Wallet funding | `FLURBO_STARTER_PRIVATE_KEY` (new wallet or unset on company site), `FLURBO_COMPANY_STARTER_ADDRESS` (required if the company starter key is set), `FLURBO_STARTER_MON`, `FLURBO_STARTER_DAILY_LIMIT`, `FLURBO_TEST_AUSD_FAUCET`, `FLURBO_ALERT_STARTER_MON`, `FLURBO_ALERT_DISPENSER_AUSD`, `FLURBO_ALERT_EMAIL` |
 | Settlement | `FLURBO_SETTLEMENT_BOT=false` until the one company pool is live, `FLURBO_COLLECTIONS_SOURCE=registry`, `FLURBO_PILOT_DISABLED=true`, then `FLURBO_MONITOR_ENABLED=true`, `FLURBO_RESOLUTION_ENABLED=true`, `FLURBO_RESOLUTION_PROPOSALS=true`, `FLURBO_RESOLUTION_EXECUTE=true` after observation-only dry run, new `FLURBO_RESOLUTION_SIGNER_ADDRESS`, new `FLURBO_RESOLUTION_PRIVATE_KEY`, `FLURBO_RESOLUTION_EVIDENCE_ORIGIN=https://flurbopm.singu.online`, `FLURBO_RESOLUTION_HOLD` optional |
+| Proof sources | `FLURBO_PROOF_SUBMIT_TOKEN` (Render and the prover machine), `FLURBO_RECLAIM_APP_ID`, `FLURBO_RECLAIM_APP_SECRET` and `FLURBO_PROOF_CREDENTIAL_<LABEL>` (prover machine only, never Render) |
 | Monitoring | `FLURBO_MONITOR_RESEND_KEY`, `FLURBO_MONITOR_EMAIL_FROM`, `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_HEALTHCHECK_URL`, `FLURBO_METRICS_DIGEST`, `FLURBO_METRICS_DIGEST_UTC`, `FLURBO_METRICS_SCAN_STEPS`, `FLURBO_METRICS_EXCLUDE` |
 | Optional and integrations | `FLURBO_ENVIO_GRAPHQL_URL`, `FLURBO_ALCHEMY_WEBHOOK_SIGNING_KEY`, `FLURBO_EVIDENCE_GEMINI_KEY`, `FLURBO_EVIDENCE_MODEL`, `FLURBO_EVIDENCE_FREE_TIER_CONFIRMED`, `FLURBO_EVIDENCE_OPERATOR`, `FLURBO_SEMANTIC_MODE` (off), `FLURBO_SEMANTIC_RULES_JSON`, `FLURBO_AGENT_RESERVED_WALLETS`, `FLURBO_ANDROID_CERT_SHA256` |
 

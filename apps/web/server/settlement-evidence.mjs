@@ -1,5 +1,6 @@
 import { canonical, compareDecimal, decimal, digest, settlementRuleHash, sourceUrl, usgsQuery, validateSettlementRule } from './settlement-rules.mjs';
-import { GENERAL_ADAPTERS, readGeneralRecord, readerAccept, retrieveEvmCapture } from './settlement-readers.mjs';
+import { GENERAL_ADAPTERS, readGeneralRecord, readerAccept, retrieveEvmCapture, sourceRequestInit } from './settlement-readers.mjs';
+import { retrievePdfCapture, verifyDerivedCaptures } from './settlement-pdf.mjs';
 
 const MAX_BYTES = 2_000_000;
 const kinds = ['initial', 'correction', 'revision', 'cancelled', 'correction-notice'];
@@ -240,6 +241,7 @@ export function verifySettlementPacket(packet, { packetHash, expectedRuleHash } 
 /** Future worker integration seam. The caller must verify expectedRuleHash against its immutable manifest. */
 export async function archiveSettlementProposal({ rule, expectedRuleHash, captures, now, archive, owner, draftHash, packetStore }) {
   if (settlementRuleHash(rule) !== expectedRuleHash) issue('PACKET_BINDING_FAILED');
+  await verifyDerivedCaptures(rule, captures);
   const evaluated = evaluateSettlement(rule, captures, { now });
   if (evaluated.status !== 'ready') return { evaluation: evaluated, evidence: null };
   verifySettlementPacket(evaluated.packet, { packetHash: evaluated.packetHash, expectedRuleHash });
@@ -268,10 +270,14 @@ export async function archiveSettlementProposal({ rule, expectedRuleHash, captur
 export async function retrieveSettlementCapture(rule, url, { request = fetch, now = () => Math.floor(Date.now() / 1000) } = {}) {
   validateSettlementRule(rule);
   if (!rule.source.urls.includes(url)) issue('SOURCE_URL_MISMATCH');
+  if (rule.source.adapter === 'proof-http.v1') issue('PROOF_CAPTURE_REQUIRED');
   if (rule.source.adapter === 'evm-rpc.v1') return retrieveEvmCapture(rule, url, { request, now });
-  const controller = new AbortController();
+  if (rule.source.adapter === 'pdf-text.v1') return retrievePdfCapture(rule, url, { request, now });
+  const controller = new AbortController(), post = sourceRequestInit(rule);
   const response = await request(url, { redirect: 'error', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12000)]),
-    headers: { Accept: GENERAL_ADAPTERS.includes(rule.source.adapter) ? readerAccept(rule) : ['json-record.v1', 'usgs-earthquake-count.v1'].includes(rule.source.adapter) ? 'application/json' : 'text/html', 'Cache-Control': 'no-cache' } });
+    ...(post ? { method: post.method, body: post.body } : {}),
+    headers: { Accept: GENERAL_ADAPTERS.includes(rule.source.adapter) ? readerAccept(rule) : ['json-record.v1', 'usgs-earthquake-count.v1'].includes(rule.source.adapter) ? 'application/json' : 'text/html', 'Cache-Control': 'no-cache',
+      ...(post ? { 'Content-Type': post.contentType } : {}) } });
   try {
     if (response.status !== 200 || !response.body || response.redirected || (response.url && response.url !== url)) issue('SOURCE_FETCH_FAILED');
     if (response.headers.has('content-range')) issue('SOURCE_PARTIAL_RESPONSE');

@@ -1,4 +1,5 @@
-import { compareDecimal, decimal, digest, GENERAL_ADAPTERS } from './settlement-rules.mjs';
+import { canonical, compareDecimal, decimal, digest, GENERAL_ADAPTERS, settlementRuleHash } from './settlement-rules.mjs';
+import { PROOF_CONTEXT_ADDRESS, proofContextMessage, verifyReclaimClaim } from './source-proof.mjs';
 
 // General settlement readers. Each market's rule names one reader and configures it; that configuration is part
 // of the rule hash committed on-chain, so it cannot change after deployment. Readers only turn a retained source
@@ -11,6 +12,8 @@ import { compareDecimal, decimal, digest, GENERAL_ADAPTERS } from './settlement-
 //   html-text.v1   official pages without data: required anchors plus one pattern matching exactly once
 //   evm-rpc.v1     any EVM chain through public RPC: contract call, balance, nonce, block field at a time,
 //                  or transaction/log counts between two times, with the boundary blocks kept as evidence
+//   proof-http.v1  a source that needs a credential: an operator-run prover keeps the credential and uploads a
+//                  Reclaim TLS proof, which is re-verified here against the attestors pinned in the rule
 export { GENERAL_ADAPTERS };
 
 const issue = reason => { throw Object.assign(Error(reason), { reason }); };
@@ -22,6 +25,8 @@ const pointer = value => typeof value === 'string' && value.length <= 300 && /^(
 const address = value => typeof value === 'string' && /^0x[0-9a-fA-F]{40}$/.test(value);
 const TIME_FORMATS = ['unix-seconds', 'unix-millis', 'iso-datetime', 'date'];
 const OPS = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'];
+const TIME_FORMATS_V2 = [...TIME_FORMATS, 'rfc-2822'];
+const OPS_V2 = [...OPS, 'contains'];
 const MAX_EVM_CALLS = 1000;
 
 // ---------- exact JSON ----------
@@ -145,11 +150,114 @@ function checkPattern(pattern) {
   try { groups = new RegExp(`${pattern}|`).exec('').length - 1; } catch { return false; }
   return groups === 1;
 }
+export const PDF_PARSER = 'pdfjs-dist@6.3.289';
+export const MAX_PDF_BYTES = 1_400_000;
+function checkPdfReader(rule) {
+  const r = rule.source.reader;
+  if (!plain(r, ['parser', 'pages', 'anchors', 'pattern', 'grouping', 'publishedAt', 'scale', 'valueFormat'], ['parser', 'pages', 'anchors', 'pattern'])
+    || r.parser !== PDF_PARSER || !plain(r.pages, ['first', 'last'], ['first', 'last'])
+    || !Number.isSafeInteger(r.pages.first) || !Number.isSafeInteger(r.pages.last) || r.pages.first < 1 || r.pages.last < r.pages.first || r.pages.last > r.pages.first + 49
+    || !Array.isArray(r.anchors) || !r.anchors.length || r.anchors.length > 8 || r.anchors.some(a => typeof a !== 'string' || a.length < 3 || a.length > 300)
+    || !checkPattern(r.pattern) || (r.grouping !== undefined && !['none', 'comma'].includes(r.grouping))) invalid('Invalid PDF reader');
+  checkPublished(r.publishedAt, 'pattern');
+}
+export const XML_PARSER = 'fast-xml-parser@5.11.1';
+function checkXmlReader(rule) {
+  const r = rule.source.reader, type = rule.decision.type;
+  if (!plain(r, ['parser', 'arrays', 'select', 'aggregate', 'field', 'filter', 'checks', 'publishedAt', 'scale', 'valueFormat'], ['parser', 'select', 'aggregate'])
+    || r.parser !== XML_PARSER) invalid('Invalid XML reader');
+  if (r.arrays !== undefined && (!Array.isArray(r.arrays) || !r.arrays.length || r.arrays.length > 8 || new Set(r.arrays).size !== r.arrays.length
+    || r.arrays.some(name => typeof name !== 'string' || !/^[A-Za-z_][A-Za-z0-9_.:-]{0,199}$/.test(name)))) invalid('Invalid XML reader arrays');
+  checkSelectionV2(r, type, { shape: 'Invalid XML reader', field: 'Invalid XML reader field', numeric: 'Counts and totals are numbers',
+    lists: 'Filters apply to lists', filter: 'Invalid XML reader filter' });
+  checkChecks(r.checks);
+  checkPublishedV2(r.publishedAt);
+}
+const SELECTION_V2 = ['value', 'only', 'count', 'sum', 'max', 'min'];
+const DERIVED_MESSAGES = Object.fromEntries(['shape', 'field', 'numeric', 'lists', 'filter'].map(key => [key, 'Invalid derived value']));
+function filterV2Ok(f) {
+  if (!plain(f, ['path', 'op', 'value', 'format'], ['path', 'op', 'value']) || !pointer(f.path) || !OPS_V2.includes(f.op) || !text(f.value, 200)) return false;
+  if (f.format !== undefined) return TIME_FORMATS_V2.includes(f.format) && f.op !== 'contains' && /^(?:0|[1-9]\d{0,11})$/.test(f.value);
+  if (['eq', 'ne', 'contains'].includes(f.op)) return true;
+  try { decimal(f.value); return true; } catch { return false; }
+}
+function checkSelectionV2(sel, type, messages) {
+  if (!pointer(sel.select) || !SELECTION_V2.includes(sel.aggregate)) invalid(messages.shape);
+  const needsField = ['only', 'sum', 'max', 'min'].includes(sel.aggregate);
+  if (needsField !== (sel.field !== undefined) || (needsField && !pointer(sel.field))) invalid(messages.field);
+  if (['count', 'sum', 'max', 'min'].includes(sel.aggregate) && type !== 'number') invalid(messages.numeric);
+  if (sel.aggregate === 'value' && sel.filter !== undefined) invalid(messages.lists);
+  if (sel.filter !== undefined && (!Array.isArray(sel.filter) || !sel.filter.length || sel.filter.length > 8 || !sel.filter.every(filterV2Ok))) invalid(messages.filter);
+}
+function checkChecks(checks) {
+  if (checks !== undefined && (!Array.isArray(checks) || !checks.length || checks.length > 8
+    || checks.some(c => !plain(c, ['path', 'equals'], ['path', 'equals']) || !pointer(c.path) || !text(c.equals)))) invalid('Invalid JSON reader checks');
+}
+function checkPublishedV2(published) {
+  if (published === undefined) return;
+  if (!plain(published, ['path', 'format'], ['path', 'format']) || !TIME_FORMATS_V2.includes(published.format) || !pointer(published.path)) invalid('Invalid publication time field');
+}
+function checkJsonV2(rule) {
+  const r = rule.source.reader, type = rule.decision.type;
+  if (!plain(r, ['request', 'select', 'aggregate', 'field', 'filter', 'checks', 'publishedAt', 'derive', 'scale', 'valueFormat'], ['select', 'aggregate'])) invalid('Invalid JSON reader');
+  checkSelectionV2(r, type, { shape: 'Invalid JSON reader', field: 'Invalid JSON reader field', numeric: 'Counts and totals are numbers',
+    lists: 'Filters apply to lists', filter: 'Invalid JSON reader filter' });
+  checkChecks(r.checks);
+  checkPublishedV2(r.publishedAt);
+  if (r.request !== undefined) {
+    if (!plain(r.request, ['method', 'body'], ['method', 'body']) || r.request.method !== 'POST' || !text(r.request.body, 4000)) invalid('Invalid JSON request');
+    let body; try { body = parseExactJSON(r.request.body); } catch { invalid('Invalid JSON request'); }
+    if (!body || typeof body !== 'object' || Array.isArray(body) || body instanceof ExactNumber
+      || (typeof body.query === 'string' && body.query.trim().toLowerCase().startsWith('mutation'))) invalid('Invalid JSON request');
+  }
+  if (r.derive !== undefined) {
+    if (type !== 'number' || !plain(r.derive, ['op', 'select', 'aggregate', 'field', 'filter'], ['op', 'select', 'aggregate']) || !['difference', 'sum'].includes(r.derive.op)) invalid('Invalid derived value');
+    checkSelectionV2(r.derive, type, DERIVED_MESSAGES);
+  }
+}
+const matchNames = value => [...value.matchAll(/\(\?<([A-Za-z][A-Za-z0-9]{0,31})>/g)].map(match => match[1]);
+function checkProofReader(rule) {
+  const { reader: r, urls } = rule.source, type = rule.decision.type;
+  if (!plain(r, ['proof', 'attestors', 'minSignatures', 'credential', 'request', 'responseRedactions', 'responseMatches', 'checks', 'value', 'scale', 'valueFormat'],
+    ['proof', 'attestors', 'minSignatures', 'credential', 'request', 'responseRedactions', 'responseMatches', 'checks', 'value']) || r.proof !== 'reclaim-http.v1') invalid('Invalid proof reader');
+  if (urls.length !== 1) invalid('A proof reader proves one URL');
+  if (rule.vintage !== 'first-observed-snapshot') invalid('Proof readers use first-observed-snapshot');
+  if (!Array.isArray(r.attestors) || !r.attestors.length || r.attestors.length > 4 || new Set(r.attestors).size !== r.attestors.length
+    || r.attestors.some(a => typeof a !== 'string' || !/^0x[0-9a-f]{40}$/.test(a))
+    || !Number.isSafeInteger(r.minSignatures) || r.minSignatures < 1 || r.minSignatures > r.attestors.length) invalid('Invalid proof attestors');
+  const c = r.credential;
+  if (!plain(c, ['kind', 'name', 'label'], ['kind', 'label']) || !['header', 'cookie'].includes(c.kind) || typeof c.label !== 'string' || !/^[a-z0-9][a-z0-9-]{0,39}$/.test(c.label)
+    || (c.kind === 'header' ? typeof c.name !== 'string' || !/^[A-Za-z][A-Za-z0-9-]{0,63}$/.test(c.name) : c.name !== undefined)) invalid('Invalid proof credential');
+  const q = r.request, headers = q?.headers === undefined ? {} : q.headers;
+  const forbidden = ['authorization', 'cookie', 'proxy-authorization', c.kind === 'header' ? c.name.toLowerCase() : null];
+  if (!plain(q, ['method', 'headers', 'body'], ['method']) || !['GET', 'POST'].includes(q.method) || (q.body !== undefined && (q.method !== 'POST' || !text(q.body, 4000)))
+    || !plain(headers, Object.keys(headers ?? {})) || Object.keys(headers).length > 8
+    || Object.entries(headers).some(([name, value]) => !/^[a-z][a-z0-9-]{0,63}$/.test(name) || forbidden.includes(name) || !text(value, 200))) invalid('Invalid proof request');
+  if (!Array.isArray(r.responseRedactions) || !r.responseRedactions.length || r.responseRedactions.length > 8
+    || !r.responseRedactions.every(item => (plain(item, ['jsonPath'], ['jsonPath']) && text(item.jsonPath, 200) && item.jsonPath.startsWith('$'))
+      || (plain(item, ['regex'], ['regex']) && text(item.regex, 300)))) invalid('Invalid proof redactions');
+  if (!Array.isArray(r.responseMatches) || !r.responseMatches.length || r.responseMatches.length > 8) invalid('Invalid proof matches');
+  const names = [];
+  for (const match of r.responseMatches) {
+    if (!plain(match, ['type', 'value'], ['type', 'value']) || match.type !== 'regex' || !text(match.value, 300) || /\(\?[=!]|\(\?<[=!]|\\[1-9]|\\k</.test(match.value)) invalid('Invalid proof matches');
+    let groups;
+    try { new RegExp(match.value, 'sgiu'); groups = new RegExp(`${match.value}|`, 'sgiu').exec('').groups; } catch { invalid('Invalid proof matches'); }
+    const scanned = matchNames(match.value), actual = Object.keys(groups ?? {});
+    if (!scanned.length || scanned.length !== actual.length || scanned.some(name => !actual.includes(name))) invalid('Invalid proof matches');
+    names.push(...scanned);
+  }
+  if (new Set(names).size !== names.length || names.length > 16) invalid('Invalid proof matches');
+  if (!Array.isArray(r.checks) || !r.checks.length || r.checks.length > 8
+    || !r.checks.every(check => plain(check, ['param', 'equals'], ['param', 'equals']) && names.includes(check.param) && text(check.equals, 200))) invalid('Invalid proof checks');
+  const v = r.value, kind = v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 1 ? Object.keys(v)[0] : null;
+  if (!['param', 'sum', 'difference'].includes(kind) || (kind === 'param' ? !names.includes(v.param)
+    : !(type === 'number' && Array.isArray(v[kind]) && v[kind].length === 2 && v[kind].every(name => names.includes(name))))) invalid('Invalid proof value');
+}
 export function validateReaderConfig(rule) {
   const { adapter, reader: r, urls } = rule.source, type = rule.decision.type;
   if (!r || typeof r !== 'object' || Array.isArray(r)) invalid('Reader configuration required');
   if (r.scale !== undefined && (type !== 'number' || !Number.isSafeInteger(r.scale) || r.scale < 0 || r.scale > 36)) invalid('Invalid scale');
-  if ((type === 'timestamp') !== (r.valueFormat !== undefined) || (r.valueFormat !== undefined && !TIME_FORMATS.includes(r.valueFormat))) invalid('Timestamp values need a value format');
+  if ((type === 'timestamp') !== (r.valueFormat !== undefined) || (r.valueFormat !== undefined && !(['json-api.v2', 'xml-feed.v1'].includes(adapter) ? TIME_FORMATS_V2 : TIME_FORMATS).includes(r.valueFormat))) invalid('Timestamp values need a value format');
   if (rule.vintage === 'initial-with-corrections') invalid('General readers use first-observed-snapshot or initial');
   if (adapter === 'json-api.v1') {
     if (!plain(r, ['select', 'aggregate', 'field', 'filter', 'checks', 'publishedAt', 'scale', 'valueFormat'], ['select', 'aggregate'])
@@ -197,7 +305,11 @@ export function validateReaderConfig(rule) {
     if (r.metric === 'tx-count' && r.stride !== undefined && (!Number.isSafeInteger(r.stride) || r.stride < 1 || r.stride > 10_000)) invalid('Invalid stride');
     if (r.metric === 'log-count' && (!plain(r.logs, ['address', 'topics'], ['address']) || !address(r.logs.address) || (r.logs.topics !== undefined
       && (!Array.isArray(r.logs.topics) || r.logs.topics.length > 4 || r.logs.topics.some(t => t !== null && !/^0x[0-9a-fA-F]{64}$/.test(t)))))) invalid('Invalid log filter');
-  } else invalid('Unknown general reader');
+  } else if (adapter === 'json-api.v2') checkJsonV2(rule);
+  else if (adapter === 'pdf-text.v1') checkPdfReader(rule);
+  else if (adapter === 'xml-feed.v1') checkXmlReader(rule);
+  else if (adapter === 'proof-http.v1') checkProofReader(rule);
+  else invalid('Unknown general reader');
   if (rule.vintage === 'initial' && !r.publishedAt) invalid('The initial vintage needs a publication time from the source');
   return r;
 }
@@ -424,9 +536,176 @@ export async function retrieveEvmCapture(rule, url, { request = fetch, now = () 
   return { requestedUrl: url, finalUrl: url, fetchedAt: now(), status: 200, contentType: 'application/json', complete: true, bytes: Buffer.byteLength(body), body, sha256: digest(body) };
 }
 
+// ---------- json-api.v2 and shared selections ----------
+// Everything json-api.v1 does, plus POST bodies, derived values, time-aware filters and RFC 2822 dates. The v1
+// functions above are untouched; selections here are unscaled so a derived value combines exact decimals first.
+const RFC_2822 = /^(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), )?(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4}) (\d{2}):(\d{2})(?::(\d{2}))? (GMT|UTC|UT|Z|[+-]\d{4})$/;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function rfc2822(input) {
+  const match = RFC_2822.exec(input);
+  if (!match) issue('TIME_INVALID');
+  const day = Number(match[1]), month = MONTH_NAMES.indexOf(match[2]), year = Number(match[3]);
+  const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6] ?? 0);
+  const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) issue('TIME_INVALID');
+  let offset = 0;
+  if (/^[+-]/.test(match[7])) {
+    const hours = Number(match[7].slice(1, 3)), minutes = Number(match[7].slice(3));
+    if (hours > 23 || minutes > 59) issue('TIME_INVALID');
+    offset = (match[7][0] === '-' ? -1 : 1) * (hours * 3600 + minutes * 60);
+  }
+  const seconds = date.getTime() / 1000 - offset;
+  if (!Number.isSafeInteger(seconds) || seconds < 0) issue('TIME_INVALID');
+  return seconds;
+}
+const timeValueV2 = (node, format) => format === 'rfc-2822' ? rfc2822(typeof node === 'string' ? node.trim() : issue('TIME_INVALID')) : timeValue(node, format);
+function plainValue(node, rule) {
+  if (node === null || node === undefined) issue('VALUE_MISSING');
+  if (rule.decision.type === 'number') return exactDecimal(node instanceof ExactNumber ? node.raw : typeof node === 'string' ? node : issue('VALUE_INVALID'));
+  if (rule.decision.type === 'timestamp') return timeValueV2(node, rule.source.reader.valueFormat);
+  return valueOf(node, rule);
+}
+function matchesV2(node, filter) {
+  if (node === undefined || node === null || typeof node === 'object' && !(node instanceof ExactNumber)) return false;
+  if (filter.format) {
+    const at = timeValueV2(node, filter.format), want = Number(filter.value);
+    return { eq: at === want, ne: at !== want, gt: at > want, gte: at >= want, lt: at < want, lte: at <= want }[filter.op];
+  }
+  return filter.op === 'contains' ? scalarText(node).includes(filter.value) : matches(node, filter);
+}
+function selectV2(doc, sel, rule) {
+  const node = resolve(doc, sel.select);
+  if (sel.aggregate === 'value') return plainValue(node, rule);
+  if (!Array.isArray(node)) issue('EXTRACTION_NOT_A_LIST');
+  if (node.length > 50_000) issue('EXTRACTION_TOO_LARGE');
+  const items = node.filter(item => (sel.filter ?? []).every(f => matchesV2(resolve(item, f.path, () => undefined), f)));
+  if (sel.aggregate === 'count') return String(items.length);
+  if (sel.aggregate === 'only') { if (items.length !== 1) issue('EXTRACTION_AMBIGUOUS_OR_MISSING'); return plainValue(resolve(items[0], sel.field), rule); }
+  if (!items.length) issue('VALUE_MISSING');
+  const values = items.map(item => { const v = resolve(item, sel.field); return exactDecimal(v instanceof ExactNumber ? v.raw : typeof v === 'string' ? v : issue('VALUE_INVALID')); });
+  return sel.aggregate === 'sum' ? values.reduce(addDecimal) : values.reduce((a, b) => (compareDecimal(a, b) >= 0) === (sel.aggregate === 'max') ? a : b);
+}
+function readSelection(doc, rule) {
+  const r = rule.source.reader;
+  for (const check of r.checks ?? []) if (scalarText(resolve(doc, check.path)) !== check.equals) issue('OBSERVATION_IDENTITY_MISMATCH');
+  let value = selectV2(doc, r, rule);
+  if (r.derive) { const other = selectV2(doc, r.derive, rule); value = addDecimal(value, r.derive.op === 'sum' ? other : negate(other)); }
+  if (rule.decision.type === 'number') value = scaled(value, r.scale ?? 0);
+  return { value, publishedAt: r.publishedAt ? timeValueV2(resolve(doc, r.publishedAt.path), r.publishedAt.format) : null };
+}
+const jsonApiV2 = (body, rule) => readSelection(parseExactJSON(body), rule);
+export function sourceRequestInit(rule) {
+  const r = rule.source.reader;
+  return rule.source.adapter === 'json-api.v2' && r.request ? { method: 'POST', body: r.request.body, contentType: 'application/json' } : null;
+}
+
+// ---------- XML and RSS feeds ----------
+// The parser is loaded on first use, through built-ins fetched at call time, so merely loading the readers (for
+// example in the CRE bundle) pulls in neither fast-xml-parser nor any Node-only module. The installed version must
+// equal the version the rule commits to; never upgrade it while a rule using it is live.
+let xmlLibrary = null;
+function xmlParser() {
+  if (xmlLibrary) return xmlLibrary;
+  const builtin = name => process.getBuiltinModule(name);
+  const version = JSON.parse(builtin('node:fs').readFileSync(new URL('../node_modules/fast-xml-parser/package.json', import.meta.url), 'utf8')).version;
+  if (`fast-xml-parser@${version}` !== XML_PARSER) issue('XML_PARSER_VERSION_MISMATCH');
+  return xmlLibrary = builtin('node:module').createRequire(import.meta.url)('fast-xml-parser');
+}
+function xmlFeed(rule, capture) {
+  const arrays = rule.source.reader.arrays ?? [];
+  if (!/^(?:application\/(?:xml|rss\+xml|atom\+xml|[^;]+\+xml)|text\/xml)(?:;|$)/i.test(capture.contentType || '')) issue('CONTENT_TYPE_MISMATCH');
+  const body = capture.body.startsWith('\uFEFF') ? capture.body.slice(1) : capture.body;
+  if (/<!doctype|<!entity/i.test(body)) issue('XML_DOCTYPE_REFUSED');
+  const { XMLParser, XMLValidator } = xmlParser();
+  if (XMLValidator.validate(body) !== true) issue('EXTRACTION_INVALID_XML');
+  const document = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@', textNodeName: '#text', parseTagValue: false,
+    parseAttributeValue: false, trimValues: true, isArray: (name, path) => arrays.includes(path) }).parse(body);
+  return readSelection(document, rule);
+}
+
+// ---------- PDF documents ----------
+// The capture holds the raw PDF and the page text extracted from it at capture time. Reading is synchronous and
+// offline: the bytes must match their hash and the text is searched as given. Re-extracting the text needs the
+// pinned parser, so settlement-pdf.mjs does that before any evidence is archived.
+const PDF_KEYS = ['schema', 'parser', 'sourceContentType', 'pdf', 'pdfSha256', 'pages'];
+export function parsePdfBundle(rule, capture) {
+  const r = rule.source.reader;
+  if (capture.contentType !== 'application/json') issue('CONTENT_TYPE_MISMATCH');
+  parseExactJSON(capture.body);
+  let bundle; try { bundle = JSON.parse(capture.body); } catch { issue('PDF_CAPTURE_INVALID'); }
+  if (!plain(bundle, PDF_KEYS, PDF_KEYS) || bundle.schema !== 'flurbo.pdf-capture.v1' || bundle.parser !== r.parser || typeof bundle.pdf !== 'string'
+    || typeof bundle.pdfSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(bundle.pdfSha256) || !Array.isArray(bundle.pages)) issue('PDF_CAPTURE_INVALID');
+  if (typeof bundle.sourceContentType !== 'string' || !/^application\/pdf(?:;|$)/i.test(bundle.sourceContentType)) issue('CONTENT_TYPE_MISMATCH');
+  const raw = Buffer.from(bundle.pdf, 'base64');
+  if (raw.toString('base64') !== bundle.pdf || digest(raw) !== bundle.pdfSha256) issue('PDF_CAPTURE_INVALID');
+  if (raw.length > MAX_PDF_BYTES) issue('SOURCE_TOO_LARGE');
+  if (raw.subarray(0, 5).toString('latin1') !== '%PDF-') issue('PDF_INVALID');
+  if (bundle.pages.length !== r.pages.last - r.pages.first + 1 || bundle.pages.some((page, at) => !plain(page, ['number', 'text'], ['number', 'text'])
+    || page.number !== r.pages.first + at || typeof page.text !== 'string' || page.text.length > 500_000)) issue('PDF_CAPTURE_INVALID');
+  return { raw, pages: bundle.pages };
+}
+function pdfText(rule, capture) {
+  const r = rule.source.reader, page = parsePdfBundle(rule, capture).pages.map(item => item.text).join(' ');
+  if (r.anchors.some(anchor => !page.includes(anchor))) issue('OBSERVATION_IDENTITY_MISMATCH');
+  const once = pattern => { const found = [...page.matchAll(new RegExp(pattern, 'g'))].slice(0, 2); if (found.length !== 1) issue('EXTRACTION_AMBIGUOUS_OR_MISSING'); return found[0][1]; };
+  return { value: valueOf(once(r.pattern), rule, { grouping: r.grouping }), publishedAt: r.publishedAt ? timeValue(once(r.publishedAt.pattern), r.publishedAt.format) : null };
+}
+
+// ---------- TLS proofs ----------
+// The capture is a Reclaim claim made by an operator-run prover. Everything is re-checked here, offline: the
+// signatures against the attestors pinned in the rule, the public request against the rule's committed request,
+// and the context against this rule's hash. Values come only from the signed extractedParameters.
+const PROOF_PARAM_KEYS = ['url', 'method', 'body', 'headers', 'responseMatches', 'responseRedactions', 'geoLocation', 'paramValues'];
+const PROOF_CONTEXT_KEYS = ['contextAddress', 'contextMessage', 'extractedParameters', 'providerHash'];
+const negate = value => value === '0' ? '0' : value.startsWith('-') ? value.slice(1) : '-' + value;
+function proofRequestMatches(claim, rule) {
+  const r = rule.source.reader;
+  try {
+    parseExactJSON(claim.parameters);
+    const p = JSON.parse(claim.parameters);
+    return plain(p, PROOF_PARAM_KEYS) && p.url === rule.source.urls[0] && p.method === r.request.method
+      && (p.body ?? '') === (r.request.body ?? '') && canonical(p.headers ?? {}) === canonical(r.request.headers ?? {})
+      && (p.geoLocation ?? '') === '' && (p.paramValues === undefined || plain(p.paramValues, []))
+      && canonical(p.responseMatches) === canonical(r.responseMatches) && canonical(p.responseRedactions) === canonical(r.responseRedactions);
+  } catch { return false; }
+}
+function proofHttp(body, rule, capture, { window = true } = {}) {
+  const r = rule.source.reader;
+  if (capture.contentType !== 'application/json') issue('CONTENT_TYPE_MISMATCH');
+  parseExactJSON(body);
+  let bundle; try { bundle = JSON.parse(body); } catch { issue('PROOF_CAPTURE_INVALID'); }
+  if (!plain(bundle, ['schema', 'proof'], ['schema', 'proof']) || bundle.schema !== 'flurbo.proof-capture.v1'
+    || !plain(bundle.proof, ['identifier', 'claimData', 'signatures', 'witnesses'], ['identifier', 'claimData', 'signatures'])) issue('PROOF_CAPTURE_INVALID');
+  const claim = verifyReclaimClaim(bundle.proof, { attestors: r.attestors, minSignatures: r.minSignatures });
+  if (claim.provider !== 'http' || !proofRequestMatches(claim, rule)) issue('PROOF_REQUEST_MISMATCH');
+  const context = claim.context;
+  if (!plain(context, PROOF_CONTEXT_KEYS) || context.contextAddress !== PROOF_CONTEXT_ADDRESS
+    || context.contextMessage !== proofContextMessage(settlementRuleHash(rule))) issue('PROOF_CONTEXT_MISMATCH');
+  const names = r.responseMatches.flatMap(match => matchNames(match.value)), extracted = claim.extracted;
+  if (!plain(extracted, names) || Object.values(extracted).some(value => !text(value, 200))) issue('PROOF_PARAMETER_INVALID');
+  if (window) {
+    if (capture.fetchedAt !== claim.timestampS) issue('PROOF_TIME_MISMATCH');
+    if (claim.timestampS < rule.timing.scheduledAt || claim.timestampS > rule.timing.publicationCutoff) issue('PROOF_OUTSIDE_WINDOW');
+  }
+  const param = name => { if (!Object.hasOwn(extracted, name)) issue('PROOF_PARAMETER_INVALID'); return extracted[name]; };
+  for (const check of r.checks) if (param(check.param) !== check.equals) issue('OBSERVATION_IDENTITY_MISMATCH');
+  const kind = Object.keys(r.value)[0];
+  const value = kind === 'param' ? valueOf(param(r.value.param), rule)
+    : scaled(addDecimal(exactDecimal(param(r.value[kind][0])), kind === 'sum' ? exactDecimal(param(r.value[kind][1])) : negate(exactDecimal(param(r.value[kind][1])))), r.scale ?? 0);
+  return { value, publishedAt: null, timestampS: claim.timestampS, signers: claim.signers };
+}
+// Authoring only: reads a sample proof without the capture-window checks.
+export function inspectProofCapture(rule, capture) {
+  settlementRuleHash(rule);
+  const { value, timestampS, signers } = proofHttp(capture.body, rule, capture, { window: false });
+  return { value, timestampS, signers };
+}
+
 export function readerAccept(rule) {
   const r = rule.source.reader;
   if (rule.source.adapter === 'html-text.v1') return 'text/html';
+  if (rule.source.adapter === 'pdf-text.v1') return 'application/pdf';
+  if (rule.source.adapter === 'xml-feed.v1') return 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8';
   if (rule.source.adapter === 'stat-table.v1' && r.format === 'csv') return 'text/csv, text/plain;q=0.9';
   if (rule.source.adapter === 'stat-table.v1' && r.format === 'sdmx-json') return 'application/vnd.sdmx.data+json, application/json;q=0.9';
   return 'application/json';
@@ -441,8 +720,14 @@ export function readGeneralRecord(rule, capture) {
     if (!/^(?:application\/(?:json|[^;]+\+json)|text\/json)(?:;|$)/i.test(capture.contentType || '')) issue('CONTENT_TYPE_MISMATCH');
     read = jsonApi(capture.body, rule);
   } else if (adapter === 'stat-table.v1') read = statTable(capture.body, rule, capture.contentType);
+  else if (adapter === 'json-api.v2') {
+    if (!/^(?:application\/(?:json|[^;]+\+json)|text\/json)(?:;|$)/i.test(capture.contentType || '')) issue('CONTENT_TYPE_MISMATCH');
+    read = jsonApiV2(capture.body, rule);
+  } else if (adapter === 'pdf-text.v1') read = pdfText(rule, capture);
+  else if (adapter === 'xml-feed.v1') read = xmlFeed(rule, capture);
   else if (adapter === 'html-text.v1') read = htmlText(capture.body, rule, capture.contentType);
   else if (adapter === 'evm-rpc.v1') read = evmRpc(capture.body, rule, capture);
+  else if (adapter === 'proof-http.v1') read = proofHttp(capture.body, rule, capture);
   else issue('ADAPTER_UNSUPPORTED');
   const snapshot = rule.vintage === 'first-observed-snapshot', publishedAt = snapshot ? capture.fetchedAt : read.publishedAt;
   if (!snapshot && publishedAt === null) issue('RECORD_METADATA_INVALID');

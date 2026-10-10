@@ -41,6 +41,9 @@ jobs:
       - name: Server, semantic validation and request-limit tests (disabled and enforced modes)
         run: npm test
         working-directory: apps/web
+      - name: Source proof prover and verifier conformance
+        working-directory: integrations/source-proofs
+        run: npm ci && npm test
       # Run every browser regression sequentially so excluded suites cannot drift.
       - name: Full browser regression suite
         working-directory: apps/web

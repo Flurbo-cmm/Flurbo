@@ -107,6 +107,14 @@ export function nextHybridActions(snapshot) {
 
 export function nextHybridAction(snapshot) { return nextHybridActions(snapshot)[0] ?? null; }
 
+// What the capture loop does for one rule right now. A credentialed source is never fetched here: its proof is
+// made by the operator's prover and uploaded, so the worker only records that it is still waiting.
+export function hybridCaptureStep(rule, at, retained) {
+  if (at < rule.timing.scheduledAt || at > rule.timing.publicationCutoff) return 'outside-window';
+  if (retained) return 'retained';
+  return rule.source.adapter === 'proof-http.v1' ? 'proof-pending' : 'fetch';
+}
+
 export function planRealityAnswer({ now, opensAt, bondWei, finalized, pendingArbitration, observation }) {
   if (now < opensAt) return 'waiting_open';
   if (finalized || pendingArbitration || BigInt(bondWei || 0) > 0n) return 'already_answered';
@@ -245,11 +253,17 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
       const item = record.prepared.draft.events[event];
       if ((item.route !== 'mechanical' && !item.rule) || Number(snapshot.states[event].phase) !== 0) continue;
       const rule = item.rule, at = now(), ruleHash = settlementRuleHash(rule);
-      if (at < rule.timing.scheduledAt || at > rule.timing.publicationCutoff) continue;
-      if (rule.vintage === 'first-observed-snapshot'
+      const retained = at >= rule.timing.scheduledAt && at <= rule.timing.publicationCutoff
+        && rule.vintage === 'first-observed-snapshot'
         && (await captureStore.list(ruleHash)).some(capture => {
           try { parseSettlementCapture(rule, capture, at); return true; } catch { return false; }
-        })) continue;
+        });
+      const step = hybridCaptureStep(rule, at, retained);
+      if (step === 'proof-pending') {
+        await captureStore.recordAttempt(ruleHash, { at, ok: false, issues: ['PROOF_CAPTURE_PENDING'] });
+        continue;
+      }
+      if (step !== 'fetch') continue;
       const issues = [];
       for (const url of rule.source.urls) {
         try {
