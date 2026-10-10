@@ -26,6 +26,7 @@ Do not use real money or represent the current reviewer panel as independent arb
 | `config/collections.json` | Committed list of pools and their settlement modes |
 | `config/markets` | Batch market specifications |
 | `workflows/cre` | Rule preparation, checks, deployment verification, registry edits |
+| `apps/web/server/settlement-*.mjs` | Settlement rules and the twelve reader types. Start at [SETTLEMENT_READERS.md](SETTLEMENT_READERS.md) before changing or adding a reader |
 | `integrations/source-proofs` | Operator-run prover for credentialed sources (`proof-http.v1`); runs on the operator's machine, never on Render. See [PROOF_READER_RUNBOOK.md](PROOF_READER_RUNBOOK.md) |
 | `packages/sdk*` | TypeScript, Python, Rust and C++ member agents |
 | `protocol`, `crates/flurbo-core` | Interchange fixtures and Rust reference calculations |

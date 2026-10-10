@@ -23,7 +23,12 @@ async function launch() {
 // MetaMask announced over EIP-6963 on Monad testnet. Signing and sending wait until the test releases them.
 function wallet({ owner, hash }: { owner: string; hash: string }) {
   const held: Record<string, () => void> = {};
-  (window as any).release = (method: string) => held[method]?.();
+  // The page may show "confirm in MetaMask" a few awaits before it sends the request, so release waits for the request.
+  (window as any).release = async (method: string) => {
+    for (let waited = 0; !held[method] && waited < 20_000; waited += 20) await new Promise(done => setTimeout(done, 20));
+    if (!held[method]) throw Error(`The page never asked the wallet for ${method}`);
+    held[method]();
+  };
   const hold = (method: string, value: unknown) => new Promise(resolve => { held[method] = () => resolve(value); });
   const metamask = { on: () => {}, removeListener: () => {}, request: async ({ method }: any) => {
     if (method === 'eth_chainId') return '0x279f';
@@ -47,7 +52,7 @@ test('linking a wallet and requesting test AUSD wait in sheets that cannot be di
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } }), errors: string[] = [];
     page.on('pageerror', (error: Error) => errors.push(error.message));
     await page.addInitScript(wallet, { owner, hash: txHash });
-    let linked = false, receipt: any = null;
+    let linked = false, receipt: any = null, receiptReads = 0;
     await page.route('**/*', async (route: any) => {
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/network') return route.fulfill({ json: { ...TESTNET, flurboFaucet: true } });
@@ -59,6 +64,7 @@ test('linking a wallet and requesting test AUSD wait in sheets that cannot be di
       if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace: 'practice-' + f.manifest.pool.slice(2), label: 'Practice', pool: f.manifest.pool, closesAt: f.manifest.publication.draft.closesAt }] } });
       if (path === '/api/rpc') {
         const { method, params } = route.request().postDataJSON();
+        if (method === 'eth_getTransactionReceipt') receiptReads++;
         let result: any = method === 'eth_getBlockByNumber' ? { hash: txHash, number: '0x64' } : method === 'eth_getBalance' ? '0xde0b6b3a7640000' : method === 'eth_getTransactionReceipt' ? receipt : '0x0';
         if (method === 'eth_call' && params[0].data.startsWith('0x70a08231')) result = params[0].data.endsWith(TESTNET.faucet.slice(2)) ? '0x3b9aca00' : '0x0';
         return route.fulfill({ json: { result } });
@@ -91,6 +97,9 @@ test('linking a wallet and requesting test AUSD wait in sheets that cannot be di
     await hide.click();
     await sheet.waitFor({ state: 'hidden' });
     await page.getByRole('link', { name: 'View faucet transaction' }).waitFor();
+    // The page checks the receipt by itself as soon as the request is pending. Let that check find nothing first, so the
+    // manual check below is the one that sees the receipt (otherwise the automatic check can win and the button goes away).
+    while (receiptReads === 0) await new Promise(done => setTimeout(done, 20));
     receipt = { transactionHash: txHash, to: TESTNET.faucet, from: owner, status: '0x1' };
     await page.getByRole('button', { name: 'Check status', exact: true }).click();
     await page.getByText('Test AUSD request confirmed. You can return to the markets.').waitFor();

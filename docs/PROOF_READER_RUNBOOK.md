@@ -2,7 +2,7 @@
 
 Status, 10 October 2026: the `proof-http.v1` reader, the prover, the upload endpoint and the replay tool are implemented and tested with signed synthetic proofs. No genuine proof from a live provider has been recorded yet, and no listed pool uses a proof rule. Steps 3 to 5 below produce the first genuine proof and record it as a test fixture; do them before listing any pool.
 
-Reader families: [SETTLEMENT_ROUTING_V4.md](SETTLEMENT_ROUTING_V4.md). Pool procedure this builds on: [HYBRID_TESTNET_RUNBOOK.md](HYBRID_TESTNET_RUNBOOK.md).
+All reader types and the rules for changing them: [SETTLEMENT_READERS.md](SETTLEMENT_READERS.md). Reader families: [SETTLEMENT_ROUTING_V4.md](SETTLEMENT_ROUTING_V4.md). Pool procedure this builds on: [HYBRID_TESTNET_RUNBOOK.md](HYBRID_TESTNET_RUNBOOK.md).
 
 ## What it is
 
