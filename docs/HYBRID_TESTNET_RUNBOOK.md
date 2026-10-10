@@ -19,6 +19,8 @@ A linked Kleros case can hold up every payout in its shared pool if the court ne
 
 ## Source coverage
 
+Reader types, their rule settings and the rules for changing them are in [SETTLEMENT_READERS.md](SETTLEMENT_READERS.md).
+
 The mechanical route uses these verified adapters: public JSON API (`json-api.v1`, and `json-api.v2` for POST queries, derived values and time filters), CSV/SDMX/JSON-stat tables, anchored HTML text, EVM RPC, RSS/Atom/XML feeds (`xml-feed.v1`), official PDF text (`pdf-text.v1`), and credentialed sources through a TLS proof (`proof-http.v1`). A publisher-specific rule must name the event, record, finality or revision policy, and exact extraction field before listing a market. The first sample below uses two quantities from the same Monad testnet block.
 
 Official sports feeds can be configured through public JSON only after a league-specific fixture ID, final status, score type, postponement rule, and correction policy are tested. Election and statistics feeds can use the existing table readers where a certified release and revision vintage are explicit. A feed that needs an API key or a login uses `proof-http.v1`: the source credential never reaches Render, an operator-run prover uploads a Reclaim proof inside the capture window, and the rule must give a window of at least six hours. Follow [PROOF_READER_RUNBOOK.md](PROOF_READER_RUNBOOK.md). The proof reader has not yet settled a listed pool end to end, so treat the first proof pool as a trial.

@@ -29,6 +29,8 @@ test('native application on desktop and mobile: submit, verify, reload, withdraw
     });
     await page.goto('https://flurbo.singu.online/access');
     await page.getByRole('heading',{name:'Request your invitation.'}).waitFor();
+    // The page is inert under the loading cover, so typing there is dropped. Wait until the cover is gone.
+    await page.waitForFunction(()=>{const root=document.querySelector('.app-root') as HTMLElement|null;return !!root&&!root.inert&&!document.querySelector('.contour-loader');});
     await page.getByLabel('Email address',{exact:true}).fill('tester@example.com');
     assert.equal(await page.getByRole('button',{name:'Request access',exact:true}).isDisabled(),true);
     await page.getByRole('checkbox',{name:/I understand/}).check();

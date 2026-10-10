@@ -31,6 +31,8 @@ The in-site Challenge action must explicitly request Kleros arbitration and coll
 
 ## Reader families
 
+The reference for every reader type, its rule settings, the authoring workflow and the rules for changing readers is [SETTLEMENT_READERS.md](SETTLEMENT_READERS.md). This table records which families are implemented.
+
 | Family | First implementation | Required checks |
 | --- | --- | --- |
 | Official sports | One league-specific official fixture/results feed before expanding sport by sport | Competition, season, fixture ID, final status, score type, postponement, correction policy |
