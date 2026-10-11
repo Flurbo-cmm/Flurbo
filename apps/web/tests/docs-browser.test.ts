@@ -32,8 +32,10 @@ test('public docs load directly, navigate by section and fit desktop and mobile 
       if(width===1440){
         const images=page.locator('.docs-shot img');
         assert.ok(await images.count()>=20);
-        for(const image of await images.all()){await image.scrollIntoViewIfNeeded();await image.evaluate((node:HTMLImageElement)=>node.decode());}
-        assert.deepEqual(await images.evaluateAll((nodes:HTMLImageElement[])=>nodes.filter(node=>!node.naturalWidth).map(node=>node.src)),[]);
+        // Lazy images start loading only once in view, so wait for each to load or fail before reading it.
+        for(const image of await images.all()){await image.scrollIntoViewIfNeeded();await image.evaluate((node:HTMLImageElement)=>node.complete?null:new Promise(done=>{node.addEventListener('load',done,{once:true});node.addEventListener('error',done,{once:true});}));}
+        // Each capture is twice its display size, so a missing or wrong file shows up here.
+        assert.deepEqual(await images.evaluateAll((nodes:HTMLImageElement[])=>nodes.filter(node=>Math.abs(node.naturalWidth-2*Number(node.getAttribute('width')))>1).map(node=>node.src)),[]);
         await page.getByRole('heading',{level:2,name:'How prices behave'}).waitFor();
         assert.equal(await page.locator('main a[href$=".pdf"]').count(),0);
       }
