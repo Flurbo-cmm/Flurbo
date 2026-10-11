@@ -50,7 +50,7 @@ Still not implemented: Bitcoin and Solana readers (they need header-chain or slo
 
 ## New resolver and Kleros integration
 
-The current `PilotResolver` has an operator reviewer panel. The current `WidePilotResolver` accepts an immediate final report from a trusted relay and has no Monad challenge period. Neither deployed resolver can acquire the new challenge behavior in place. Deploy a new version for new pools, reusing Flurbo's pool and share model. Preserve the existing activity pool and Reality pool until they finish under their published rules.
+The retired `PilotResolver` generation had an operator reviewer panel; its pools stay on chain but are no longer served. The current `WidePilotResolver` accepts an immediate final report from a trusted relay and has no Monad challenge period. Neither deployed resolver can acquire the new challenge behavior in place. Deploy a new version for new pools, reusing Flurbo's pool and share model. Preserve the existing Reality pool until it finishes under its published rules.
 
 For mechanical markets, the new resolver must support `Pending -> Proposed -> Finalized` or `Pending -> Proposed -> Disputed -> Finalized`, enforce bonds and challenge deadlines, bind evidence and case IDs, and accept exactly one final Kleros ruling. It must not include the operator 2-of-3 vote. If the selected Kleros arbitrator is not on Monad, a cross-chain route is necessary. A trusted relay is acceptable for a labelled testnet proof of concept; production delivery must authenticate source-chain state and bind case, result, destination, nonce, and expiry. A signer-controlled report alone remains a trusted oracle.
 

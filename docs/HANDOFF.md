@@ -1,5 +1,7 @@
 # Flurbo company handoff
 
+Written before the pilot pool generation was retired; where it says pilot, read docs/PROJECT_REFERENCE.md.
+
 Snapshot: 5 October 2026. This file describes the local `kleros-reality-eth` branch and deployment facts reported during the testnet rollout. It does not expose or confirm the current Render secret values. The last reported `/healthz` response was on 4 October 2026; read it again before acting on a worker status. Older design and deployment guides contain historical statements, especially `PROJECT_REFERENCE.md`, `HYBRID_TESTNET_RUNBOOK.md`, and `SETTLEMENT_ROUTING_V4.md`. Use the committed catalogs and current contract code for the deployed configuration.
 
 ## Rules for the next maintainer

@@ -1,5 +1,7 @@
 # Reality.eth and Kleros settlement handoff
 
+Written before the pilot pool generation was retired; where it says pilot, read docs/PROJECT_REFERENCE.md.
+
 Written 5 October 2026 for the next maintainer. It covers the work on branch `kleros-reality-eth` that moved hybrid pools to Reality.eth v3 on Sepolia with the official Kleros proxy as arbitrator. Read [HANDOFF.md](HANDOFF.md) first for the overall system, then this file for the change itself. The operating procedure is the "Reality reader pools" section of [HYBRID_TESTNET_RUNBOOK.md](HYBRID_TESTNET_RUNBOOK.md).
 
 ## 1. Status
