@@ -18,6 +18,7 @@ import LinkedQuestions from '../components/market/LinkedQuestions';
 import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
+import { walletRejected } from '../wallet-errors';
 import { boardPrice } from '../board-cache';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
@@ -75,8 +76,8 @@ const labels = ['Waiting', 'No', 'Yes', 'Void'];
 const pendingKey = hybridPendingKey;
 const readPending = readHybridPending;
 const friendly = (error: unknown) => {
-  const value = error as { code?: number; message?: string };
-  return value?.code === 4001 ? 'Transaction cancelled in MetaMask.'
+  const value = error as { message?: string };
+  return walletRejected(error) ? 'Transaction cancelled in MetaMask.'
     : value?.message && value.message.length < 220 ? value.message
       : 'This request could not be completed. Refresh and try again.';
 };
@@ -320,7 +321,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           ...transaction, chainId: `0x${transaction.chainId.toString(16)}`,
         }] }) as string;
       } catch (error) {
-        if ((error as { code?: number })?.code === 4001) {
+        if (walletRejected(error)) {
           sessionStorage.removeItem(pendingKey); setPending(null);
         }
         throw error;
@@ -455,11 +456,14 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const defaultTab: MarketTab = closed || !!snapshot?.resolved || (snapshot?.phase ?? 0) > 0 || canAnswer || canArbitrate || !!reality?.pendingArbitration ? 'timeline' : others.length > 0 ? 'linked' : 'proof';
   const pendingBody = (item: Pending) => <>
     {item.id !== id && <p>A transaction from another market needs confirmation before {tradeActions.includes(item.action) ? 'another trade' : 'the next one'}.</p>}
-    <p>{item.hash ? 'Your transaction was sent. Confirmation is checked automatically, including after a reload.' : 'MetaMask did not return a transaction hash. Check its activity before submitting anything else.'}</p>
+    <p>{item.hash ? 'Your transaction was sent. Confirmation is checked automatically, including after a reload.' : 'MetaMask did not return a transaction hash. If you cancelled it in MetaMask, nothing was sent. Otherwise check MetaMask activity and attach the hash below.'}</p>
     {item.hash ? <p className="mono-break">{item.hash}</p> : <label>Transaction hash<input value={pendingHash} onChange={event => setPendingHash(event.target.value)}/></label>}
     {pollPaused && <p className="field-help">Automatic checks paused. You can check again without resubmitting the trade.</p>}
   </>;
   const pendingActions = (item: Pending) => <>
+    {!item.hash && <button className="btn btn-ghost" onClick={() => {
+      sessionStorage.removeItem(pendingKey); setPending(null); setPendingHash(''); setError('');
+    }}>Nothing was sent</button>}
     {!item.hash && <button className="btn btn-secondary" disabled={!/^0x[0-9a-f]{64}$/i.test(pendingHash)} onClick={() => {
       const saved = { ...item, hash: pendingHash };
       sessionStorage.setItem(pendingKey, JSON.stringify(saved)); setPending(saved);

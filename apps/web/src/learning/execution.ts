@@ -1,5 +1,6 @@
 import { decodeEventLog, decodeFunctionResult, encodeAbiParameters, encodeFunctionData, keccak256, toEventSelector, type Hex } from 'viem';
 import { cashAbi, learningDeployment as deployment, poolAbi, updateParameters } from '../../shared/learning-contracts.mjs';
+import { walletRejected } from '../wallet-errors.ts';
 
 export class LearningError extends Error {}
 export type Provider = { request(input: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -132,7 +133,7 @@ export async function submitLearning(provider: Provider, review: Review, hooks: 
     if (typeof hash !== 'string' || !/^0x[0-9a-f]{64}$/i.test(hash)) throw new LearningError('No transaction hash returned.');
     const sent = { ...pending, hash: hash.toLowerCase() }; hooks.save(sent); return sent;
   } catch (error) {
-    if ((error as { code?: number })?.code === 4001) { hooks.save(null); throw new LearningError('Wallet request rejected. No transaction was submitted by this request.'); }
+    if (walletRejected(error)) { hooks.save(null); throw new LearningError('Wallet request rejected. No transaction was submitted by this request.'); }
     throw new LearningError('Submission outcome is unknown. Check wallet activity and attach its transaction hash. Do not submit again.');
   }
 }

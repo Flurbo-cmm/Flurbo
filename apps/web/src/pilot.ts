@@ -1,6 +1,7 @@
 import { keccak256, type Hex } from 'viem';
 import { appFetch as fetch } from './platform-fetch.ts';
 import { takeEarly } from './prefetch.ts';
+import { walletRejected } from './wallet-errors.ts';
 import { pilotCall, type PilotManifest } from '../shared/pilot.mjs';
 import type { AuthController } from './auth/controller';
 import { semanticError } from '../../../packages/sdk/src/semantics.ts';
@@ -182,7 +183,7 @@ export async function submitPilot(p:Provider,r:PilotReview,login:string,save:(va
     if(typeof hash!=='string' || !/^0x[0-9a-f]{64}$/i.test(hash)) throw new Error('Hash missing');
     save({...pending,hash:hash.toLowerCase() as Hex});
   } catch(e) {
-    if((e as {code?:number}).code===4001) { save(null); throw new Error('Wallet request rejected.'); }
+    if(walletRejected(e)) { save(null); throw new Error('Wallet request rejected.'); }
     throw new Error('Submission outcome unknown. Check wallet activity and attach the hash before another action.');
   }
 }
