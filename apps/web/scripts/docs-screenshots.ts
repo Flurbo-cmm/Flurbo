@@ -1,6 +1,6 @@
-// Captures the account and agent screenshots shown on /docs from the production bundle (dist) with sample data.
-// Nothing reaches a network: the pool, agent API and MetaMask are the same in-process fixtures the browser tests use.
-// The market, ticket, timeline and portfolio images were taken from the retired pilot pool and are not recaptured here.
+// Captures every screenshot shown on /docs from the production bundle (dist) with sample data.
+// Nothing reaches a network: the agent API and MetaMask are the in-process fixtures the browser tests use, and the
+// market pages read the example pools in scripts/docs-market-fixture.ts.
 //
 //   npm run build
 //   FLURBO_TEST_PLAYWRIGHT=<playwright-core/index.mjs> FLURBO_TEST_BROWSER=<chrome> \
@@ -16,6 +16,7 @@ import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {TESTNET} from '../server/network.mjs';
 import {owner,hash,code} from '../tests/pool-fixture.ts';
 import {setup,alice,origin,forecast} from '../tests/agent-fixture.ts';
+import {marketFixture,POOLS,TRADER} from './docs-market-fixture.ts';
 
 const OUT=new URL('../src/pages/docs-media/',import.meta.url);
 const at=Math.floor(Date.now()/1000);
@@ -90,6 +91,7 @@ async function open(session:boolean){
     if(p==='/api/account/access')return json(route,{approved:true,nativeApplications:true,testingTools:false,applicationUrl:null});
     if(p==='/api/account/application')return json(route,{application:{account:alice,email:'you@example.com',state:'approved',verified:true,revision:1,createdAt:new Date().toISOString(),notification:'none'}});
     if(p==='/api/account/wallets')return json(route,{account:alice,wallets:[owner]});
+    if(p==='/api/account/notifications')return json(route,{enabled:true,email:'you@example.com',preferences:{payouts:true,challenges:true,observations:true,closing:false}});
     if(p==='/api/market-directory')return json(route,{schema:'flurbo.market-directory.v1',markets:[{namespace,label:'Example markets',pool,closesAt:manifest.publication.draft.closesAt}],oracleMarkets:[],hybridMarkets:[]});
     if(p==='/api/network')return json(route,{...TESTNET,flurboFaucet:true,starterMon:'0.5'});
     if(p==='/api/fund/starter')return json(route,{status:'sent',amountMon:'0.5'});
@@ -126,6 +128,36 @@ async function shotRange(page:any,name:string,container:any,first:any,last:any,p
   console.log('wrote',name);
 }
 
+const markets=marketFixture(at);
+async function openMarkets(viewport={width:1280,height:1000}){
+  const page=await browser.newPage({viewport,deviceScaleFactor:2});
+  await page.addInitScript((wallet:string)=>{
+    (window as any).ethereum={isMetaMask:true,on:()=>{},removeListener:()=>{},request:async({method}:any)=>{
+      if(['eth_accounts','eth_requestAccounts'].includes(method))return [wallet];
+      if(method==='eth_chainId')return '0x279f';
+      if(method==='wallet_requestPermissions')return [];
+      if(method==='eth_getTransactionReceipt')return null;
+      if(method==='eth_sendTransaction')throw new Error('The wallet closed before it returned a transaction');
+      throw new Error(method);
+    }};
+  },TRADER);
+  await page.route('**/*',async(route:any)=>{
+    const url=new URL(route.request().url()),p=url.pathname,method=route.request().method(),body=method==='POST'?route.request().postDataJSON():undefined;
+    if(p==='/api/auth/session')return json(route,{session:{address:alice,method:'passkey',expiresAt:Date.now()+3600_000}});
+    if(p==='/api/account/access')return json(route,{approved:true,nativeApplications:true,testingTools:false,applicationUrl:null});
+    if(p==='/api/account/wallets'||p==='/api/account/portfolio-sources')return json(route,{account:alice,wallets:[TRADER],agentWallets:[]});
+    const served=p.startsWith('/api/')?markets.serve(p,url.searchParams,body):undefined;
+    if(served!==undefined)return json(route,served);
+    if(p.startsWith('/api/'))return json(route,{error:'Not part of the docs fixture'},503);
+    const file=p.startsWith('/assets/')?p.slice(1):'index.html';
+    return route.fulfill({body:await readFile(new URL('../dist/'+file,import.meta.url)),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.woff2')?'font/woff2':file.endsWith('.png')?'image/png':file.endsWith('.svg')?'image/svg+xml':'text/html'});
+  });
+  // The sticky header would sit over the top of each market capture.
+  await page.addInitScript(()=>{addEventListener('DOMContentLoaded',()=>{const style=document.createElement('style');style.textContent='.site-header{display:none !important}';document.head.append(style);});});
+  return page;
+}
+const marketPath=(pool:string,event:number,query='')=>origin+'/markets/hybrid/'+pool+'/'+event+query;
+
 await mkdir(OUT,{recursive:true});
 try{
   // Sign-up with a passkey name.
@@ -134,7 +166,8 @@ try{
 
   // Account approved, with the linked trading wallet.
   page=await open(true);await page.goto(origin+'/access');await ready(page);await page.getByText('Access approved').first().waitFor();
-  await shot(page,'account-approved',page.locator('main section, main article').first());await page.close();
+  await shot(page,'account-approved',page.locator('main section, main article').first());
+  await page.locator('#notices').waitFor();await shot(page,'notices',page.locator('#notices'));await page.close();
 
   // Test funds.
   page=await open(true);await page.goto(origin+'/fund');await ready(page);await page.getByText('Trading balance').waitFor();
@@ -158,6 +191,68 @@ try{
   await page.locator('details.agents-assumptions').filter({hasText:'Evidence'}).first().evaluate((d:any)=>{d.open=true;});
   await shot(page,'agent-activity',page.getByRole('region',{name:'Decisions'}));
   await page.close();
+
+  // The market board, every status shown.
+  page=await openMarkets({width:1000,height:836});await page.goto(origin+'/markets?status=all');await ready(page);
+  await page.locator('.market-card .tile-prices').first().waitFor();await page.waitForTimeout(800);
+  await shotRange(page,'markets',page.locator('main.board-page'),page.locator('.board-subnav'),page.locator('.market-card').last(),8);await page.close();
+
+  // An open market: the page head and chart, then the ticket with a live quote, the approval and a wallet that returns no hash.
+  page=await openMarkets({width:1100,height:1400});await page.goto(marketPath(POOLS.rates,0,'?shares=5'));await ready(page);
+  const ticket=page.getByRole('region',{name:'Trade this market'});
+  await ticket.getByText('Review AUSD approval').waitFor();await page.waitForTimeout(1200);
+  await shotRange(page,'market-page',page.locator('main.market-page'),page.locator('.market-topbar'),page.locator('.market-primary [role="tablist"]').first(),16);
+  await shot(page,'ticket-buy',page.locator('section.detail-trade'));
+  await ticket.getByRole('button',{name:'Review AUSD approval'}).click();
+  await ticket.getByRole('heading',{name:'Step 1 of 2: allow this payment'}).waitFor();await page.waitForTimeout(500);
+  await shot(page,'ticket-approve',page.locator('dialog[open]'),0);
+  await ticket.getByRole('button',{name:'Allow payment',exact:true}).click();
+  await ticket.getByRole('button',{name:'Nothing was sent'}).waitFor();await page.waitForTimeout(400);
+  await shot(page,'ticket-no-hash',page.locator('dialog[open]'),0);
+  await ticket.getByRole('button',{name:'Nothing was sent'}).click();await page.close();
+
+  // A combined prediction in the ticket.
+  page=await openMarkets({width:1280,height:1600});await page.goto(marketPath(POOLS.rates,0,'?shares=4&other=1&otherAnswer=yes&rule=AND'));await ready(page);
+  const combo=page.getByRole('region',{name:'Trade this market'});
+  await combo.locator('details.oracle-combination').evaluate((d:any)=>{d.open=true;});
+  await combo.getByText('Review AUSD approval').waitFor();await page.waitForTimeout(600);
+  await shot(page,'ticket-combination',page.locator('section.detail-trade'));await page.close();
+
+  // What if: the linked tab with the pool comparison open, then the proof tab.
+  page=await openMarkets({width:1280,height:1800});await page.goto(marketPath(POOLS.rates,0,'?tab=linked'));await ready(page);
+  await page.locator('details.hybrid-connect > summary').click();
+  await page.getByText('All four combinations').waitFor();
+  await page.locator('details.hybrid-connect details.disclosure').evaluate((d:any)=>{d.open=true;});await page.waitForTimeout(500);
+  await shot(page,'what-if',page.locator('details.hybrid-connect'));
+  await page.getByRole('tab',{name:'Proof'}).click();await page.waitForTimeout(500);
+  await shot(page,'proof',page.locator('.proof-panel'));await page.close();
+
+  // Build your thesis with three estimates entered.
+  page=await openMarkets({width:1280,height:1700});await page.goto(marketPath(POOLS.rates,0,'/thesis'));await ready(page);
+  await page.getByText('Four possible outcomes').waitFor();await page.waitForTimeout(800);
+  const beliefs=page.locator('label.hybrid-belief input[placeholder="Your estimate"]');
+  for(const [i,value] of ['65','85','40'].entries())await beliefs.nth(i).fill(value);
+  await page.getByLabel('Shares').fill('5');
+  await page.locator('dt',{hasText:'Your expected net'}).locator('xpath=following-sibling::dd').filter({hasText:'test AUSD'}).waitFor();await page.waitForTimeout(900);
+  await shot(page,'thesis',page.locator('.hybrid-thesis-grid'));await page.close();
+
+  // Settlement: a source-read answer in its challenge window, and a Reality.eth answer under Kleros review.
+  page=await openMarkets({width:1280,height:2200});await page.goto(marketPath(POOLS.activity,0));await ready(page);
+  await page.getByRole('heading',{name:'Challenge this answer'}).first().waitFor();await page.waitForTimeout(500);
+  await shot(page,'settlement-timeline',page.getByRole('region',{name:'Settlement timeline'}));await page.close();
+  page=await openMarkets({width:1280,height:2600});await page.goto(marketPath(POOLS.releases,0));await ready(page);
+  await page.getByText('Kleros case #42',{exact:false}).first().waitFor();await page.waitForTimeout(500);
+  await shot(page,'settlement-reality',page.getByRole('region',{name:'Settlement timeline'}));await page.close();
+
+  // A settled market: collect in the ticket.
+  page=await openMarkets({width:1280,height:1400});await page.goto(marketPath(POOLS.blocks,0));await ready(page);
+  await page.getByRole('button',{name:'Collect yes payout'}).waitFor();await page.waitForTimeout(400);
+  await shot(page,'collect',page.locator('section.detail-trade'));await page.close();
+
+  // Portfolio with an individual, a combined and a settled position.
+  page=await openMarkets({width:1280,height:1400});await page.goto(origin+'/portfolio');await ready(page);
+  await page.locator('.unified-holdings tbody tr').nth(2).waitFor();await page.waitForTimeout(800);
+  await shot(page,'portfolio',page.locator('.unified-holdings').first());await page.close();
 }finally{await browser.close();}
 
 // Display sizes for Docs: half the captured pixels, read from each PNG header (width and height at bytes 16-23).
