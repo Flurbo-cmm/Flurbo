@@ -15,7 +15,7 @@ test('public docs load directly, navigate by section and fit desktop and mobile 
       if(path==='/api/auth/session')return route.fulfill({json:{session:null}});
       if(path.startsWith('/api/')||path==='/healthz'){unexpected.push(path);return route.fulfill({status:503,json:{error:'Unexpected request'}});}
       const file=path.startsWith('/assets/')?path.slice(1):'index.html';
-      return route.fulfill({body:await readFile(new URL('../dist/'+file,import.meta.url)),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.woff2')?'font/woff2':'text/html'});
+      return route.fulfill({body:await readFile(new URL('../dist/'+file,import.meta.url)),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.woff2')?'font/woff2':file.endsWith('.png')?'image/png':'text/html'});
     });
     await mkdir(new URL('../../../target/docs-ui/',import.meta.url),{recursive:true});
     for(const width of [1440,390,320]){
@@ -28,6 +28,15 @@ test('public docs load directly, navigate by section and fit desktop and mobile 
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       await page.screenshot({path:fileURLToPath(new URL(`../../../target/docs-ui/docs-${width}.png`,import.meta.url)),fullPage:false});
       const contents=page.getByRole('navigation',{name:'Documentation contents'});
+      for(const name of ['Get started','Trade','Settlement','For quants','Agents'])await contents.getByRole('heading',{name,exact:true}).waitFor({state:'attached'});
+      if(width===1440){
+        const images=page.locator('.docs-shot img');
+        assert.ok(await images.count()>=20);
+        for(const image of await images.all()){await image.scrollIntoViewIfNeeded();await image.evaluate((node:HTMLImageElement)=>node.decode());}
+        assert.deepEqual(await images.evaluateAll((nodes:HTMLImageElement[])=>nodes.filter(node=>!node.naturalWidth).map(node=>node.src)),[]);
+        await page.getByRole('heading',{level:2,name:'How prices behave'}).waitFor();
+        assert.equal(await page.locator('main a[href$=".pdf"]').count(),0);
+      }
       await contents.getByRole('link',{name:'Settlement and payouts'}).click();
       await page.waitForFunction(()=>location.hash==='#settlement'&&Math.abs(document.querySelector('#settlement')!.getBoundingClientRect().top-110)<5);
       await page.reload();
