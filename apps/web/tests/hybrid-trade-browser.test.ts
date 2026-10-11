@@ -30,8 +30,12 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
           if (method === 'eth_accounts') return sessionStorage.getItem('hybrid.permission')
             ? [sessionStorage.getItem('hybrid.selectedWallet') || wallet] : [];
           if (method === 'eth_sendTransaction') {
-            if (sessionStorage.getItem('hybrid.reject')) {
+            const reject = sessionStorage.getItem('hybrid.reject');
+            if (reject) {
               sessionStorage.removeItem('hybrid.reject');
+              if (reject === 'wrapped') throw { code: -32603, message: 'Internal JSON-RPC error.',
+                data: { originalError: { code: 4001, message: 'User denied transaction signature.' } } };
+              if (reject === 'unknown') throw Error('Wallet connection lost');
               throw Object.assign(Error('Rejected'), { code: 4001 });
             }
             const count = Number(sessionStorage.getItem('hybrid.sends') || '0') + 1;
@@ -103,6 +107,17 @@ test('hybrid market simulates quote, approval, reload, purchase, and confirmatio
       await page.evaluate(() => sessionStorage.setItem('hybrid.reject', '1'));
       await ticket.getByRole('button', { name: 'Allow payment', exact: true }).click();
       await ticket.getByRole('alert').getByText('Transaction cancelled in MetaMask.').waitFor();
+      assert.equal(await page.evaluate(() => sessionStorage.getItem('flurbo.hybrid.pending.v1')), null);
+      await page.evaluate(() => sessionStorage.setItem('hybrid.reject', 'wrapped'));
+      await ticket.getByRole('button', { name: 'Allow payment', exact: true }).click();
+      await ticket.getByRole('heading', { name: 'Step 1 of 2: allow this payment' }).waitFor();
+      await ticket.getByRole('alert').getByText('Transaction cancelled in MetaMask.').waitFor();
+      assert.equal(await page.evaluate(() => sessionStorage.getItem('flurbo.hybrid.pending.v1')), null);
+      await page.evaluate(() => sessionStorage.setItem('hybrid.reject', 'unknown'));
+      await ticket.getByRole('button', { name: 'Allow payment', exact: true }).click();
+      await ticket.getByRole('heading', { name: 'Waiting for confirmation' }).waitFor();
+      await ticket.getByRole('button', { name: 'Nothing was sent' }).click();
+      await ticket.getByRole('heading', { name: 'Step 1 of 2: allow this payment' }).waitFor();
       assert.equal(await page.evaluate(() => sessionStorage.getItem('flurbo.hybrid.pending.v1')), null);
       await ticket.getByRole('button', { name: 'Allow payment', exact: true }).click();
       await ticket.getByRole('heading', { name: 'Waiting for confirmation' }).waitFor();

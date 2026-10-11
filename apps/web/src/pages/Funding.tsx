@@ -1,4 +1,5 @@
 import {linkedWallets,linkTradingWallet} from '../wallet-links';
+import {walletRejected} from '../wallet-errors';
 import {watchTradingWallet} from '../auth/trading-session';
 import {useEffect, useRef, useState} from 'react';
 import {formatUnits, toFunctionSelector} from 'viem';
@@ -23,7 +24,7 @@ async function rpc(method:string, params:unknown[]) {
 }
 function fundingError(error:unknown, sending=false) {
   const e=error as {code?:number;message?:string;data?:unknown};
-  if (e?.code===4001) return 'Request cancelled in MetaMask. No funding was confirmed.';
+  if (walletRejected(e)) return 'Request cancelled in MetaMask. No funding was confirmed.';
   const data=JSON.stringify(e?.data ?? '');
   if (data.includes('356680b7')) return 'The test AUSD dispenser is empty. Please try again after it is refilled.';
   if (data.includes(toFunctionSelector('TooSoon()').slice(2))) return 'You have already claimed today. Come back 24 hours after your last claim.';
@@ -131,7 +132,7 @@ export default function Funding({expanded=false}:{expanded?:boolean}) {
       const saved={hash,owner,faucet:network.faucet};
       try{localStorage.setItem(key,JSON.stringify(saved));}catch{}
       setPending(saved);setMessage('Request sent. Waiting for confirmation…');
-    }catch(e){if(sending&&(e as any)?.code!==4001)setUncertain(true);setSheet(false);setMessage(fundingError(e,sending));}
+    }catch(e){if(sending&&!walletRejected(e))setUncertain(true);setSheet(false);setMessage(fundingError(e,sending));}
     finally{busyRef.current=false;setBusy(false);}
   }
   // Free test MON is sent automatically once when an account links its first wallet. The page shows

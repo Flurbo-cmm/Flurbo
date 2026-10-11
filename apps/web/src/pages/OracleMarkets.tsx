@@ -20,6 +20,7 @@ import LinkedQuestions from '../components/market/LinkedQuestions';
 import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
+import { walletRejected } from '../wallet-errors';
 import { boardPrice } from '../board-cache';
 import PriceHistory from './PriceHistory';
 import './market-detail.css';
@@ -53,8 +54,8 @@ const ausd = (atoms: string) => formatUnits(BigInt(atoms), 6);
 const zero = (value: string) => !value || BigInt(value) === 0n;
 const chainName = (id: number) => id === 11155111 ? 'Sepolia' : 'Monad testnet';
 const friendly = (error: unknown) => {
-  const value = error as { code?: number; message?: string };
-  return value?.code === 4001 ? 'Transaction cancelled in MetaMask.'
+  const value = error as { message?: string };
+  return walletRejected(error) ? 'Transaction cancelled in MetaMask.'
     : value?.message && value.message.length < 220 ? value.message
       : 'This request could not be completed. Refresh its on-chain status and try again.';
 };

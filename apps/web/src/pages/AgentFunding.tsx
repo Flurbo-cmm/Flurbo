@@ -2,6 +2,7 @@ import {useEffect,useState} from 'react';
 import {formatEther,formatUnits,parseEther,parseUnits,encodeFunctionData,erc20Abi} from 'viem';
 import {TESTNET} from '../../server/network.mjs';
 import {discoverWallets,type BrowserWallet} from '../auth/wallet-choice';
+import {walletRejected} from '../wallet-errors';
 import TransactionSheet from '../components/ui/TransactionSheet';
 import type {SheetPhase} from '../sheet-state';
 
@@ -52,7 +53,7 @@ export default function AgentFunding({wallet}:{wallet:string}){
       if(typeof sent!=='string'||!/^0x[0-9a-f]{64}$/i.test(sent))throw Error('MetaMask did not return a transaction.');
       setHash(sent);setMessage(`Sent. The agent wallet balance updates once the transfer confirms.`);
       setTimeout(()=>void read(),6000);
-    }catch(e){const x=e as {code?:number;message?:string};setSheet(false);setMessage(x?.code===4001?'Cancelled in MetaMask. Nothing was sent.':x instanceof Error&&x.message?x.message:'The transfer could not be sent. Check MetaMask activity before trying again.');}
+    }catch(e){const x=e as {code?:number;message?:string};setSheet(false);setMessage(walletRejected(x)?'Cancelled in MetaMask. Nothing was sent.':x instanceof Error&&x.message?x.message:'The transfer could not be sent. Check MetaMask activity before trying again.');}
     finally{setBusy(false);}
   }
   const phase:SheetPhase=!sheet?'closed':busy?'wallet':'done';
