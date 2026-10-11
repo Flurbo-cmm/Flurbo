@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { encodeAbiParameters, encodeEventTopics, parseAbiParameters } from 'viem';
+import { encodeAbiParameters, encodeEventTopics, parseAbi, parseAbiParameters } from 'viem';
 import { pilotIndex } from '../server/pilot-index.mjs';
-import { resolverAbi } from '../shared/pilot.mjs';
+
+const resolverAbi = parseAbi(['event Finalized(uint8 indexed eventIndex,uint8 outcome,bool timedOut)']);
 
 test('persistent pilot index resumes, rejects concurrent updates and rebuilds after a reorg',async()=>{
   const hash=(n:number)=>'0x'+n.toString(16).padStart(64,'0');

@@ -71,14 +71,16 @@ fn main() -> flurbo_sdk::Result<()> {
             })
             .collect()
     };
-    let config = parse_config(&default_config())?;
+    let namespace = format!("practice-{}", &POOL[2..]);
+    let mut raw = default_config();
+    raw["markets"] = serde_json::json!([namespace]);
+    let config = parse_config(&raw)?;
     let market = StrategyMarket { pool: POOL.into(), event_count: 2, open: true, resolved: false, closes_at: 1_790_900_000, snapshot_block_hash: format!("0x{}", "f1".repeat(32)) };
     let forecast = JointForecast { events: output.events.clone(), states_ppm: output.states_ppm.clone(), fresh_evidence: fresh };
     let decision = JointEdgeStrategy::from_config(&config).decide(&StrategyContext { market: &market, forecast: &forecast, now: NOW, quote: &quote })?;
     println!("Decision: {}. {}", decision.outcome, decision.explanation);
     let Some(p) = decision.proposal else { return Ok(()) };
     let limit = buy_limit(p.quote_atoms, p.slippage_bps);
-    let namespace = format!("practice-{}", &POOL[2..]);
     let mut policy = config.policy.clone();
     policy.markets = vec![namespace.clone()];
     let verdict = evaluate_policy(&PolicyInput {

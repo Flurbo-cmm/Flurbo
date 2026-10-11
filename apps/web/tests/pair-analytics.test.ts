@@ -6,8 +6,7 @@ import { pairAnalytics, runPairModel } from '../server/pair-analytics.mjs';
 import { certifiedPair, pairInput } from '../server/pair-math.mjs';
 import { simulatePairPurchase } from '../server/pair-sensitivity.mjs';
 import { pilotPoolAbi, pilotCash } from '../shared/pilot.mjs';
-import { pilotFixture, hash } from './pilot-fixture.ts';
-import { localApi } from '../server/local-api.mjs';
+import { poolFixture, hash } from './pool-fixture.ts';
 import { rustExample } from './rust-example.ts';
 
 const fixtures=JSON.parse(await readFile(new URL('./fixtures/pair-analytics.json',import.meta.url),'utf8'));
@@ -34,7 +33,7 @@ test('invalid tables, graph width, pair, atoms and domain fail closed',()=>{
 });
 
 function setup(){
-  const now=1_800_000_000,f=pilotFixture(now,4),calls:any[]=[];
+  const now=1_800_000_000,f=poolFixture(now,4),calls:any[]=[];
   let clock=now,reorg=false;
   const values:any={eventCount:4,liquidity:10_000_000n,eliminationOrder:[0,1,2,3],factors:[{scope:3,values:[0n,0n,0n,10_000_000n]}],collateralDecimals:6,collateral:pilotCash,funded:true,resolved:false,closesAt:BigInt(f.manifest.publication.draft.closesAt)};
   const rpc=async(method:string,params:any[])=>{
@@ -124,19 +123,4 @@ test('sensitivity quotes both independent scenarios at the original block and re
   closed.f.manifest.publication.draft.closesAt=closed.now;
   const historical=await closed.create()({a:0,b:1});
   assert.ok(historical.sensitivity.scenarios.every((s:any)=>s.reason==='market_closed'));
-});
-test('analytics API requires passkey auth, same origin, exact pair input and sanitizes errors',async()=>{
-  let logged=false,calls=0,fail=false;
-  const manifest=pilotFixture().manifest;
-  const api=localApi({store:{read:async()=>logged?{method:'passkey'}:null},pilot:{manifest,analytics:async()=>{calls++;if(fail)throw Error('private upstream');return {ok:true};}}});
-  async function request(input:any,origin='http://localhost:18767'){
-    const req:any={url:'/api/pilot/analytics',method:'POST',headers:{host:'localhost:18767',origin,'content-type':'application/json'},async *[Symbol.asyncIterator](){yield JSON.stringify(input);}};
-    let status=0,body:any;const res:any={writeHead:(v:number)=>{status=v;},end:(v:string)=>{body=JSON.parse(v);},setHeader:()=>{}};
-    await api(req,res,()=>{});return {status,body};
-  }
-  assert.equal((await request({a:0,b:1})).status,401);logged=true;
-  assert.equal((await request({a:0,b:1},'https://other.example')).status,403);
-  for(const bad of [null,[],{a:0,b:0},{a:0,b:2},{a:0,b:1,to:'wallet'}])assert.equal((await request(bad)).status,400);
-  assert.equal(calls,0);assert.equal((await request({a:0,b:1})).status,200);
-  fail=true;const result=await request({a:0,b:1});assert.equal(result.status,503);assert.ok(!JSON.stringify(result).includes('private upstream'));
 });

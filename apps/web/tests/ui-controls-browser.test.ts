@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {pilotFixture,owner} from './pilot-fixture.ts';
+import {owner} from './pool-fixture.ts';
 import {setup,alice,origin} from './agent-fixture.ts';
 
 const skip=!process.env.FLURBO_TEST_PLAYWRIGHT;
@@ -11,21 +11,21 @@ async function asset(route:any,path:string){
   return route.fulfill({body:await readFile(new URL('../dist/'+relative,import.meta.url)),contentType:relative.endsWith('.js')?'text/javascript':relative.endsWith('.css')?'text/css':relative.endsWith('.woff2')?'font/woff2':'text/html'});
 }
 async function thesisPage(browser:any,options:any={}){
-  const f=pilotFixture(Math.floor(Date.now()/1000),4),context=await browser.newContext({viewport:{width:1440,height:1000},...options}),page=await context.newPage(),errors:string[]=[];
-  // Practice collections are addressed by pool; this mode keeps the real-event wording.
-  f.manifest.publication.mode='deterministic-source-v1';
+  const context=await browser.newContext({viewport:{width:1440,height:1000},...options}),page=await context.newPage(),errors:string[]=[];
+  const pool='0x'+'22'.repeat(20),now=Math.floor(Date.now()/1000),closesAt=now+86400;
+  const hybridMarkets=[0,1,2,3].map(eventIndex=>({id:`${pool}-${eventIndex}`,pool,poolTitle:'Test pool',eventIndex,question:`Test event ${eventIndex+1}`,route:'mechanical',closesAt,observationEndsAt:closesAt+3600}));
   page.on('pageerror',(e:Error)=>errors.push(e.message));
   await page.route('**/*',async(route:any)=>{
     const path=new URL(route.request().url()).pathname;
-    if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:'practice-2222222222222222222222222222222222222222',label:'Test pool',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt}]}});
+    if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[],oracleMarkets:[],hybridMarkets}});
     if(path==='/api/account/access')return route.fulfill({json:{approved:true,testingTools:false}});
     if(path==='/api/auth/session')return route.fulfill({json:{session:{address:owner,method:'passkey',expiresAt:Date.now()+3600_000}}});
-    if(path==='/api/practice-2222222222222222222222222222222222222222/status')return route.fulfill({json:await f.service.status()});
-    if(path==='/api/practice-2222222222222222222222222222222222222222/markets')return route.fulfill({json:await f.service.markets()});
+    const market=hybridMarkets.find(m=>path===`/api/hybrid/${m.id}/market`);
+    if(market)return route.fulfill({json:{schema:'flurbo.hybrid-market.v1',id:market.id,pool,marketNow:Math.floor(Date.now()/1000),funded:true,resolved:false,prices:{yes:'500000',no:'500000'}}});
     if(path.startsWith('/api/'))return route.fulfill({status:503,json:{error:'Offline fixture'}});
     return asset(route,path);
   });
-  await page.goto('https://flurbo.singu.online/markets/practice-2222222222222222222222222222222222222222/0/thesis');
+  await page.goto(`https://flurbo.singu.online/markets/hybrid/${pool}/0/thesis`);
   return {page,context,errors};
 }
 
@@ -47,7 +47,7 @@ test('choice lists and segmented controls work from the keyboard and stay native
     assert.notEqual(await chosen(),before,'arrow keys choose another question');
     assert.equal(await page.evaluate(()=>(document.activeElement as HTMLInputElement|null)?.type),'radio','focus stays on the choices');
 
-    const group=page.getByRole('radiogroup',{name:"A's selected answer"});
+    const group=page.getByRole('radiogroup',{name:'A resolves'});
     const yes=group.getByRole('radio',{name:'Yes',exact:true}),no=group.getByRole('radio',{name:'No',exact:true});
     const start=await yes.getAttribute('aria-checked')==='true'?yes:no,other=start===yes?no:yes;
     await start.focus();await page.keyboard.press('ArrowRight');
@@ -79,8 +79,8 @@ test('allowing live agent trades asks for confirmation that restates the limits'
       const p=new URL(route.request().url()).pathname,method=route.request().method();
       if(p==='/api/auth/session')return route.fulfill({json:{session:{address:alice,method:'passkey',expiresAt:Date.now()+3600000}}});
       if(p==='/api/account/access')return route.fulfill({json:{approved:true}});
-      if(p==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:'pilot',label:'Open fixture',pool:s.f.manifest.pool,closesAt:s.f.manifest.publication.draft.closesAt}]}});
-      if(p==='/api/pilot/markets')return route.fulfill({json:await s.f.service.markets()});
+      if(p==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:s.f.namespace,label:'Open fixture',pool:s.f.manifest.pool,closesAt:s.f.manifest.publication.draft.closesAt}]}});
+      if(p===`/api/${s.f.namespace}/markets`)return route.fulfill({json:await s.f.service.markets()});
       if(p==='/api/agents'||p.startsWith('/api/agents/')){
         const body=method==='POST'?route.request().postDataJSON():undefined;
         if(p.endsWith('/runtime-policy')&&method==='POST')policies.push(body);

@@ -12,14 +12,14 @@ const arg = (name: string, fallback: number) => { const i = process.argv.indexOf
 const stack = await startLocalStack({ rpcPort: arg('--rpc-port', 19145), apiPort: arg('--api-port', 19167), serveDashboard: false });
 try {
   const cookie = await stack.signIn(generatePrivateKey());
-  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Cross-language agent', markets: ['pilot'] } })).body;
+  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Cross-language agent', markets: [stack.namespace] } })).body;
   const token = (await stack.api(`/api/agents/${agent.id}/credentials`, { cookie, body: { scopes: ['markets:read', 'wallet:read', 'runtime:report', 'executions:report'] } })).body.token;
   const agentKey = generatePrivateKey(), signer = localKeySigner(agentKey);
   const challenge = (await stack.api(`/api/agents/${agent.id}/wallet/challenge`, { cookie, body: { wallet: signer.address } })).body;
   await stack.api(`/api/agents/${agent.id}/wallet/verify`, { cookie, body: { id: challenge.id, signature: await signer.signMessage(challenge.message) } });
   await stack.setNativeBalance(signer.address, 10n ** 19n); await stack.mint(signer.address, 20_000_000n);
   await stack.api(`/api/agents/${agent.id}/runtime-policy`, { cookie, body: { liveEnabled: true } });
-  console.log(JSON.stringify({ ready: true, rpcUrl: stack.rpcUrl, apiUrl: stack.apiUrl, agentId: agent.id, token, agentKey, wallet: signer.address, pool: stack.manifest.pool }));
+  console.log(JSON.stringify({ ready: true, rpcUrl: stack.rpcUrl, apiUrl: stack.apiUrl, agentId: agent.id, token, agentKey, wallet: signer.address, pool: stack.manifest.pool, namespace: stack.namespace }));
   for await (const line of createInterface({ input: process.stdin })) {
     if (!line.trim()) continue;
     try { const r = JSON.parse(line); console.log(JSON.stringify(await stack.api(r.path.replace('{agent}', agent.id), { cookie, method: r.method, body: r.body ?? undefined }))); }

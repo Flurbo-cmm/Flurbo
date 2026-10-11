@@ -33,7 +33,7 @@ COPY --from=build /app/bin/flurbo-pair-analytics bin/flurbo-pair-analytics
 COPY --from=build /app/bin/flurbo-learning-model bin/flurbo-learning-model
 COPY apps/web/server apps/web/server
 COPY apps/web/shared apps/web/shared
-# The optional in-process settlement bot (FLURBO_SETTLEMENT_BOT) runs the monitor and worker scripts.
+# Server modules import the hybrid preparation scripts.
 COPY apps/web/scripts apps/web/scripts
 COPY packages/sdk/src packages/sdk/src
 COPY packages/sdk/package.json packages/sdk/package.json

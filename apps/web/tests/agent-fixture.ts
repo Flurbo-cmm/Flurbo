@@ -1,10 +1,11 @@
 import {decodeFunctionData,encodeFunctionResult,parseAbi} from 'viem';
 import {agentApi} from '../server/agents/agent-api.mjs';
-import {pilotFixture,owner} from './pilot-fixture.ts';
+import {poolFixture,owner} from './pool-fixture.ts';
 import {namespacedRedis} from './redis-resp.ts';
 
-// Shared by agent API and browser tests: fake durable storage, an agent RPC over the pilot fixture with
-// transaction mining, and a valid structured forecast. Not a test file.
+// Shared by agent API and browser tests: fake durable storage, an agent RPC over the hybrid pool fixture with
+// transaction mining, and a valid structured forecast. The fixture pool is served under its practice- namespace and under
+// the grammar-valid token pilot, which the real server never serves. Not a test file.
 export const alice='0x'+'ab'.repeat(20),bob='0x'+'cd'.repeat(20),origin='https://flurbo.singu.online',now=1_800_000_000;
 export const multicall=parseAbi(['function aggregate3((address target,bool allowFailure,bytes callData)[] calls) payable returns ((bool success,bytes returnData)[] returnData)']);
 
@@ -60,7 +61,7 @@ export function agentRedis():TestRedis{
 }
 
 export function setup({links=[owner],at=now}:{links?:string[];at?:number}={}){
-  const f=pilotFixture(at,3),redis=agentRedis(),txs=new Map<string,any>(),receipts=new Map<string,any>(),blocks=new Map<string,any>();
+  const f=poolFixture(at,3),redis=agentRedis(),txs=new Map<string,any>(),receipts=new Map<string,any>(),blocks=new Map<string,any>();
   // Agent RPC: multicall is expanded into the fixture's single reads; receipts come from a local table.
   const rpc=async(method:string,params:any[]=[])=>{
     if(method==='eth_call'&&params[0].to==='0xca11bde05977b3631167028862be2a173976ca11'){
@@ -80,7 +81,7 @@ export function setup({links=[owner],at=now}:{links?:string[];at?:number}={}){
   let clock=at;
   // Linked MetaMask wallets: every account in these tests links the same list.
   const linked={list:async(account:string)=>({account,wallets:links.map(w=>w.toLowerCase())}),ownerOf:async(wallet:string)=>links.map(w=>w.toLowerCase()).includes(wallet.toLowerCase())?alice:null};
-  const make=(overrides:Record<string,unknown>={})=>agentApi({command:redis.command,hosted:true,serviceFor:(ns:string)=>ns==='pilot'?f.service:null,links:linked,rpc,now:()=>clock,...overrides});
+  const make=(overrides:Record<string,unknown>={})=>agentApi({command:redis.command,hosted:true,serviceFor:(ns:string)=>ns==='pilot'||ns===f.namespace?f.service:null,links:linked,rpc,now:()=>clock,...overrides});
   const api=make();
   const call=async(login:string,method:string,path:string,input?:unknown,which=api)=>which.handle({method,path,input,login:{address:login,method:'passkey'},origin});
   // Mines a transaction. `block` and `timestamp` place it in its own block (below the head at 0x70).

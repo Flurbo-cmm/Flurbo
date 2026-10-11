@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {portfolioOrder} from '../src/portfolio-order.ts';
 import {researchBlock} from '../src/agent-research.ts';
-import {settlementView} from '../src/market-detail.ts';
 
 const group=(namespace:string,closesAt:number)=>({namespace,label:namespace,pool:'0x'+'1'.repeat(40),closesAt}) as any;
 
@@ -22,11 +21,3 @@ test('research settings cover every question of every market and allow the hosts
   assert.deepEqual(parsed.retriever.extraSources,{'practice-a':[],pilot:[]});
 });
 
-test('a question shows its own expected result time; payouts wait for the last question in the pool',()=>{
-  const event=(end:number)=>({observationEndsAt:end});
-  const state:any={cases:[{phase:0,assertionDeadline:'9999999999'},{phase:0,assertionDeadline:'9999999999'}],delivered:false,snapshot:{timestamp:0},
-    manifest:{publication:{challengePeriod:3600,assertionPeriod:3600,votingPeriod:3600,draft:{closesAt:10,events:[event(1_000),event(5_000)]}}}};
-  assert.equal(settlementView(state,0).expectedFrom,4_600);
-  assert.equal(settlementView(state,0).payoutsFrom,8_600);
-  assert.equal(settlementView(state,1).expectedFrom,8_600);
-});

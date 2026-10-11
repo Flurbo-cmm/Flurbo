@@ -31,7 +31,7 @@ Official sports feeds can be configured through public JSON only after a league-
 
 Keep the existing deployer keystore. Create separate encrypted keystores for the Monad proposer, Monad relay, and Sepolia case manager. Their private keys are Render secrets, never Git content. The deployer needs Monad testnet MON and test AUSD to create and fund a pool. The proposer needs MON for gas and test AUSD for each mechanical bond. The relay needs MON. The case manager needs Sepolia ETH above the live Kleros arbitration fee plus gas. Traders need test AUSD and MON; a Reality answerer or challenger needs Sepolia ETH. The existing faucet can remain shared.
 
-The existing Render Redis, Resend, and settlement bot settings remain in use. For a nonempty hybrid catalog, add these company service variables:
+The existing Render Redis, Resend and scheduler settings remain in use. For a nonempty hybrid catalog, add these company service variables:
 
 | Variable | Purpose |
 | --- | --- |
@@ -47,7 +47,7 @@ The existing Render Redis, Resend, and settlement bot settings remain in use. Fo
 | `FLURBO_HYBRID_ALERTS_ENABLED=true` | Operator emails for hybrid pools (see "Operator emails" below). Needs `FLURBO_MONITOR_EMAIL_TO`, `FLURBO_MONITOR_EMAIL_FROM` and `FLURBO_MONITOR_RESEND_KEY` |
 | `FLURBO_PROOF_SUBMIT_TOKEN` | Bearer token (32 to 128 URL-safe characters) for the proof upload endpoint. Needed only when a listed pool uses `proof-http.v1`; without it the endpoint stays off and `/healthz` shows `proof_captures: disabled` |
 
-`FLURBO_SETTLEMENT_BOT=true` and `FLURBO_NOTIFY_ENABLED=true` continue to drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
+`FLURBO_SCHEDULER=true` (legacy alias `FLURBO_SETTLEMENT_BOT=true`) and `FLURBO_NOTIFY_ENABLED=true` drive closing, observation, proposal, and payout emails. Sender addresses and Resend keys stay as configured for the company site. Check `/healthz` for `hybrid_settlement` and `hybrid_arbitration` errors after enabling the catalog. A free Render instance can sleep; a ten-minute ping is helpful but cannot guarantee capturing a short source window. The source rule specifies the cutoff and VOID behavior, so widen the capture window for a real trial.
 
 Run one company web instance for this testnet trial. The two hybrid workers serialize transactions from their shared Monad relay wallet inside that process. Multiple service instances using the same relay key need a distributed nonce coordinator or a single elected worker before they are enabled.
 
@@ -63,7 +63,7 @@ The only manual step is the juror vote. An operator-controlled juror wallet stak
 
 The original operator monitor (`FLURBO_MONITOR_*`) only watches the activity pool. Hybrid pools have their own operator email, `hybrid-operator-alerts.mjs`, enabled with `FLURBO_HYBRID_ALERTS_ENABLED=true` and sent through the same Resend settings and recipient. It emails once per event: answer posted, Kleros arbitration requested, vote period reached (subject starts with `ACTION`, this is your cue to cast the juror vote), ruling, Reality final, reported to Monad, and pool delivered. It also emails worker errors (once per 6 hours per message) and low Sepolia balances for the answerer (below 0.002 ETH) and the keeper (below 0.03 ETH), once per day. The first run for a pool records the current state without sending, so history is never emailed. Check `/healthz` `hybrid_alerts`.
 
-Member notices (traders) are separate. A stage that nobody could receive, because no wallet was linked or no verified email existed, is now checked again after one hour instead of being closed for good. When stages were due but nobody was emailed, the `settlement_bot.notices` text in `/healthz` adds the counts, for example `sent 0 (stages 1, wallets 1, unlinked 1, no verified email 0)`. `unlinked` means a trading wallet is not linked to a Flurbo account. `no verified email` means the account has no verified email in the company applications data.
+Member notices (traders) are separate. A stage that nobody could receive, because no wallet was linked or no verified email existed, is now checked again after one hour instead of being closed for good. When stages were due but nobody was emailed, the `scheduler.notices` text in `/healthz` (repeated under the legacy `settlement_bot` key) adds the counts, for example `sent 0 (stages 1, wallets 1, unlinked 1, no verified email 0)`. `unlinked` means a trading wallet is not linked to a Flurbo account. `no verified email` means the account has no verified email in the company applications data.
 
 ### Wallets and funding
 

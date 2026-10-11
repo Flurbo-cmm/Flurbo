@@ -26,21 +26,6 @@ export const HOSTED_ORIGINS = new Set(['https://flurbo.singu.online', 'https://f
 
 export function hostedConfig(env = process.env) {
   if (!HOSTED_ORIGINS.has(env.FLURBO_ORIGIN)) throw new Error('Set FLURBO_ORIGIN to an approved HTTPS origin');
-  if (env.FLURBO_ORIGIN === 'https://flurbopm.singu.online') {
-    if (env.FLURBO_COLLECTIONS_SOURCE !== 'registry' || env.FLURBO_PILOT_DISABLED !== 'true')
-      throw new Error('Company site requires its own registry and disabled legacy pilot');
-    if (env.FLURBO_SETTLEMENT_BOT === 'true') {
-      if (env.FLURBO_RESOLUTION_EVIDENCE_ORIGIN !== env.FLURBO_ORIGIN)
-        throw new Error('Company settlement requires its own public evidence origin');
-      if (env.FLURBO_MONITOR_ENABLED !== 'true' || env.FLURBO_RESOLUTION_ENABLED !== 'true')
-        throw new Error('Company settlement requires its monitor and worker');
-      if (env.FLURBO_RESOLUTION_PROPOSALS !== 'true')
-        throw new Error('Company settlement requires deterministic proposals enabled');
-      if (!/^0x[0-9a-f]{40}$/.test(env.FLURBO_RESOLUTION_SIGNER_ADDRESS?.toLowerCase() || '') ||
-          env.FLURBO_RESOLUTION_SIGNER_ADDRESS?.toLowerCase() === '0x632a158d5eccc10f864ab94cec99511e1cc514f3')
-        throw new Error('Company settlement requires a dedicated new signer');
-    }
-  }
   if (env.FLURBO_NETWORK !== 'public_testnet') throw new Error('This release supports public Monad testnet only');
   const rpc = new URL(env.FLURBO_ALCHEMY_TESTNET_RPC_URL || TESTNET.rpc);
   if (rpc.protocol !== 'https:' || rpc.username || rpc.password || rpc.hash || rpc.port ||

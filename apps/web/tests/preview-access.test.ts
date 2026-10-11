@@ -5,7 +5,7 @@ import {previewAccess} from '../server/preview-access.mjs';
 import {hostedConfig,TESTNET} from '../server/network.mjs';
 import {productionServer} from '../server/production.mjs';
 import {DEFAULT_TESTING_OPERATOR} from '../server/testing-access.mjs';
-import {pilotFixture} from './pilot-fixture.ts';
+import {poolFixture} from './pool-fixture.ts';
 
 const account='0x'+'ab'.repeat(20),other='0x'+'cd'.repeat(20),origin='https://flurbo.singu.online';
 test('invite configuration denies by default, validates inputs, and approves only verified Mera identities',()=>{
@@ -21,12 +21,11 @@ test('invite configuration denies by default, validates inputs, and approves onl
 });
 
 test('hosted invite checks cover every app route, preserve evidence and auth, and never trust request addresses',async()=>{
-  const fixture=pilotFixture();
-  fixture.service.payouts={refresh:async()=>({complete:true,logs:[]})};
+  const fixture=poolFixture();
   let policy=previewAccess({FLURBO_TESTNET_APPROVED_ACCOUNTS:account});
   const store={read:async(id:string)=>id==='approved'?{address:account,method:'passkey'}:id==='pending'?{address:other,method:'passkey'}:id==='operator'?{address:DEFAULT_TESTING_OPERATOR,method:'passkey'}:id==='wallet'?{address:account,method:'wallet'}:null};
-  const ns='practice-'+fixture.manifest.pool.slice(2);
-  const server=productionServer({origin,rpcUrl:TESTNET.rpc,previewAccess:{allows:(s:unknown)=>policy.allows(s),applicationUrl:null},pilot:fixture.service,practiceCollections:{services:new Map([[ns,fixture.service]]),catalog:{collections:[{namespace:ns,label:'Fixture',pool:fixture.manifest.pool,closesAt:fixture.manifest.publication.draft.closesAt}]}},pilotEvidence:{get:async()=>'{"evidence":true}'}},store);
+  const ns=fixture.namespace;
+  const server=productionServer({origin,rpcUrl:TESTNET.rpc,previewAccess:{allows:(s:unknown)=>policy.allows(s),applicationUrl:null},agentPools:{services:new Map([[ns,fixture.service]]),collections:[{namespace:ns,label:'Fixture',pool:fixture.manifest.pool,closesAt:fixture.manifest.publication.draft.closesAt}],reservedAddresses:new Set()},evidenceArchive:{get:async()=>'{"evidence":true}'}},store);
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const request=(path:string,id='',body?:object):Promise<any>=>new Promise((resolve,reject)=>{
     const req=httpRequest({hostname:'127.0.0.1',port:(server.address() as any).port,path,method:body?'POST':'GET',headers:{host:'flurbo.singu.online',origin,'content-type':'application/json',cookie:'flurbo_session='+id}},res=>{let text='';res.on('data',c=>text+=c);res.on('end',()=>resolve({status:res.statusCode,data:JSON.parse(text)}));});req.on('error',reject);req.end(body?JSON.stringify(body):undefined);
@@ -45,8 +44,9 @@ test('hosted invite checks cover every app route, preserve evidence and auth, an
     for(const namespace of ['pilot',ns]){
       for(const endpoint of ['markets','status','price-history'])assert.equal((await request('/api/'+namespace+'/'+endpoint,'pending')).status,403);
       for(const endpoint of ['prepare','positions','analytics','history','collected-payouts','challenge-eligibility','rpc','evidence'])assert.equal((await request('/api/'+namespace+'/'+endpoint,'pending',{owner:account,approved:true})).status,403);
-      assert.equal((await request('/api/'+namespace+'/markets','approved')).status,200);
-      assert.equal((await request('/api/'+namespace+'/collected-payouts','approved',{})).status,200);
+      // Only an agent pool's market read remains; every other namespaced route is gone.
+      assert.equal((await request('/api/'+namespace+'/markets','approved')).status,namespace===ns?200:404);
+      assert.equal((await request('/api/'+namespace+'/collected-payouts','approved',{})).status,404);
       assert.equal((await request('/api/'+namespace+'/collected-payouts','',{})).status,401);
       assert.equal((await request('/api/'+namespace+'/markets','wallet')).status,401);
       assert.equal((await request('/api/'+namespace+'/evidence/0x'+'ab'.repeat(32))).status,200);

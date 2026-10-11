@@ -1,7 +1,7 @@
 import { validClaim } from '../shared/pilot.mjs';
 import {CLAIM_RULES, encodeClaim} from '../shared/claims.mjs';
-import type { PilotPending, PilotNamespace } from './pilot';
-import type { PortfolioNamespace } from './portfolio-groups';
+import type { PilotPending } from './pilot';
+import { hybridNamespace, type PortfolioNamespace } from './portfolio-groups.ts';
 import { forgetPortfolioCachePool } from './portfolio-cache.ts';
 
 export type ClaimHint={scope:number;mask:string};
@@ -26,10 +26,11 @@ export function rememberClaimHint(namespace:PortfolioNamespace,pool:string,owner
     localStorage.setItem(key(namespace,pool,owner),JSON.stringify(claims));
   }catch{/* Optional discovery hints must not turn a confirmed transaction into an error. */}
 }
-export function rememberConfirmedClaim(namespace:PilotNamespace,saved:PilotPending){
+// Agent trades run under the practice namespace, but Portfolio reads the same pool as a hybrid market.
+export function rememberConfirmedClaim(saved:PilotPending){
   if(!['buy','sell','redeem'].includes(saved.review.action))return;
+  const {manifest,requested}=saved.review,namespace=hybridNamespace(manifest.pool);
   forgetPortfolioCachePool(namespace);
-  const {manifest,requested}=saved.review;
   rememberClaimHint(namespace,manifest.pool,requested.owner,manifest.publication.draft.events.length,{scope:requested.scope!,mask:requested.mask!});
 }
 export function portfolioClaims(events:number,scopes:number[],hints:ClaimHint[],indexed:ClaimHint[]):ClaimHint[]{

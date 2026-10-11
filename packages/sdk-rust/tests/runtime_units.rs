@@ -18,6 +18,15 @@ use flurbo_sdk::signer::{LocalKeySigner, Signer};
 use serde_json::{json, Value};
 
 const TOKEN: &str = "fla1_0123456789abcdef_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const NS: &str = "practice-2222222222222222222222222222222222222222";
+
+// The default configuration names no market; unit fixtures use the grammar-valid token pilot.
+fn configured() -> Value {
+    let mut c = default_config();
+    c["markets"] = json!(["pilot"]);
+    c["policy"]["markets"] = json!(["pilot"]);
+    c
+}
 
 #[derive(Debug, Clone)]
 struct Call {
@@ -308,7 +317,7 @@ fn research_preflight_requires_each_event_and_explicit_background_policy() {
     let both: Vec<EvidenceRequirement> = (0..2).map(|event| EvidenceRequirement { event, freshness: "background".into() }).collect();
     assert_eq!(reason(r.research_with_requirements("0x", "t", &events, &[], 1_790_000_000, 2, &both)), "ok");
     assert_eq!(*calls.lock().unwrap(), 1);
-    let mut config = default_config();
+    let mut config = configured();
     config["research"]["evidenceRequirements"] = json!({"pilot": both});
     assert_eq!(parse_config(&config).unwrap().research.evidence_requirements["pilot"].len(), 2);
     for invalid in [
@@ -464,7 +473,7 @@ fn semantic_collision_blocks_custom_execute_and_sign() {
         signer,
         journal.clone(),
         Some(Arc::new(RuntimeClient::new(&server.url, TOKEN).unwrap())),
-        Arc::new(FixedControls { policy: parse_config(&default_config()).unwrap().policy, allowed: true }),
+        Arc::new(FixedControls { policy: parse_config(&configured()).unwrap().policy, allowed: true }),
         Duration::ZERO,
     );
     assert!(ex.sign("collision", &d).unwrap().is_none());
@@ -570,9 +579,9 @@ fn signer_cli_and_configuration() {
         let argv: Vec<String> = args.iter().map(|s| s.to_string()).collect();
         main_with(&argv, &mut |s| out.push(s.into()), &mut |s| err.push(s.into()))
     };
-    assert_eq!(run(&["init", "--config", &config], &mut out, &mut err), 0);
+    assert_eq!(run(&["init", "--config", &config, "--markets", NS], &mut out, &mut err), 0);
     parse_config(&serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap()).unwrap();
-    assert_eq!(run(&["init", "--config", &config], &mut out, &mut err), 1);
+    assert_eq!(run(&["init", "--config", &config, "--markets", NS], &mut out, &mut err), 1);
     let message = |w: &str| {
         format!("Flurbo agent wallet association\nOrigin: http://localhost\nMera account: 0x{}\nAgent: a\nAgent wallet: {}\nChain: Monad testnet (10143)\nNonce: n\nIssued: x\nExpires: y\nThis proves control of this wallet.", "44".repeat(20), w)
     };
@@ -602,7 +611,7 @@ fn signer_cli_and_configuration() {
     let mut bad = default_config();
     bad["mode"] = json!("autonomous");
     assert!(parse_config(&bad).unwrap_err().message.contains("mode"));
-    let mut secret = default_config();
+    let mut secret = configured();
     secret["research"]["provider"] = json!({"kind": "anthropic", "model": "m", "apiKeyEnv": "K", "privateKey": key});
     assert!(parse_config(&secret).unwrap_err().message.contains("secrets"));
     let _ = std::fs::remove_dir_all(&d);
@@ -643,7 +652,7 @@ fn semantic_disabled_passes_guard_but_failures_never_do() {
             signer,
             journal.clone(),
             Some(Arc::new(RuntimeClient::new(&server.url, TOKEN).unwrap())),
-            Arc::new(FixedControls { policy: parse_config(&default_config()).unwrap().policy, allowed: true }),
+            Arc::new(FixedControls { policy: parse_config(&configured()).unwrap().policy, allowed: true }),
             Duration::ZERO,
         );
         let _ = ex.sign("disabled", &d);
@@ -651,4 +660,31 @@ fn semantic_disabled_passes_guard_but_failures_never_do() {
         assert_eq!(note.as_deref() == Some("SEMANTICS_UNAVAILABLE"), blocked, "{status} {note:?}");
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+#[test]
+fn default_config_names_no_market_and_init_requires_markets() {
+    let defaults = default_config();
+    assert_eq!(defaults["markets"], json!([]));
+    assert_eq!(defaults["policy"]["markets"], json!([]));
+    let e = parse_config(&defaults).unwrap_err();
+    assert_eq!(e.code, "invalid_input");
+    assert!(e.message.contains("list at least one market"), "{}", e.message);
+    let d = temp("init-markets");
+    let config = d.join("flurbo-agent.json").to_string_lossy().to_string();
+    let required = "invalid_input: Pass --markets as the comma separated market names shown on the agent page: practice- followed by the pool address without 0x.";
+    for extra in [vec![], vec!["--markets", ""], vec!["--markets", "practice-1234"]] {
+        let mut argv: Vec<String> = ["init", "--config", config.as_str()].iter().map(|s| s.to_string()).collect();
+        argv.extend(extra.iter().map(|s| s.to_string()));
+        let mut err = Vec::<String>::new();
+        assert_eq!(main_with(&argv, &mut |_| {}, &mut |s| err.push(s.into())), 1, "{:?}", extra);
+        assert_eq!(err, vec![required.to_string()]);
+        assert!(!Path::new(&config).exists());
+    }
+    let argv: Vec<String> = ["init", "--config", config.as_str(), "--markets", NS].iter().map(|s| s.to_string()).collect();
+    assert_eq!(main_with(&argv, &mut |_| {}, &mut |_| {}), 0);
+    let written: Value = serde_json::from_str(&std::fs::read_to_string(&config).unwrap()).unwrap();
+    assert_eq!(written["markets"], json!([NS]));
+    assert_eq!(written["policy"]["markets"], json!([NS]));
+    let _ = std::fs::remove_dir_all(&d);
 }

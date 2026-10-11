@@ -7,7 +7,6 @@
     "start": "node server/production.mjs",
     "dev": "vite --host 127.0.0.1 --port 18767 --strictPort",
     "typecheck": "tsc --noEmit",
-    "check:mock": "node scripts/check-mock-readiness.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 18767 --strictPort"

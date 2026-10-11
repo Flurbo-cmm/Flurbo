@@ -126,7 +126,7 @@ Reader keys (`parser, pages, anchors, pattern` required): `parser, pages, anchor
 ## 5. Workflow
 
 1. **Write tests first** for a new rule shape or reader (see section 7).
-2. **Author the rule.** For football-data.org matches use `apps/web/scripts/create-football-proof-rules.mjs`. Never hand-edit `config/collections.json` or `config/hybrid-markets.json`; only the registration scripts write them.
+2. **Author the rule.** For football-data.org matches use `apps/web/scripts/create-football-proof-rules.mjs`. Never hand-edit `config/hybrid-markets.json` or `config/oracle-markets.json`; only the registration scripts write them.
 3. **Check it against the live source** before preparing a market:
 
    ```bash

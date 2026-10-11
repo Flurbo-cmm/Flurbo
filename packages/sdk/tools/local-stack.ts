@@ -3,13 +3,13 @@ import { createServer, type Server } from 'node:http';
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, extname, resolve } from 'node:path';
-import { createPublicClient, createWalletClient, http, keccak256, encodeFunctionData, parseAbi, type Hex } from 'viem';
+import { createPublicClient, createWalletClient, decodeAbiParameters, http, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Local development stack for agent tests and the acceptance demonstration. Everything runs on this machine:
 //   an anvil chain with chain id 10143, local test AUSD (6 decimals) at the canonical test AUSD address,
-//   a Multicall3 stand-in at the canonical address, a funded pilot pool and resolver, its manifest,
-//   and the real Flurbo API (and built dashboard, when present) using that deployment.
+//   a Multicall3 stand-in at the canonical address, a funded hybrid pool (WidePilotPool with a HybridPilotResolver and two
+//   mechanical questions) served as an agent pool, and the real Flurbo API (and built dashboard, when present) using it.
 // Never points at a public network. The keys below are anvil's public development keys.
 const repo = resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const artifact = (file: string, name: string) => JSON.parse(readFileSync(join(repo, 'target/foundry/out', file, `${name}.json`), 'utf8'));
@@ -20,7 +20,7 @@ export const REVIEWERS = ['0xa0Ee7A142d267C1f36714E4a8F75612F20a79720', '0x23618
 const erc20 = parseAbi(['function mint(address,uint256)', 'function approve(address,uint256) returns (bool)', 'function balanceOf(address) view returns (uint256)']);
 
 export type LocalStack = {
-  rpcUrl: string; apiUrl: string; manifest: any; manifestPath: string;
+  rpcUrl: string; apiUrl: string; manifest: any; manifestPath: string; namespace: string;
   mint(to: string, atoms: bigint): Promise<void>; setNativeBalance(to: string, wei: bigint): Promise<void>;
   signIn(key: Hex): Promise<string>; api(path: string, init?: { method?: string; body?: unknown; cookie?: string }): Promise<{ status: number; body: any }>;
   mineUntil(timestamp: number): Promise<void>; stop(): Promise<void>;
@@ -54,20 +54,34 @@ export async function startLocalStack(o: { rpcPort?: number; apiPort?: number; c
   await rpc('anvil_setCode', [AUSD, await rpc('eth_getCode', [collateral, 'latest'])]);
   const multicall = await deploy('LocalMulticall3.sol', 'LocalMulticall3');
   await rpc('anvil_setCode', [MULTICALL3, await rpc('eth_getCode', [multicall, 'latest'])]);
-  const now = Number((await pub.getBlock()).timestamp), closesAt = now + (o.closesInSeconds ?? 7 * 86_400);
+  const now = Number((await pub.getBlock()).timestamp), closesAt = now + (o.closesInSeconds ?? 7 * 86_400), observationEndsAt = closesAt + 86_400;
+  const { prepareHybridPilot, hybridRulesHash, hybridConfigAbi } = await import(pathOf('apps/web/scripts/prepare-hybrid-pilot.mjs'));
+  // Two mechanical questions: no Sepolia or Kleros leg is needed to trade, and the trading ABI is the deployed one.
+  // The creator is REVIEWERS[0] (anvil account 9), so the proposer and relay are the next two accounts.
+  const rule = (id: string, question: string) => ({ schema: 'flurbo.settlement-rule.v1', eventId: id, question,
+    source: { id: `local-${id}`, publisher: 'Local test publisher', urls: [`https://data.example.org/${id}`], adapter: 'json-api.v1',
+      reader: { select: '/value', aggregate: 'value' } },
+    observation: { series: id, period: '2027-01', unit: 'units' },
+    decision: { type: 'number', operator: 'gte', value: '4' },
+    timing: { scheduledAt: observationEndsAt - 3600, publicationCutoff: observationEndsAt, correctionCutoff: observationEndsAt, observationEndsAt,
+      assertionPeriod: 3600, challengePeriod: 3600, votingPeriod: 3600 },
+    vintage: 'first-observed-snapshot', missingPolicy: 'resolver-timeout-void' });
   const events = [
-    { id: 'local-release-a', question: 'Will local project A publish release 1.0 before the observation deadline?', yesRule: 'YES if the release page lists a stable 1.0 release published before the deadline.', noRule: 'NO otherwise.' },
-    { id: 'local-release-b', question: 'Will local project B publish release 2.0 before the observation deadline?', yesRule: 'YES if the release page lists a stable 2.0 release published before the deadline.', noRule: 'NO otherwise.' },
-  ];
-  const resolverArtifact = artifact('PilotResolver.sol', 'PilotResolver');
-  const config = { collateral: AUSD, draftHash: keccak256('0x6c6f63616c2d6167656e742d64726166742d7631'), closesAt: BigInt(closesAt),
-    eventHashes: events.map(e => keccak256(`0x${Buffer.from(e.id).toString('hex')}`)), observationEnds: events.map(() => BigInt(closesAt + 86_400)),
-    reviewers: REVIEWERS, bond: 1_000_000n, assertionPeriod: 3600, challengePeriod: 3600, votingPeriod: 3600 };
-  const resolver = await deploy('PilotResolver.sol', 'PilotResolver', [config]);
-  const rulesHash = await pub.readContract({ address: resolver as Hex, abi: resolverArtifact.abi, functionName: 'rulesHash' }) as Hex;
-  const pool = await deploy('PilotPool.sol', 'PilotPool', [AUSD, events.length, 10_000_000n, BigInt(closesAt), events.map((_, i) => i), resolver, rulesHash]);
+    { id: 'local-release-a', question: 'Will local project A publish release 1.0 before the observation deadline?' },
+    { id: 'local-release-b', question: 'Will local project B publish release 2.0 before the observation deadline?' },
+  ].map(e => ({ ...e, observationEndsAt, route: 'mechanical', rule: rule(e.id, e.question) }));
+  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v4', chainId: 10143, rulesReviewed: true, creator: creator.address,
+    proposer: REVIEWERS[1], relay: REVIEWERS[2], title: 'Local agent test market (anvil, test assets)', closesAt,
+    assertionPeriod: 3600, challengePeriod: 3600, reportPeriod: 3600, arbitrationPeriod: 30 * 86_400, bondAtoms: '1000000', liquidityAtoms: '10000000', events });
+  const config = decodeAbiParameters(hybridConfigAbi, prepared.resolverConfig)[0];
+  const resolverArtifact = artifact('HybridPilotResolver.sol', 'HybridPilotResolver');
+  const resolver = await deploy('HybridPilotResolver.sol', 'HybridPilotResolver', [config]);
+  const rulesHash = (await pub.readContract({ address: resolver as Hex, abi: resolverArtifact.abi, functionName: 'rulesHash' }) as Hex).toLowerCase();
+  // The commitment the server computes must be the one the contract stores.
+  if (rulesHash !== hybridRulesHash(prepared, resolver).toLowerCase()) throw new Error('local hybrid rules hash differs from the contract');
+  const pool = await deploy('WidePilotPool.sol', 'WidePilotPool', [AUSD, events.length, 10_000_000n, BigInt(closesAt), events.map((_, i) => i), resolver, rulesHash]);
   await send(resolver, resolverArtifact.abi, 'bindPool', [pool]);
-  const poolAbi = artifact('PilotPool.sol', 'PilotPool').abi;
+  const poolAbi = artifact('WidePilotPool.sol', 'WidePilotPool').abi;
   const funding = await pub.readContract({ address: pool as Hex, abi: poolAbi, functionName: 'requiredFunding' }) as bigint;
   await send(AUSD, erc20, 'mint', [creator.address, funding]);
   await send(AUSD, erc20, 'approve', [pool, funding]);
@@ -75,21 +89,14 @@ export async function startLocalStack(o: { rpcPort?: number; apiPort?: number; c
   // Deployment used instant mining; from here blocks arrive every second, as the read service expects fresh heads.
   await rpc('evm_setIntervalMining', [1]);
   const anchor = await pub.getBlock();
-  const hashes: Record<string, string> = {};
-  for (const address of [pool, resolver]) hashes[address] = keccak256(await rpc('eth_getCode', [address, 'latest']));
-  const sources = o.eventSources ?? [];
-  const manifest = {
-    schema: 'flurbo.pilot-manifest.v1', status: 'verified_pilot_snapshot', chainId: 10143, pool, resolver, rulesHash: rulesHash.toLowerCase(), draftHash: config.draftHash,
-    publication: { schema: 'flurbo.pilot-publication.v1', creator: creator.address.toLowerCase(),
-      draft: { schema: 'flurbo.event-draft.v1', status: 'draft', chainId: 10143, clusterId: 'local-agent-test', title: 'Local agent test market (anvil, test assets)', closesAt,
-        events: events.map((e, i) => ({ ...e, observationStartsAt: closesAt + 60, observationEndsAt: closesAt + 86_400,
-          source: sources[i] ? { publisher: 'local evidence server', referenceUrl: sources[i], recordId: e.id } : undefined })),
-        exceptionPolicy: 'Local test only.', disputeModel: 'reviewer-panel', disputePolicy: 'Local test only.' },
-      reviewers: REVIEWERS.map((address, i) => ({ name: `Local reviewer ${i + 1}`, address: address.toLowerCase() })), reviewerControl: 'single-operator',
-      independentReviewersConfirmed: false, rulesReviewed: true, bondAtoms: '1000000', assertionPeriod: 3600, challengePeriod: 3600, votingPeriod: 3600 },
-    verifiedBlock: anchor.number.toString(), verifiedBlockHash: anchor.hash!.toLowerCase(), verifiedTimestamp: Number(anchor.timestamp), codeHashes: hashes,
-  };
-  const dir = join(repo, 'target', 'agent-local'), manifestPath = join(dir, 'pilot-manifest.json');
+  const { agentNamespace, hybridPoolManifest, hybridPoolService, readHybridPoolAnchor } = await import(pathOf('apps/web/server/hybrid-pool-service.mjs'));
+  const { poolRpc } = await import(pathOf('apps/web/server/pool-rpc.mjs'));
+  const chainRpc = poolRpc(rpcUrl, fetch, { allowLocal: true });
+  const record = { id: 'local-agent-test', pool, resolver, rulesHash, deploymentBlock: Number(anchor.number), prepared };
+  const manifest = hybridPoolManifest(record, await readHybridPoolAnchor({ record, rpc: chainRpc }));
+  (o.eventSources ?? []).forEach((url, i) => { if (url && manifest.publication.draft.events[i])
+    manifest.publication.draft.events[i].source = { publisher: 'local evidence server', referenceUrl: url, recordId: manifest.publication.draft.events[i].id }; });
+  const dir = join(repo, 'target', 'agent-local'), manifestPath = join(dir, 'pool-manifest.json');
   mkdirSync(dir, { recursive: true }); writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
   // The real Flurbo API against this deployment, with in-memory sessions and no invite gate.
@@ -98,12 +105,14 @@ export async function startLocalStack(o: { rpcPort?: number; apiPort?: number; c
   process.env.FLURBO_SEMANTIC_RULES_JSON=JSON.stringify({schema:'flurbo.semantic-rules.v1',markets:[{pool:manifest.pool,rulesHash:manifest.rulesHash,
     predicates:manifest.publication.draft.events.map((_:unknown,event:number)=>({event,observation:`local-fixture:${event}`,operator:'gte',value:'1',sourceRule:'Local synthetic fixture: a separate Boolean observation for each test event.'}))}]});
   const { localApi } = await import(pathOf('apps/web/server/local-api.mjs'));
-  const { pilotService, pilotRpc } = await import(pathOf('apps/web/server/pilot.mjs'));
   const { claimAnalytics } = await import(pathOf('apps/web/server/claim-analytics.mjs'));
-  const pilot = pilotService({ manifest, rpc: pilotRpc(rpcUrl, fetch, { allowLocal: true }) });
-  try { pilot.claimAnalytics = claimAnalytics({ service: pilot, rpc: pilotRpc(rpcUrl, fetch, { allowLocal: true }) }); } catch { /* optional */ }
+  const { pairAnalytics } = await import(pathOf('apps/web/server/pair-analytics.mjs'));
+  const service = hybridPoolService({ manifest, rpc: chainRpc });
+  try { service.claimAnalytics = claimAnalytics({ service, rpc: chainRpc }); service.analytics = pairAnalytics({ service, rpc: chainRpc }); } catch { /* optional */ }
+  const namespace: string = agentNamespace(pool);
+  const agentPools = { collections: [{ namespace, label: manifest.publication.draft.title, pool, closesAt }], services: new Map([[namespace, service]]), reservedAddresses: new Set<string>() };
   const hosts = [`localhost:${apiPort}`, `127.0.0.1:${apiPort}`];
-  const middleware = localApi({ hosts, rpcUrl, pilot });
+  const middleware = localApi({ hosts, rpcUrl, agentPools });
   const dist = join(repo, 'apps/web/dist'), types: Record<string, string> = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png' };
   const server: Server = createServer((req, res) => middleware(req, res, () => {
     const path = new URL(req.url ?? '/', 'http://x').pathname, file = join(dist, path.startsWith('/assets/') ? path : 'index.html');
@@ -118,7 +127,7 @@ export async function startLocalStack(o: { rpcPort?: number; apiPort?: number; c
     return { status: r.status, body: await r.json().catch(() => null), headers: r.headers };
   }
   return {
-    rpcUrl, apiUrl, manifest, manifestPath,
+    rpcUrl, apiUrl, manifest, manifestPath, namespace,
     async mint(to, atoms) { await send(AUSD, erc20, 'mint', [to, atoms]); },
     async setNativeBalance(to, wei) { await rpc('anvil_setBalance', [to, '0x' + wei.toString(16)]); },
     // Local sign-in through the real login endpoints, with a local test identity key.

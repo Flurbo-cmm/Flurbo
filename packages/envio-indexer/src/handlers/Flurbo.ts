@@ -2,7 +2,7 @@ import { indexer } from 'envio';
 
 const id = (event: { srcAddress: string; block: { number: number }; logIndex: number }) => `${event.srcAddress}-${event.block.number}-${event.logIndex}`;
 
-indexer.onEvent({ contract: 'PilotPool', event: 'Traded' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridPool', event: 'Traded' }, async ({ event, context }) => {
   const poolId = event.srcAddress;
   const trader = event.params.trader;
   const amount = event.params.collateralAmount;
@@ -20,7 +20,7 @@ indexer.onEvent({ contract: 'PilotPool', event: 'Traded' }, async ({ event, cont
     blockNumber: event.block.number, timestamp: event.block.timestamp });
 });
 
-indexer.onEvent({ contract: 'PilotPool', event: 'Redeemed' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridPool', event: 'Redeemed' }, async ({ event, context }) => {
   const poolId = event.srcAddress;
   const trader = event.params.owner;
   const amount = event.params.collateralAmount;
@@ -36,19 +36,27 @@ indexer.onEvent({ contract: 'PilotPool', event: 'Redeemed' }, async ({ event, co
     blockNumber: event.block.number, timestamp: event.block.timestamp });
 });
 
-indexer.onEvent({ contract: 'PilotResolver', event: 'Asserted' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridResolver', event: 'Proposed' }, async ({ event, context }) => {
   context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: Number(event.params.eventIndex),
-    phase: 'Asserted', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
+    phase: 'Proposed', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
 });
-indexer.onEvent({ contract: 'PilotResolver', event: 'Disputed' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridResolver', event: 'Challenged' }, async ({ event, context }) => {
   context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: Number(event.params.eventIndex),
-    phase: 'Disputed', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
+    phase: 'Challenged', outcome: Number(event.params.counter), blockNumber: event.block.number, timestamp: event.block.timestamp });
 });
-indexer.onEvent({ contract: 'PilotResolver', event: 'Finalized' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridResolver', event: 'RulingReported' }, async ({ event, context }) => {
+  context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: Number(event.params.eventIndex),
+    phase: 'RulingReported', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
+});
+indexer.onEvent({ contract: 'HybridResolver', event: 'RealityReported' }, async ({ event, context }) => {
+  context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: Number(event.params.eventIndex),
+    phase: 'RealityReported', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
+});
+indexer.onEvent({ contract: 'HybridResolver', event: 'Finalized' }, async ({ event, context }) => {
   context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: Number(event.params.eventIndex),
     phase: 'Finalized', outcome: Number(event.params.outcome), blockNumber: event.block.number, timestamp: event.block.timestamp });
 });
-indexer.onEvent({ contract: 'PilotResolver', event: 'Delivered' }, async ({ event, context }) => {
+indexer.onEvent({ contract: 'HybridResolver', event: 'Delivered' }, async ({ event, context }) => {
   context.ResolutionEvent.set({ id: id(event), resolver: event.srcAddress, eventIndex: undefined,
     phase: 'Delivered', outcome: undefined, blockNumber: event.block.number, timestamp: event.block.timestamp });
 });

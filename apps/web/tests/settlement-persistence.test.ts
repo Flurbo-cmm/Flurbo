@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { createLocalSettlementCommand } from '../server/local-settlement-command.mjs';
 import { createSettlementStores, settlementPacketHandler, settlementPublicOrigin, SETTLEMENT_PACKET_PATH } from '../server/settlement-persistence.mjs';
 import { settlementLease } from '../server/settlement-store.mjs';
-import { pilotEvidence } from '../server/pilot.mjs';
+import { evidenceArchive } from '../server/evidence-archive.mjs';
 import { canonical, digest, settlementRuleHash } from '../server/settlement-rules.mjs';
 import { evaluateSettlement } from '../server/settlement-evidence.mjs';
 import { localApi } from '../server/local-api.mjs';
@@ -51,10 +51,10 @@ test('local settlement command preserves real lease and archive semantics across
   await assert.rejects(next.release(), /lease lost/);
   assert.equal((await successor.load()).pending, 'keep-signed-transaction-before-broadcast');
   await successor.release();
-  const archive = pilotEvidence(command, origin, () => now), input = { eventId: 'event-1', outcome: 1,
+  const archive = evidenceArchive(command, origin, () => now), input = { eventId: 'event-1', outcome: 1,
     statement: 'The immutable source rule evaluates to NO.', sourceURL: source, attachment: '{"fixture":true}' };
   const result = await archive.put(input, '0x' + 'ab'.repeat(20), '0x' + 'cd'.repeat(32));
-  assert.equal(await pilotEvidence(restarted, origin).get(result.hash), result.body);
+  assert.equal(await evidenceArchive(restarted, origin).get(result.hash), result.body);
   assert.equal((await archive.put(input, '0x' + 'ab'.repeat(20), '0x' + 'cd'.repeat(32))).hash, result.hash);
 });
 

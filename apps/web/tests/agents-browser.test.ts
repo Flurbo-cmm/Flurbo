@@ -6,9 +6,9 @@ import {encodeAbiParameters,encodeEventTopics,decodeFunctionData,encodeFunctionR
 import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {assessSemantics,semanticRegistry} from '../server/semantic-validation.mjs';
 import {alice,origin,setup} from './agent-fixture.ts';
-import {owner,hash,code} from './pilot-fixture.ts';
+import {owner,hash,code} from './pool-fixture.ts';
 
-// End to end: the real agent API and strategy run in-process over the pilot fixture; the browser drives the
+// End to end: the real agent API and strategy run in-process over the hybrid pool fixture; the browser drives the
 // real UI with a fake MetaMask. Nothing reaches a network, and every MetaMask send is counted.
 async function harness(browser:any,{failTracking=0,collision=false}={}){
   const at=Math.floor(Date.now()/1000),s=setup({at}),pool=s.f.manifest.pool,errors:string[]=[],tracked:number[]=[];let failures=failTracking;
@@ -42,7 +42,7 @@ async function harness(browser:any,{failTracking=0,collision=false}={}){
           if(method==='eth_getTransactionCount')return 7;
           if(method==='eth_sendTransaction'){
             if(sessionStorage.getItem('reject')){sessionStorage.removeItem('reject');throw Object.assign(Error('Rejected'),{code:4001});}
-            const pending=JSON.parse(localStorage.getItem('flurbo.pilot.pending.v1')||'null');
+            const pending=JSON.parse(localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')||'null');
             if(!pending||pending.hash!==null)throw Error('Missing saved intent');
             const n=Number(sessionStorage.getItem('sends')||0)+1;sessionStorage.setItem('sends',String(n));
             return '0x'+String(n).padStart(2,'0').repeat(32);
@@ -54,11 +54,11 @@ async function harness(browser:any,{failTracking=0,collision=false}={}){
       const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
       if(path==='/api/auth/session')return route.fulfill({json:{session:{address:alice,method:'passkey',expiresAt:Date.now()+3600000}}});
       if(path==='/api/account/access')return route.fulfill({json:{approved:true,testingTools:false}});
-      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:'pilot',label:'Release fixture',pool,closesAt:s.f.manifest.publication.draft.closesAt}]}});
+      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:s.f.namespace,label:'Release fixture',pool,closesAt:s.f.manifest.publication.draft.closesAt}]}});
       if(path==='/api/account/wallets')return route.fulfill({json:{account:alice,wallets:[owner]}});
-      if(path==='/api/pilot/markets')return route.fulfill({json:await s.f.service.markets()});
+      if(path==='/api/'+s.f.namespace+'/markets')return route.fulfill({json:await s.f.service.markets()});
       // Purchases re-check outcome compatibility right before the wallet prompt; answer as the server would.
-      if(path==='/api/pilot/validate-trade')return route.fulfill({json:assessSemantics(s.f.manifest,route.request().postDataJSON(),collision ? semanticRegistry(JSON.stringify({schema:'flurbo.semantic-rules.v1',markets:[{pool,rulesHash:s.f.manifest.rulesHash,predicates:[
+      if(path==='/api/'+s.f.namespace+'/validate-trade')return route.fulfill({json:assessSemantics(s.f.manifest,route.request().postDataJSON(),collision ? semanticRegistry(JSON.stringify({schema:'flurbo.semantic-rules.v1',markets:[{pool,rulesHash:s.f.manifest.rulesHash,predicates:[
         {event:0,observation:'test:close',operator:'gte',value:'3000',sourceRule:'Fixture closing observation.'},
         {event:1,observation:'test:close',operator:'lt',value:'2500',sourceRule:'Fixture closing observation.'}]}]})) : undefined)});
       if(path==='/api/agents'||path.startsWith('/api/agents/')){
@@ -66,7 +66,7 @@ async function harness(browser:any,{failTracking=0,collision=false}={}){
         if(input?.action==='submitted'){tracked.push(Date.now());if(failures>0){failures--;return route.fulfill({status:503,json:{error:'The agent service is temporarily unavailable. Nothing was traded.'}});}}
         if(input?.action==='check'){
           // The chain includes the transaction MetaMask sent; the server-side verifier reads it from there.
-          const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('flurbo.pilot.pending.v1')||'null'));
+          const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')||'null'));
           if(saved?.hash){
             const buy=saved.review.action==='buy',args=buy?decodeFunctionData({abi:pilotPoolAbi,data:saved.review.transaction.data}).args as any[]:null;
             const logs=buy?[{address:pool,topics:encodeEventTopics({abi:pilotPoolAbi,eventName:'Traded',args:{trader:owner,scope:args![0],mask:args![1]}}),
@@ -83,7 +83,7 @@ async function harness(browser:any,{failTracking=0,collision=false}={}){
       return route.fulfill({body:await readFile(new URL('../dist/'+relative,import.meta.url)),contentType:relative.endsWith('.js')?'text/javascript':relative.endsWith('.css')?'text/css':relative.endsWith('.woff2')?'font/woff2':'text/html'});
     });
   const sends=()=>page.evaluate(()=>Number(sessionStorage.getItem('sends')||0));
-  const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('flurbo.pilot.pending.v1')||'null'));
+  const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')||'null'));
   return {s,page,errors,sends,saved,tracked,pool};
 }
 
@@ -182,7 +182,7 @@ browserTest('agent flow: create, forecast, paper trade, then user-approved purch
     await approvals.getByRole('button',{name:'Approve allowance in MetaMask'}).click();
     await page.getByText('Rejected in MetaMask',{exact:false}).first().waitFor();
     assert.equal(await sends(),0);
-    assert.equal(await page.evaluate(()=>localStorage.getItem('flurbo.pilot.pending.v1')),null);
+    assert.equal(await page.evaluate(()=>localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')),null);
 
     // A fresh proposal, approved; then reload before confirmation.
     await decision.getByRole('button',{name:'Prepare for MetaMask approval'}).click();
@@ -238,7 +238,7 @@ browserTest('a purchase sent from MetaMask whose tracking request failed is reco
   assert.equal((await saved()).hash,local.hash,'still kept locally until the transaction is resolved');
   await reloaded.getByRole('button',{name:'Check confirmation'}).click();
   await page.getByText('Purchase confirmed on-chain',{exact:false}).first().waitFor();
-  await page.waitForFunction(()=>localStorage.getItem('flurbo.pilot.pending.v1')===null);
+  await page.waitForFunction(()=>localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')===null);
   const after=(await s.api.handle({method:'GET',path:'/api/agents/'+agentId,login:{address:alice,method:'passkey'},origin})).body.records.find((x:any)=>x.id===proposal.id);
   assert.equal(after.status,'confirmed');assert.deepEqual(after.transactions.map((t:any)=>t.hash),[local.hash]);
   assert.equal(await sends(),1,'exactly one purchase was sent');
@@ -272,7 +272,7 @@ browserTest('a sent purchase is recovered from an archived agent after its revie
   assert.equal(await recovered.getByRole('button',{name:/in MetaMask/}).count(),0,'an archived agent offers nothing to send');
   await recovered.getByRole('button',{name:'Check confirmation'}).click();
   await page.getByText('Purchase confirmed on-chain',{exact:false}).first().waitFor();
-  await page.waitForFunction(()=>localStorage.getItem('flurbo.pilot.pending.v1')===null);
+  await page.waitForFunction(()=>localStorage.getItem('flurbo.practice-2222222222222222222222222222222222222222.pending.v1')===null);
   assert.equal(await sends(),1,'recovery never resends');
   const id=agentUrl.split('/').pop();
   const after=(await s.api.handle({method:'GET',path:'/api/agents/'+id,login:{address:alice,method:'passkey'},origin})).body.records.find((x:any)=>x.kind==='proposal');

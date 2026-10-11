@@ -54,7 +54,7 @@ Every requested event needs at least one cited, valid and fresh associated recor
 {
   "research": {
     "evidenceRequirements": {
-      "pilot": [
+      "practice-0000000000000000000000000000000000000000": [
         { "event": 0, "freshness": "background" },
         { "event": 1, "freshness": "background" }
       ]

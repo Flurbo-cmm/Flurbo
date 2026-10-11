@@ -1,12 +1,20 @@
-import { decodeEventLog } from 'viem';
-import { resolverAbi, pilotPoolAbi } from '../shared/pilot.mjs';
+import { decodeEventLog, parseAbi } from 'viem';
+import { pilotPoolAbi } from '../shared/pilot.mjs';
+
+const resolverEvents = parseAbi([
+  'event Asserted(uint8 indexed eventIndex,address indexed asserter,uint8 outcome,bytes32 evidenceHash,string evidenceURI,uint64 challengeUntil)',
+  'event Disputed(uint8 indexed eventIndex,address indexed disputer,uint8 outcome,bytes32 evidenceHash,string evidenceURI,uint64 voteUntil)',
+  'event Voted(uint8 indexed eventIndex,address indexed reviewer,uint8 outcome,bytes32 rationaleHash,string rationaleURI)',
+  'event Finalized(uint8 indexed eventIndex,uint8 outcome,bool timedOut)',
+  'event Delivered(address indexed pool,uint32 yesMask,uint32 voidMask)',
+]);
 
 // Persistent bounded index. Each refresh scans at most maxBlocks blocks. A changed
 // checkpoint rebuilds from the verified empty-pool anchor instead of retaining orphaned events.
 export function pilotIndex({manifest,rpc,command,now=Date.now,maxBlocks=1000,initialWindowSize=100}) {
   const key=`flurbo:pilot:index:v1:${manifest.pool}`;
   const start=Number(manifest.verifiedBlock);
-  const abi=[...resolverAbi,...pilotPoolAbi];
+  const abi=[...resolverEvents,...pilotPoolAbi];
   let windowSize=initialWindowSize;
   const stringify=value=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v);
   async function scan() {

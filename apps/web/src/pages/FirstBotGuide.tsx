@@ -20,7 +20,7 @@ const RESEARCH_BLOCK = `"research": {
   },
   "retriever": { "kind": "http", "allowHosts": ["github.com"] },
   "evidenceRequirements": {
-    "pilot": [
+    "practice-0000000000000000000000000000000000000000": [
       { "event": 0, "freshness": "background" },
       { "event": 1, "freshness": "background" }
     ]
@@ -103,14 +103,14 @@ export default function FirstBotGuide() {
         <Code>{RESEARCH_BLOCK}</Code>
         <ul>
           <li><code>model</code>: replace the placeholder with a model name from your provider's list of models.</li>
-          <li><code>"pilot"</code> is this example market's name. Use your agent's market names instead: the agent's Setup page shows a <em>Research settings</em> section already filled in for its markets, which you can copy in place of this one.</li>
+          <li><code>"practice-0000000000000000000000000000000000000000"</code> is this example market's name: a market name is <code>practice-</code> followed by the pool address without 0x. Use your agent's market names instead: the agent's Setup page shows a <em>Research settings</em> section already filled in for its markets, which you can copy in place of this one.</li>
           <li><code>evidenceRequirements</code>: one line per question in the market, numbered from 0. The market in this example has two questions. The <code>background</code> setting lets the bot use pages that have no publication date, such as a GitHub releases list; without it, the bot waits for dated evidence and usually decides nothing.</li>
           <li>Leave <code>"mode": "paper"</code> near the top of the file unchanged for now.</li>
         </ul>
         <DocsShot src={researchShot} {...SHOT_SIZE['agent-research']} alt="Research settings panel on the agent's Setup page with a filled-in research section and a Copy research settings button" caption="Research settings on the agent's Setup page, already filled in for its markets. Example markets."/>
         <div className="docs-note"><strong>Optional: let the bot read exactly what settlement reads</strong>
           <p>Each market page lists, under <em>What decides the answer?</em>, the exact address settlement checks for every question. Agents also receive it in the market data as <code>settlement</code>. Your bot can read the same record. For an address marked as a normal web address, add its site to <code>allowHosts</code> and the address itself to <code>extraSources</code>, under the market and question number. For example, if question 0 is checked at <code>https://api.github.com/repos/ethereum/go-ethereum/releases/tags/v1.17.7</code>:</p>
-          <Code>{'"allowHosts": ["github.com", "api.github.com"],\n"extraSources": {\n  "pilot": [\n    { "event": 0, "url": "https://api.github.com/repos/ethereum/go-ethereum/releases/tags/v1.17.7" }\n  ]\n}'}</Code>
+          <Code>{'"allowHosts": ["github.com", "api.github.com"],\n"extraSources": {\n  "practice-0000000000000000000000000000000000000000": [\n    { "event": 0, "url": "https://api.github.com/repos/ethereum/go-ethereum/releases/tags/v1.17.7" }\n  ]\n}'}</Code>
           <p>Both lines go inside <code>"retriever"</code>. The same works for any source: a statistics agency's release page, a data feed or an API, as long as it is a normal web address. Some questions are settled from Ethereum node endpoints instead; those answer JSON-RPC requests, not web page fetches, so the bot's page reader cannot use them. Reading the same source does not guarantee the same answer before the observation window ends.</p>
         </div>
         <p>Save the file. If the bot later reports that the file is invalid, check that every bracket and quote is still in place and that no comma is missing between sections.</p>
@@ -121,7 +121,7 @@ export default function FirstBotGuide() {
         <Code>python -m flurbo_sdk start --config flurbo-agent.json --once</Code>
         <DocsShot src={runShot} {...SHOT_SIZE['agent-run']} alt="Run the agent panel on the agent's Setup page with a language choice and the commands to install, initialise and start the runtime" caption="The agent's Setup page shows these commands for your own agent and language."/>
         <p><em>You should see</em> a few lines, one per event, for example:</p>
-        <Code>{'{"event": "started", "mode": "paper", ...}\n{"event": "paper_trade", "namespace": "pilot", "claim": {...}}\n{"event": "stopped", ...}'}</Code>
+        <Code>{'{"event": "started", "mode": "paper", ...}\n{"event": "paper_trade", "namespace": "practice-0000000000000000000000000000000000000000", "claim": {...}}\n{"event": "stopped", ...}'}</Code>
         <p><code>paper_trade</code> means it would have bought that prediction. A line ending in <code>_abstained</code> means it chose not to trade and says why (see the table below). Deciding not to trade is normal and often correct. The same decisions appear in the <em>Activity</em> tab on Flurbo.</p>
         <p>To keep the bot running, leave out <code>--once</code>. It then checks the market every 5 minutes until you stop it with <kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>
       </li>

@@ -91,8 +91,8 @@ test('dashboard: register, link the wallet, issue a credential, then watch a run
     await stack.setNativeBalance(signer.address, 10n ** 19n); await stack.mint(signer.address, 20_000_000n);
     const reply = JSON.stringify({ schema: MODEL_SCHEMA, abstain: false, abstainReason: null, events: [0, 1], statesPpm: [50_000, 50_000, 50_000, 850_000], evidenceIds: ['src-1'],
       assumptions: ['Shared release process.'], uncertainty: 'A late blocker.', explanation: 'Both release candidates are tagged together (fixture reply).' });
-    const runner = agentRunner({ config: { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'T' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: dir, mode: 'live',
-      schedule: { intervalSeconds: 30, heartbeatSeconds: 10, waitSeconds: 30 }, policy: { ...defaultConfig().policy, minSecondsBeforeClose: 600 } },
+    const runner = agentRunner({ config: { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'T' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: dir, mode: 'live', markets: [stack.namespace],
+      schedule: { intervalSeconds: 30, heartbeatSeconds: 10, waitSeconds: 30 }, policy: { ...defaultConfig().policy, markets: [stack.namespace], minSecondsBeforeClose: 600 } },
       env: { T: token }, signer, retriever: fixtureRetriever([evidenceFixture()]),
       forecaster: fixtureForecaster(() => reply, 'dashboard-fixture'), log: () => {} });
     await runner.cycle();

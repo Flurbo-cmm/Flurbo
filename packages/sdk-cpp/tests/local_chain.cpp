@@ -36,7 +36,7 @@ static std::string repo() { return utf8(std::filesystem::absolute(FLURBO_REPO).l
 
 static bool available() {
   bool ok = std::system("node --version > " DEVNULL " 2>&1") == 0 && std::system("anvil --version > " DEVNULL " 2>&1") == 0 &&
-            file_exists(path_join(repo(), "target/foundry/out/PilotPool.sol"));
+            file_exists(path_join(repo(), "target/foundry/out/WidePilotPool.sol"));
   if (!ok) std::printf("skipped: needs node, anvil and a forge build\n");
   return ok;
 }
@@ -208,6 +208,12 @@ struct Setup {
     dir = utf8(std::filesystem::absolute(std::filesystem::path("build") / ("tmp-chain-" + name + "-" + std::to_string(process_id()))));
     std::filesystem::remove_all(dir);
     config = default_config();
+    std::string ns = stack.s("namespace");
+    CHECK(ns.rfind("practice-", 0) == 0);
+    Value markets = Value::array();
+    markets.push(ns);
+    config.set("markets", markets);
+    config.get_or_add("policy").set("markets", markets);
     Value api = Value::object(), chain = Value::object(), schedule = Value::object();
     api.set("baseUrl", stack.s("apiUrl"));
     api.set("credentialEnv", "T");

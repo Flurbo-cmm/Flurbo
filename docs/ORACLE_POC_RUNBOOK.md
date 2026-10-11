@@ -4,7 +4,7 @@ Status: the two-question pool and relay are deployed on the company testnet site
 
 ## What ships
 
-- The existing company pool and its settlement bot remain in place. New questions use a separate `WidePilotPool` and `WidePilotResolver` at protocol version 3. The new resolver has no Flurbo reviewer panel. The dedicated relay is its only privileged reporter.
+- The earlier company pilot pool stays on chain but is no longer served (the pilot generation is retired). New questions use a separate `WidePilotPool` and `WidePilotResolver` at protocol version 3. The new resolver has no Flurbo reviewer panel. The dedicated relay is its only privileged reporter.
 - The two new questions appear beside the existing pool on `/markets`, with the same question cards, status filters, and one-share Yes and No quotes. Each opens at `/markets/oracle/<id>`. Existing `/oracle` links redirect to Markets. After Flurbo sign-in, MetaMask can submit Reality YES, NO, or VOID answers and ETH bonds, challenge an answer through Kleros, publish evidence, contribute to an appeal, report a completed Kleros ruling to Reality when needed, process winning answer bonds, claim available appeal rewards, and withdraw credited Reality ETH without leaving Flurbo. Resolution controls appear only in their relevant stage. The same market page can approve test AUSD, buy, sell, and redeem claims containing one to three YES or NO outcomes from the new pool.
 - Connecting MetaMask links the wallet to the signed-in Flurbo account through the existing wallet signature flow. Member email preferences and unsubscribe links also cover this pool. The notice worker indexes its on-chain trades, confirms current holdings, and sends the existing closing, proposed-answer, and payout notices. Its initial index catch-up may take several settlement-bot cycles. The payout email links to a question in the member's winning claim, where those shares can be redeemed.
 - The relay worker reads the final Reality answer at a finalized Sepolia block, verifies the committed question and new pool, writes immutable public evidence to the company Redis store, and reports the outcome on Monad. It voids an event after its report deadline if no final answer was reported. Once all events are final or void, it calls `deliver`.
@@ -128,7 +128,7 @@ Copy-Item -LiteralPath $candidate -Destination 'config\oracle-markets.json'
 
 Registration records the pool's deployment block for the member notice trade index and verifies contract code at that block and its predecessor. If the RPC cannot search historical code, set `FLURBO_ORACLE_DEPLOYMENT_BLOCK` locally to the exact pool creation block from the Foundry receipt, then rerun registration. This value is public chain metadata, not a Render secret. The current two-question pool was deployed at Monad testnet block `67970042`.
 
-Registration checks the Reality question creation receipts, exact text and opening times, and live Sepolia and Monad contract getters. It writes a candidate. Review it before copying it to the tracked catalog. The old `config/collections.json` entry stays unchanged. No new pool is served until the catalog is deployed.
+Registration checks the Reality question creation receipts, exact text and opening times, and live Sepolia and Monad contract getters. It writes a candidate. Review it before copying it to the tracked catalog. No new pool is served until the catalog is deployed.
 
 ### 5. Deploy the web branch and relay
 
@@ -140,7 +140,7 @@ On the **company** Render service, retain the existing origin, Monad RPC, Redis,
 | `FLURBO_ORACLE_RELAY_ENABLED` | `true` after the catalog and relay key are ready |
 | `FLURBO_ORACLE_RELAY_PRIVATE_KEY` | Raw private key for the **new** `flurbo-oracle-relay` keystore, entered only in Render's secret field |
 
-Member notices for both pools use the existing `FLURBO_SETTLEMENT_BOT=true`, `FLURBO_NOTIFY_ENABLED=true`, `FLURBO_APPLICATIONS_RESEND_KEY`, and `FLURBO_APPLICATIONS_EMAIL_FROM` settings. No second email key or sender is needed for the new pool. The Monad relay does not post the first Reality.eth answer. See [ORACLE_AUTO_ANSWER.md](ORACLE_AUTO_ANSWER.md) for the separate source reader and Sepolia answer signer.
+Member notices use the existing `FLURBO_SCHEDULER=true` (legacy alias `FLURBO_SETTLEMENT_BOT=true`), `FLURBO_NOTIFY_ENABLED=true`, `FLURBO_APPLICATIONS_RESEND_KEY`, and `FLURBO_APPLICATIONS_EMAIL_FROM` settings. No second email key or sender is needed for the new pool. The Monad relay does not post the first Reality.eth answer. See [ORACLE_AUTO_ANSWER.md](ORACLE_AUTO_ANSWER.md) for the separate source reader and Sepolia answer signer.
 
 To retrieve the key for Render, run `cast wallet decrypt-keystore flurbo-oracle-relay` locally and enter its hidden password. Do not paste the output into chat, a file, or a Git command. Record the encrypted keystore and its password in your own secure backup. Fund the relay's public address with Monad testnet MON. The service refuses to start the relay if the private key does not match every registered route.
 

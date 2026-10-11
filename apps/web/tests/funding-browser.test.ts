@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL,fileURLToPath} from 'node:url';
-import {pilotFixture,owner,hash} from './pilot-fixture.ts';
+import {owner,hash} from './pool-fixture.ts';
 import {TESTNET} from '../server/network.mjs';
 
 test('funding uses announced MetaMask instead of competing injection or Mera; account changes stop submission', {skip:!process.env.FLURBO_TEST_PLAYWRIGHT}, async()=>{
   const {chromium}=await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
   const browser=await chromium.launch({headless:true,executablePath:process.env.FLURBO_TEST_BROWSER});
-  const login='0x'+'99'.repeat(20),f=pilotFixture(Math.floor(Date.now()/1000),4);
-  f.manifest.publication.mode='rehearsal';
+  const login='0x'+'99'.repeat(20),pool='0x'+'22'.repeat(20),closesAt=Math.floor(Date.now()/1000)+86400;
+  const market={id:`${pool}-0`,pool,poolTitle:'Practice',eventIndex:0,question:'Test event 1',route:'mechanical',closesAt,observationEndsAt:closesAt+3600};
   try {
     const page=await browser.newPage();
     await page.addInitScript(({owner,hash}:any)=>{
@@ -43,8 +43,8 @@ test('funding uses announced MetaMask instead of competing injection or Mera; ac
       if(path==='/api/account/access')return route.fulfill({json:{approved:true,testingTools:false}});
       if(path==='/api/account/wallets')return route.fulfill({json:{account:login,wallets:[owner]}});
       if(path==='/api/auth/session')return route.fulfill({json:{session:{address:login,method:'passkey',expiresAt:Date.now()+3600000}}});
-      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',active:'practice-2222222222222222222222222222222222222222',markets:[{namespace:'practice-2222222222222222222222222222222222222222',label:'Practice',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt}]}});
-      if(path==='/api/practice-2222222222222222222222222222222222222222/markets')return route.fulfill({json:await f.service.markets()});
+      if(path==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[],oracleMarkets:[],hybridMarkets:[market]}});
+      if(path===`/api/hybrid/${market.id}/market`)return route.fulfill({json:{schema:'flurbo.hybrid-market.v1',id:market.id,pool,marketNow:Math.floor(Date.now()/1000),funded:true,resolved:false,prices:{yes:'500000',no:'500000'}}});
       if(path==='/api/rpc'){
         const {method,params}=route.request().postDataJSON();
         let result:any=method==='eth_getBlockByNumber'?{hash,number:'0x64'}:method==='eth_getBalance'?mon:method==='eth_getTransactionReceipt'?receipt:'0x0';

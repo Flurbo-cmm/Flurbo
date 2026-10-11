@@ -1,4 +1,4 @@
-import { pilotRpc } from './pilot.mjs';
+import { poolRpc } from './pool-rpc.mjs';
 import { agentWalletKey, accountDigest } from './agents/agent-store.mjs';
 import { emailConfig, resendDelivery } from './settlement-email.mjs';
 import { CLAIM_RULES, ruleMatches } from '../shared/claims.mjs';
@@ -59,7 +59,7 @@ export function userMetrics({ command, origin, pools, links = null, applications
   reservedWallets = new Set(), rpcUrl = null, env = process.env, now = Date.now, rpc = null, deliver = null }) {
   if (!command) return null;
   // Block times come from the public testnet RPC; a local fork simply leaves bet times unrecorded.
-  if (!rpc && rpcUrl) { try { rpc = pilotRpc(rpcUrl); } catch { rpc = null; } }
+  if (!rpc && rpcUrl) { try { rpc = poolRpc(rpcUrl); } catch { rpc = null; } }
   const team = new Set([...addressList(env.FLURBO_METRICS_EXCLUDE), ...(operatorAccount ? [operatorAccount.toLowerCase()] : [])]);
   const teamWallets = new Set([...team, ...[...reservedWallets].map(w => w.toLowerCase())]);
   const legacy = new Set(addressList(env.FLURBO_TESTNET_APPROVED_ACCOUNTS));

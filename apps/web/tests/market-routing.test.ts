@@ -5,6 +5,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { productionServer } from '../server/production.mjs';
 import { TESTNET } from '../server/network.mjs';
 import { learningDeployment } from '../shared/learning-contracts.mjs';
+import { legacyPracticeRedirect } from '../src/portfolio-groups.ts';
 
 test('learning reads require login; Mera submissions remain disabled across pools', async () => {
   const origin = 'https://flurbo.singu.online';
@@ -60,4 +61,13 @@ test('learning reads require login; Mera submissions remain disabled across pool
     assert.equal((await send('learning', learningDeployment.pool, '0x3e6b6cde')).status, 403);
     assert.equal(broadcasts, sent);
   } finally { globalThis.fetch = originalFetch; server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test('old practice market links redirect to the hybrid market page; anything else is not a legacy link', () => {
+  const hex = '22'.repeat(20);
+  for (const event of [0, 1, 2, 3]) assert.equal(legacyPracticeRedirect(`/markets/practice-${hex}/${event}`), `/markets/hybrid/0x${hex}/${event}`);
+  assert.equal(legacyPracticeRedirect(`/markets/practice-${hex}/2/thesis`), `/markets/hybrid/0x${hex}/2/thesis`);
+  for (const path of [`/markets/practice-${hex}/4`, '/markets/pilot/0', '/markets/pilot/0/thesis', `/markets/practice-${'AB'.repeat(20)}/0`,
+    `/markets/practice-${hex.slice(1)}/0`, `/markets/hybrid/0x${hex}/0`, `/markets/practice-${hex}/0/extra`, `/markets/practice-${hex}`, '/markets'])
+    assert.equal(legacyPracticeRedirect(path), null, path);
 });

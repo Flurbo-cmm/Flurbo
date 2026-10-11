@@ -60,8 +60,8 @@ test('portfolioRequest sends hybrid reads to the pool routes', async () => {
     await assert.rejects(portfolioRequest('status', undefined, hybrid.namespace, signal), /Unsupported portfolio request/);
     answer = { manifest: { pool: '0x' + '55'.repeat(20) } };
     await assert.rejects(portfolioRequest('account?wallet=' + owner, undefined, hybrid.namespace, signal), /Response belongs to a different collection\./);
-    answer = {};
-    await portfolioRequest('history', {}, 'pilot', signal);
-    assert.equal(seen.at(-1)!.url, '/api/pilot/history');
+    const sent = seen.length;
+    await assert.rejects(portfolioRequest('history', {}, 'pilot' as never, signal), /Invalid collection/);
+    assert.equal(seen.length, sent);
   } finally { setAppTransport(fetch); }
 });

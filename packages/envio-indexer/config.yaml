@@ -1,25 +1,31 @@
-# Generated from config/collections.json. Run npm run config after registry changes.
+# Generated from config/hybrid-markets.json. Run npm run config after registry changes.
 name: flurbo-company-monad-indexer
 description: Flurbo company pool trades and resolution events on Monad testnet
 address_format: lowercase
 contracts:
-  - name: PilotPool
+  - name: HybridPool
     events:
       - event: "Traded(address indexed trader, uint32 indexed scope, uint256 indexed mask, bool isBuy, uint128 quantity, uint128 collateralAmount)"
       - event: "Redeemed(address indexed owner, uint32 indexed scope, uint256 indexed mask, uint128 quantity, uint128 collateralAmount)"
-  - name: PilotResolver
+  - name: HybridResolver
     events:
-      - event: "Asserted(uint8 indexed eventIndex, address indexed asserter, uint8 outcome, bytes32 evidenceHash, string evidenceURI, uint64 challengeUntil)"
-      - event: "Disputed(uint8 indexed eventIndex, address indexed disputer, uint8 outcome, bytes32 evidenceHash, string evidenceURI, uint64 voteUntil)"
+      - event: "Proposed(uint8 indexed eventIndex, uint8 outcome, bytes32 evidenceHash, string evidenceURI, uint64 challengeUntil)"
+      - event: "Challenged(uint8 indexed eventIndex, address indexed challenger, bytes32 indexed requestId, uint8 counter, bytes32 evidenceHash, string evidenceURI, uint64 arbitrationUntil)"
+      - event: "RulingReported(uint8 indexed eventIndex, bytes32 indexed sourceCaseId, uint8 outcome, bytes32 evidenceHash, string evidenceURI)"
+      - event: "RealityReported(uint8 indexed eventIndex, uint8 outcome, bytes32 evidenceHash, string evidenceURI)"
       - event: "Finalized(uint8 indexed eventIndex, uint8 outcome, bool timedOut)"
       - event: "Delivered(address indexed pool, uint32 yesMask, uint32 voidMask)"
 chains:
   - id: 10143
     start_block: 0
     contracts:
-      - name: PilotPool
+      - name: HybridPool
         address:
-          - "0x8c931a6f799d69185ee2f2f47e46667fd0da545b"
-      - name: PilotResolver
+          - "0x0fc7a9634f52dd5bf91c252587f912d5e121d528"
+          - "0x6da09fa753f97f7078b5a61c332262af93c89a2c"
+          - "0xb5ce32de7a8631960dd26ab46bb20524d1ff9a44"
+      - name: HybridResolver
         address:
-          - "0x349a0d009f163c4c83c5c507b38fe617e726408f"
+          - "0x89cd737382efc35eb88137008ca66d4794546b26"
+          - "0x976920c857280709b09729592a224aae8bcc98e7"
+          - "0xd76f8c1b9356d5d0bdb84447355f41e3366e5ca8"

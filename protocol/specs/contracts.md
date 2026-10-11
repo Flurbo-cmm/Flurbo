@@ -4,6 +4,8 @@
 
 `flurbo.pilot-pool.v1` on Monad testnet (chain id `10143`). ABI fragments: [abi/pilot-pool.v1.json](../abi/pilot-pool.v1.json) and [abi/erc20.v1.json](../abi/erc20.v1.json). The fragments are generated from `apps/web/shared/pilot.mjs`, the same definitions the web app uses.
 
+The interface name is historical. The deployed pools that implement it are `WidePilotPool` instances with a hybrid resolver.
+
 | Call | Use |
 | --- | --- |
 | `quoteBuy(uint32 scope, uint256 mask, uint128 quantity) view returns (uint128)` | Executable buy cost at the block read |

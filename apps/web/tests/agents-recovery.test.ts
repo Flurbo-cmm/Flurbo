@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {decodeFunctionData,encodeFunctionData,encodeAbiParameters,encodeEventTopics} from 'viem';
 import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {alice,bob,setup,forecast} from './agent-fixture.ts';
-import {owner} from './pilot-fixture.ts';
+import {owner} from './pool-fixture.ts';
 
 // A sent transaction must stay recoverable whatever happens to its review, proposal or agent. Recording a
 // hash is provisional; ownership of an on-chain transaction goes to the one proposal whose reviewed

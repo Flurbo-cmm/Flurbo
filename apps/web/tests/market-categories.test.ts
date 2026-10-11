@@ -20,7 +20,6 @@ test('unmapped oracle and hybrid pools are Other, and the explicit map wins over
 
 test('every registry pool has a category', async () => {
   const pools = [
-    ...(await config('collections.json')).collections.map((c: any) => c.manifest.pool),
     ...(await config('oracle-markets.json')).routes.map((r: any) => r.pool),
     ...(await config('hybrid-markets.json')).pools.map((p: any) => p.pool),
   ].map((p: string) => p.toLowerCase());

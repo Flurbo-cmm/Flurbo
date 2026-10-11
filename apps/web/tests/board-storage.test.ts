@@ -28,9 +28,9 @@ test('board snapshot round trips per account and tolerates bad storage', () => {
 });
 
 test('directory hash changes when the directory changes', () => {
-  const a = { groups: [{ namespace: 'pilot', pool: '0x1', label: 'A', closesAt: 1 }], oracleMarkets: [], hybridMarkets: [] } as any;
+  const a = { agentPools: [{ namespace: 'practice-' + '11'.repeat(20), pool: '0x1', label: 'A', closesAt: 1 }], oracleMarkets: [], hybridMarkets: [] } as any;
   assert.equal(directoryHash(a), directoryHash(JSON.parse(JSON.stringify(a))));
-  assert.notEqual(directoryHash(a), directoryHash({ ...a, groups: [{ ...a.groups[0], closesAt: 2 }] }));
+  assert.notEqual(directoryHash(a), directoryHash({ ...a, agentPools: [{ ...a.agentPools[0], closesAt: 2 }] }));
 });
 
 test('price deltas ignore changes under 0.005 and carry a direction', () => {

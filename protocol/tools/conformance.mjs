@@ -40,7 +40,7 @@ if (full) steps.push(
 
 let failed = 0;
 // The local-chain suites skip themselves without anvil or the forge build; --full requires both instead.
-if (full && !(found('anvil') && existsSync(join(root, 'target/foundry/out/PilotPool.sol')))) {
+if (full && !(found('anvil') && existsSync(join(root, 'target/foundry/out/WidePilotPool.sol')))) {
   console.log('FAIL  --full needs anvil on PATH and the contracts built with forge build (target/foundry/out).');
   process.exit(1);
 }

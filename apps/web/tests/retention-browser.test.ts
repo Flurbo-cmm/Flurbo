@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { encodeFunctionData, parseAbi } from 'viem';
-import { pilotFixture, owner } from './pilot-fixture.ts';
+import { owner } from './pool-fixture.ts';
 
 // Section 12.2: what brings a member back. A watchlist that survives reload, the change since their last visit,
 // one flash when a price moves, and a way to hear about settlement after buying.
@@ -19,9 +19,10 @@ async function launch() {
 }
 
 test('the board keeps a watchlist, shows the change since the last visit and flashes a moved price once', { skip }, async () => {
-  const browser = await launch(), f = pilotFixture(Math.floor(Date.now() / 1000), 4);
-  f.manifest.publication.mode = 'rehearsal';
-  const namespace = 'practice-' + f.manifest.pool.slice(2), events = f.manifest.publication.draft.events;
+  const browser = await launch(), pool = '0x' + '22'.repeat(20), closesAt = Math.floor(Date.now() / 1000) + 86400;
+  const markets = [0, 1, 2, 3].map(eventIndex => ({ id: `${pool}-${eventIndex}`, pool, poolTitle: 'Practice', eventIndex, question: `Test event ${eventIndex + 1}`,
+    route: 'mechanical', closesAt, observationEndsAt: closesAt + 3600 }));
+  const key = `hybrid:${markets[0].id}`;
   let bump = 0n;
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } }), errors: string[] = [];
@@ -30,11 +31,10 @@ test('the board keeps a watchlist, shows the change since the last visit and fla
       const path = new URL(route.request().url()).pathname;
       if (path === '/api/account/access') return route.fulfill({ json: { approved: true, testingTools: false } });
       if (path === '/api/auth/session') return route.fulfill({ json: { session: { address: owner, method: 'passkey', expiresAt: Date.now() + 3600000 } } });
-      if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace, label: 'Practice', pool: f.manifest.pool, closesAt: f.manifest.publication.draft.closesAt }] } });
-      if (path === `/api/${namespace}/markets`) {
-        const value = await f.service.markets();
-        return route.fulfill({ json: { ...value, prices: value.prices.map((p: any) => p.event === 0 && p.yes ? { ...p, yes: String(BigInt(p.yes) + bump) } : p) } });
-      }
+      if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [], oracleMarkets: [], hybridMarkets: markets } });
+      const market = markets.find(m => path === `/api/hybrid/${m.id}/market`);
+      if (market) return route.fulfill({ json: { schema: 'flurbo.hybrid-market.v1', id: market.id, pool, marketNow: Math.floor(Date.now() / 1000), funded: true, resolved: false,
+        prices: { yes: String(250_000n + (market.eventIndex === 0 ? bump : 0n)), no: '250000' } } });
       if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unused fixture endpoint' } });
       return asset(route, path);
     });
@@ -43,9 +43,9 @@ test('the board keeps a watchlist, shows the change since the last visit and fla
       if (sessionStorage.getItem('seeded')) return;
       sessionStorage.setItem('seeded', '1');
       localStorage.setItem('flurbo.seen.v1:' + account.toLowerCase(), JSON.stringify({ savedAt: Date.now() - 10 * 60_000, prices: { [key]: { yes: '100000', no: '900000' } } }));
-    }, { account: owner, key: namespace + events[0].id });
+    }, { account: owner, key });
     await page.goto(ORIGIN + '/markets');
-    const first = page.locator(`.market-card[data-key="${namespace + events[0].id}"]`);
+    const first = page.locator(`.market-card[data-key="${key}"]`);
     await first.waitFor();
     const delta = first.locator('.delta');
     await delta.waitFor();

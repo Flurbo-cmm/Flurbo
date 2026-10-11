@@ -1,9 +1,9 @@
-import {pilotRequest,type PilotNamespace,type PilotState} from './pilot.ts';
+import type {PilotState} from './pilot.ts';
 import {portfolioClaims,rememberedClaims,type ClaimHint} from './pilot-claims.ts';
 import {type AccountHolding,accountOwners} from './account-holdings.ts';
 import {portfolioOrder} from './portfolio-order.ts';
 import {hybridPoolRequest} from './hybrid-portfolio.ts';
-import {isHybridNamespace,type PortfolioGroup,type PortfolioNamespace} from './portfolio-groups.ts';
+import type {PortfolioGroup,PortfolioNamespace} from './portfolio-groups.ts';
 import type {ActivityLog} from './portfolio-performance';
 import type {AgentExecution} from './portfolio-sources';
 
@@ -13,7 +13,7 @@ export type PoolRead={cachedAt?:number;group:PortfolioGroup;manifest?:PortfolioM
 export type PortfolioRequest=<T>(path:string,input:unknown,namespace:PortfolioNamespace,signal:AbortSignal)=>Promise<T>;
 type AccountRead={manifest:PortfolioManifest;snapshot?:PilotState['snapshot'];claimScopes?:number[]};
 export function portfolioRequest<T>(path:string,input:unknown,namespace:PortfolioNamespace,signal:AbortSignal):Promise<T>{
-  return isHybridNamespace(namespace)?hybridPoolRequest<T>(path,input,namespace,signal):pilotRequest<T>(path,input,namespace as PilotNamespace,signal);
+  return hybridPoolRequest<T>(path,input,namespace,signal);
 }
 export async function loadPortfolio({groups:listed,account,wallets,signal,publish,request=portfolioRequest,historyOnly=false,previous={},agentExecutions=[]}:{groups:PortfolioGroup[];account:string;wallets:string[];signal:AbortSignal;publish:(namespace:string,value:PoolRead)=>void;request?:PortfolioRequest;historyOnly?:boolean;previous?:Record<string,PoolRead>;agentExecutions?:AgentExecution[]}){
   const groups=portfolioOrder(listed),owners=accountOwners(account,wallets),queue=[...groups],data:Record<string,PoolRead>={};

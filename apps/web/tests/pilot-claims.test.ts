@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { decodeFunctionData, encodeFunctionResult } from 'viem';
 import { portfolioClaims, rememberClaimHint, rememberedClaims, rememberConfirmedClaim } from '../src/pilot-claims.ts';
-import { pilotFixture, owner, pool, hash } from './pilot-fixture.ts';
-import { pilotService } from '../server/pilot.mjs';
+import { poolFixture, owner, pool, hash } from './pool-fixture.ts';
 import { pilotPoolAbi } from '../shared/pilot.mjs';
 
 test('active pool scopes discover all AND and OR choices without a history scan',()=>{
@@ -18,44 +17,32 @@ test('active pool scopes discover all AND and OR choices without a history scan'
 });
 test('recent hints take first-page priority and are scoped to wallet, pool and namespace',()=>{
   const db=new Map<string,string>(),previous=Object.getOwnPropertyDescriptor(globalThis,'localStorage');
-  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(key:string)=>db.get(key)??null,setItem:(key:string,value:string)=>db.set(key,value)}});
-  const manifest=pilotFixture().manifest;
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(key:string)=>db.get(key)??null,setItem:(key:string,value:string)=>db.set(key,value),get length(){return db.size;},key:(i:number)=>[...db.keys()][i]??null}});
+  const manifest=poolFixture().manifest,portfolio=`hybrid-${pool}` as `hybrid-0x${string}`,agent=`practice-${pool.slice(2)}` as `hybrid-0x${string}`;
   const saved:any={hash,review:{manifest,action:'buy',requested:{owner,scope:3,mask:'8',quantity:'10000000'}}};
   try{
-    rememberConfirmedClaim('rehearsal',saved);
-    const hints=rememberedClaims('rehearsal',pool,owner,2);
+    rememberConfirmedClaim(saved);
+    const hints=rememberedClaims(portfolio,pool,owner,2);
     assert.deepEqual(hints,[{scope:3,mask:'8'}]);
     assert.deepEqual(portfolioClaims(2,[3],hints,[])[0],hints[0]);
-    assert.deepEqual(rememberedClaims('pilot',pool,owner,2),[]);
-    assert.deepEqual(rememberedClaims('rehearsal','0x'+'99'.repeat(20),owner,2),[]);
-    assert.deepEqual(rememberedClaims('rehearsal',pool,'0x'+'99'.repeat(20),2),[]);
-    rememberConfirmedClaim('rehearsal',saved);assert.equal(rememberedClaims('rehearsal',pool,owner,2).length,1);
-    rememberConfirmedClaim('rehearsal',{...saved,review:{...saved.review,action:'approve',requested:{owner,scope:3,mask:'4'}}});
-    assert.deepEqual(rememberedClaims('rehearsal',pool,owner,2),hints);
+    assert.deepEqual(rememberedClaims(agent,pool,owner,2),[]);
+    assert.deepEqual(rememberedClaims(portfolio,'0x'+'99'.repeat(20),owner,2),[]);
+    assert.deepEqual(rememberedClaims(portfolio,pool,'0x'+'99'.repeat(20),2),[]);
+    rememberConfirmedClaim(saved);assert.equal(rememberedClaims(portfolio,pool,owner,2).length,1);
+    rememberConfirmedClaim({...saved,review:{...saved.review,action:'approve',requested:{owner,scope:3,mask:'4'}}});
+    assert.deepEqual(rememberedClaims(portfolio,pool,owner,2),hints);
     const key=[...db.keys()][0];assert.ok(!db.get(key)!.includes('10000000'));
+    const cache='flurbo.portfolio-cache.v1:'+owner.toLowerCase();
+    db.set(cache,JSON.stringify({savedAt:1,identity:owner,pools:{[portfolio]:{savedAt:1},[`hybrid-0x${'44'.repeat(20)}`]:{savedAt:1}}}));
+    rememberConfirmedClaim(saved);
+    assert.deepEqual(Object.keys(JSON.parse(db.get(cache)!).pools),[`hybrid-0x${'44'.repeat(20)}`]);
     db.set(key,'[null,{"scope":999,"mask":"8"},{"scope":3,"mask":"malformed"}]');
-    assert.deepEqual(rememberedClaims('rehearsal',pool,owner,2),[]);
-    db.set(key,'broken');assert.deepEqual(rememberedClaims('rehearsal',pool,owner,2),[]);
+    assert.deepEqual(rememberedClaims(portfolio,pool,owner,2),[]);
+    db.set(key,'broken');assert.deepEqual(rememberedClaims(portfolio,pool,owner,2),[]);
     Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw Error('blocked');}});
-    assert.doesNotThrow(()=>rememberConfirmedClaim('rehearsal',saved));
+    assert.doesNotThrow(()=>rememberConfirmedClaim(saved));
   }finally{if(previous)Object.defineProperty(globalThis,'localStorage',previous);else delete (globalThis as any).localStorage;}
 });
-test('account discovers scopes at its verified block without attributing them to a wallet',async()=>{
-  const f=pilotFixture(),calls:any[]=[];
-  const rpc=async(method:string,params:any[])=>{
-    if(method==='eth_call'&&params[0].to===pool){
-      const {functionName}=decodeFunctionData({abi:pilotPoolAbi,data:params[0].data});
-      if(functionName==='factors'){
-        calls.push(params);return encodeFunctionResult({abi:pilotPoolAbi,functionName,result:[{scope:3,values:[0n,0n,0n,10_000_000n]}]});
-      }
-    }
-    return f.rpc(method,params);
-  };
-  const result=await pilotService({manifest:f.manifest,rpc}).account(owner);
-  assert.deepEqual(result.claimScopes,[3]);assert.equal(calls[0][1],'0x64');
-  assert.equal(result.rows,undefined);assert.equal(result.wallet.address,owner);
-});
-
 test('claim hints are kept per hybrid pool and owner', () => {
   const db = new Map<string, string>(), previous = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (key: string) => db.get(key) ?? null, setItem: (key: string, value: string) => db.set(key, value) } });

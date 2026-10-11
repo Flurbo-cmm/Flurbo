@@ -33,7 +33,7 @@ fn repo() -> PathBuf {
 
 fn available() -> bool {
     let runs = |cmd: &str| Command::new(cmd).arg("--version").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success());
-    let ok = runs("node") && runs("anvil") && repo().join("target/foundry/out/PilotPool.sol").exists();
+    let ok = runs("node") && runs("anvil") && repo().join("target/foundry/out/WidePilotPool.sol").exists();
     if !ok {
         eprintln!("skipped: needs node, anvil and a forge build");
     }
@@ -151,7 +151,11 @@ fn setup(name: &str) -> Setup {
     let dir = std::env::temp_dir().join(format!("flurbo-rs-{}-{}", name, std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let mut c = default_config();
-    c["research"]["evidenceRequirements"] = json!({"pilot": [{"event": 0, "freshness": "background"}, {"event": 1, "freshness": "background"}]});
+    let ns = stack.s("namespace");
+    assert!(ns.starts_with("practice-"), "the local stack serves a hybrid agent pool");
+    c["markets"] = json!([ns]);
+    c["policy"]["markets"] = json!([ns]);
+    c["research"]["evidenceRequirements"] = json!({ ns.clone(): [{"event": 0, "freshness": "background"}, {"event": 1, "freshness": "background"}] });
     c["api"] = json!({"baseUrl": stack.s("apiUrl"), "credentialEnv": "T"});
     c["chain"] = json!({"rpcUrl": stack.s("rpcUrl")});
     c["stateDir"] = json!(dir.to_string_lossy());

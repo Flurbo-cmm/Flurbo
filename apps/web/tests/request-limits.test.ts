@@ -4,8 +4,8 @@ import {requestLimits,CapacityError} from '../server/request-limits.mjs';
 import {createRpcCapacity} from '../server/rpc-capacity.mjs';
 import {localApi} from '../server/local-api.mjs';
 import {fakeRedis,setup,alice,bob} from './agent-fixture.ts';
-import {pilotFixture} from './pilot-fixture.ts';
-import {pilotService} from '../server/pilot.mjs';
+import {poolFixture} from './pool-fixture.ts';
+import {hybridPoolService} from '../server/hybrid-pool-service.mjs';
 
 test('account budgets are shared across instances and isolated from other accounts',async()=>{
   let now=1800000000000;const {command}=fakeRedis(),a=requestLimits({command,now:()=>now}),b=requestLimits({command,now:()=>now});
@@ -62,11 +62,12 @@ test('RPC weighted budget counts batch methods and upstream cooldown prevents an
 });
 
 test('concurrent market reads share one batch without retaining stale prices',async()=>{
-  const f=pilotFixture(undefined,4);let batches=0,reads=0;
+  const f=poolFixture(undefined,4);let batches=0,reads=0;
   const rpc=Object.assign(async(method:string,params:any[])=>{reads++;return f.rpc(method,params);},{readBatch:async(calls:any[])=>{batches++;assert.equal(calls.length,8);return calls.map(()=>250000n);}});
-  const service=pilotService({manifest:f.manifest,rpc});
+  const service=hybridPoolService({manifest:f.manifest,rpc});
   const [a,b]=await Promise.all([service.markets(),service.markets()]);
-  assert.deepEqual(a,b);assert.equal(batches,1);assert.equal(reads,9);
+  // One verified snapshot (chain, anchor, head, two code reads, three pool bindings), resolved, stable.
+  assert.deepEqual(a,b);assert.equal(batches,1);assert.equal(reads,10);
   await service.markets();assert.equal(batches,2,'later requests read again, not cached quotes');
   f.options.changed=true;await assert.rejects(service.markets(),/anchor/);
   f.options.changed=false;await service.markets();assert.equal(batches,3,'failed in-flight reads are cleared');

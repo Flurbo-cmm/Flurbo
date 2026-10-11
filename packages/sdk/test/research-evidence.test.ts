@@ -109,7 +109,7 @@ test('forecast projection names retrieval and publication separately, preserving
 
 test('configuration requires explicit, nonduplicated per-event evidence policies', () => {
   assert.equal(defaultConfig().research.evidenceRequirements, undefined, 'default release policy is applied by validation');
-  const c = defaultConfig();
+  const c = { ...defaultConfig(), markets: ['pilot'] };
   c.research.evidenceRequirements = { pilot: [{ event: 0, freshness: 'background' }] };
   assert.doesNotThrow(() => parseConfig(c));
   c.research.evidenceRequirements.pilot.push({ event: 0, freshness: 'release' });

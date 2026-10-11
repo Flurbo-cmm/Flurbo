@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { pilotFixture, owner } from './pilot-fixture.ts';
+import { poolFixture, owner } from './pool-fixture.ts';
 import { setup, alice, origin } from './agent-fixture.ts';
 import { TESTNET } from '../server/network.mjs';
 
@@ -47,7 +47,7 @@ function wallet({ owner, hash }: { owner: string; hash: string }) {
 }
 
 test('linking a wallet and requesting test AUSD wait in sheets that cannot be dismissed while the wallet is open', { skip }, async () => {
-  const browser = await launch(), login = '0x' + '99'.repeat(20), f = pilotFixture(Math.floor(Date.now() / 1000), 4), txHash = '0x' + 'ab'.repeat(32);
+  const browser = await launch(), login = '0x' + '99'.repeat(20), f = poolFixture(Math.floor(Date.now() / 1000), 4), txHash = '0x' + 'ab'.repeat(32);
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } }), errors: string[] = [];
     page.on('pageerror', (error: Error) => errors.push(error.message));
@@ -61,7 +61,7 @@ test('linking a wallet and requesting test AUSD wait in sheets that cannot be di
       if (path === '/api/account/wallets') return route.fulfill({ json: { account: login, wallets: linked ? [owner] : [] } });
       if (path === '/api/account/wallets/challenge') return route.fulfill({ json: { id: 'proof', message: 'Link this MetaMask wallet to your Flurbo account; no transaction.' } });
       if (path === '/api/account/wallets/verify') { linked = true; return route.fulfill({ json: { account: login, wallets: [owner] } }); }
-      if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace: 'practice-' + f.manifest.pool.slice(2), label: 'Practice', pool: f.manifest.pool, closesAt: f.manifest.publication.draft.closesAt }] } });
+      if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace: f.namespace, label: 'Practice', pool: f.manifest.pool, closesAt: f.manifest.publication.draft.closesAt }], oracleMarkets: [], hybridMarkets: [] } });
       if (path === '/api/rpc') {
         const { method, params } = route.request().postDataJSON();
         if (method === 'eth_getTransactionReceipt') receiptReads++;
@@ -118,8 +118,8 @@ test('allowing live agent trades confirms in a sheet that restates the limits an
         const p = new URL(route.request().url()).pathname, method = route.request().method();
         if (p === '/api/auth/session') return route.fulfill({ json: { session: { address: alice, method: 'passkey', expiresAt: Date.now() + 3600000 } } });
         if (p === '/api/account/access') return route.fulfill({ json: { approved: true } });
-        if (p === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace: 'pilot', label: 'Open fixture', pool: s.f.manifest.pool, closesAt: s.f.manifest.publication.draft.closesAt }] } });
-        if (p === '/api/pilot/markets') return route.fulfill({ json: await s.f.service.markets() });
+        if (p === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [{ namespace: s.f.namespace, label: 'Open fixture', pool: s.f.manifest.pool, closesAt: s.f.manifest.publication.draft.closesAt }] } });
+        if (p === `/api/${s.f.namespace}/markets`) return route.fulfill({ json: await s.f.service.markets() });
         if (p === '/api/agents' || p.startsWith('/api/agents/')) {
           const body = method === 'POST' ? route.request().postDataJSON() : undefined;
           if (p.endsWith('/runtime-policy') && method === 'POST') policies.push(body);

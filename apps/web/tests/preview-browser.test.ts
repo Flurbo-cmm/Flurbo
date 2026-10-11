@@ -2,17 +2,16 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL,fileURLToPath} from 'node:url';
-import {pilotFixture,owner} from './pilot-fixture.ts';
+import {owner} from './pool-fixture.ts';
 
 test('invite flow denies pending accounts, approved directory filters real schedules and survives a pool outage',{skip:!process.env.FLURBO_TEST_PLAYWRIGHT},async()=>{
   const {chromium}=await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
   const browser=await chromium.launch({headless:true,executablePath:process.env.FLURBO_TEST_BROWSER});
-  const now=Math.floor(Date.now()/1000),f=pilotFixture(now,4),other=structuredClone(f.manifest);
-  // Practice collections are addressed by pool; this mode keeps the real-event wording.
-  f.manifest.publication.mode='deterministic-source-v1';
-  other.publication.mode='rehearsal';other.pool='0x'+'bc'.repeat(20);other.publication.draft.closesAt=now-3600;
-  other.publication.draft.events.forEach((e:any,i:number)=>e.question='Earlier question '+(i+1));
-  const ns='practice-'+other.pool.slice(2);
+  const now=Math.floor(Date.now()/1000),open='0x'+'22'.repeat(20),earlier='0x'+'bc'.repeat(20);
+  // Two hybrid pools of four questions: one open, one settled.
+  const pool=(address:string,title:string,closesAt:number,question:(i:number)=>string)=>[0,1,2,3].map(eventIndex=>({id:`${address}-${eventIndex}`,pool:address,poolTitle:title,eventIndex,
+    question:question(eventIndex),route:'mechanical',closesAt,observationEndsAt:closesAt+3600}));
+  const hybridMarkets=[...pool(open,'Open questions',now+86400,i=>`Test event ${i+1}`),...pool(earlier,'Earlier questions',now-3600,i=>'Earlier question '+(i+1))];
   let signedIn=false,approved=false,applicationUrl:string|null=null,outage=false,reads=0;
   const errors:string[]=[];
   try{
@@ -22,9 +21,10 @@ test('invite flow denies pending accounts, approved directory filters real sched
       if(path==='/api/preview')return route.fulfill({json:{inviteOnly:true,applicationUrl}});
       if(path==='/api/auth/session')return route.fulfill({json:{session:signedIn?{address:owner,method:'passkey',expiresAt:Date.now()+3600000}:null}});
       if(path==='/api/account/access')return route.fulfill({json:{approved,testingTools:false,applicationUrl}});
-      if(path==='/api/market-directory'){reads++;return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:'practice-2222222222222222222222222222222222222222',label:'Open questions',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt},{namespace:ns,label:'Earlier questions',pool:other.pool,closesAt:other.publication.draft.closesAt}]}});}
-      if(path==='/api/practice-2222222222222222222222222222222222222222/markets')return route.fulfill({json:await f.service.markets()});
-      if(path===`/api/${ns}/markets`)return route.fulfill(outage?{status:503,json:{error:'Unavailable'}}:{json:{...await f.service.markets(),manifest:other,open:false,resolved:true}});
+      if(path==='/api/market-directory'){reads++;return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[],oracleMarkets:[],hybridMarkets}});}
+      const market=hybridMarkets.find(m=>path===`/api/hybrid/${m.id}/market`);
+      if(market&&market.pool===earlier&&outage)return route.fulfill({status:503,json:{error:'Unavailable'}});
+      if(market)return route.fulfill({json:{schema:'flurbo.hybrid-market.v1',id:market.id,pool:market.pool,marketNow:Math.floor(Date.now()/1000),funded:true,resolved:market.pool===earlier,prices:{yes:'450000',no:'550000'}}});
       if(path.startsWith('/api/'))return route.fulfill({status:503,json:{error:'Unused fixture endpoint'}});
       const file=path.startsWith('/assets/')?path.slice(1):'index.html';
       return route.fulfill({body:await readFile(new URL('../dist/'+file,import.meta.url)),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.woff2')?'font/woff2':'text/html'});
@@ -65,8 +65,9 @@ test('invite flow denies pending accounts, approved directory filters real sched
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       await page.screenshot({path:fileURLToPath(new URL(`../../../target/preview-ui/markets-${width}.png`,import.meta.url)),fullPage:true});
     }
+    // A market whose price read fails keeps its card; only the notice says it could not be refreshed.
     outage=true;await page.getByRole('button',{name:'Refresh prices',exact:true}).click();
-    await page.getByText('Some markets could not be refreshed.',{exact:false}).waitFor();assert.equal(await page.locator('.market-card').count(),4);
+    await page.getByText('Some markets could not be refreshed.',{exact:false}).waitFor();assert.equal(await page.locator('[data-market-count="8"]').count(),1);
     approved=false;await page.reload();await page.getByRole('heading',{name:'Your account is ready',exact:true}).waitFor();
     assert.equal(await page.locator('.market-card').count(),0);assert.deepEqual(errors,[]);
   }finally{await browser.close();}

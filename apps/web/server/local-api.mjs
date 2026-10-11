@@ -3,13 +3,9 @@ import {rpcFetch} from './rpc-capacity.mjs';
 import { SessionStore, cookieValue, LOGIN_MS, digest } from './session.mjs';
 import { TESTNET, HOSTED_ORIGINS } from './network.mjs';
 import { learningDeployment } from '../shared/learning-contracts.mjs';
-import { evidenceAssistant } from './evidence-assistant.mjs';
 import { priceHistory } from './price-history.mjs';
 import { walletLinks } from './wallet-links.mjs';
 import { isTestingOperator, DEFAULT_TESTING_OPERATOR } from './testing-access.mjs';
-import {holderAuthorizer} from './holder-challenge.mjs';
-import {validateClaim} from '../shared/claims.mjs';
-import {validateThesisInput} from '../shared/thesis.mjs';
 import {agentApi} from './agents/agent-api.mjs';
 import {agentWalletKey} from './agents/agent-store.mjs';
 import {agentRpc} from './agents/agent-market.mjs';
@@ -25,43 +21,38 @@ import { MAX_PROOF_SUBMISSION_BYTES, PROOF_CAPTURE_PATH } from './proof-captures
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, pilot: publishedPilot = null, practiceCollections = null, evidence = null, evidenceOptions = {}, challengeOptions = {}, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null } = {}) {
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, agentPools = null, evidence = null, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
   const links = walletLinks({command:store.command,isReserved:wallet=>agents?agents.isAgentWallet(wallet):false,reservedKey:store.command?agentWalletKey:null});
-  // Operator addresses from every configured deployment, plus FLURBO_AGENT_RESERVED_WALLETS, can never be agent wallets.
+  // Operator addresses of every catalog pool, plus FLURBO_AGENT_RESERVED_WALLETS, can never be agent wallets.
   const reservedWallets=new Set((process.env.FLURBO_AGENT_RESERVED_WALLETS||'').split(',').map(x=>x.trim().toLowerCase()).filter(x=>/^0x[0-9a-f]{40}$/.test(x)));
-  for(const svc of [publishedPilot,...(practiceCollections?.services.values()||[])].filter(Boolean)){
-    const m=svc.manifest;
-    for(const a of [m.pool,m.resolver,m.publication?.creator,m.challengePolicy?.authority,...(m.publication?.reviewers||[]).map(r=>r.address)])if(typeof a==='string')reservedWallets.add(a.toLowerCase());
-  }
+  for(const a of agentPools?.reservedAddresses??[])reservedWallets.add(a.toLowerCase());
+  // Hybrid pools with two to four questions, served to agents as practice-<pool address without 0x>.
+  const agentServices=agentPools?.services??new Map();
+  const labelOf=namespace=>agentPools?.collections?.find(c=>c.namespace===namespace)?.label??namespace;
   const previewAllows=previewAccess||applications?async account=>{
     const session={method:'passkey',address:account};
     if(isTestingOperator(session,testingOperatorAccount))return true;
     const legacy=previewAccess?await previewAccess.allows(session):false;
     return applications?applications.allows(account,legacy):legacy;
   }:null;
-  const authorizeHolder=holderAuthorizer(challengeOptions);
-  const priceArchives=new WeakMap();
   const oraclePriceArchives=new Map();
   const hybridPriceArchives=new Map();
   // Agents: account-isolated profiles, paper trading and user-approved proposals. Never a signer.
   const agents=(()=>{try{return agentApi({command:store.command||null,hosted,links,localCounters:!sharedLimits,rpc:agentRpc(rpcUrl,{hosted}),previewAllows,reservedWallets,
-    serviceFor:namespace=>namespace==='pilot'?publishedPilot:practiceCollections?.services.get(namespace)||null});}catch{return null;}})();
+    serviceFor:namespace=>agentServices.get(namespace)??null});}catch{return null;}})();
   // Operator-only growth metrics. Needs durable storage; members never see these numbers.
-  const listedPools=()=>[
-    ...(publishedPilot?[{namespace:'pilot',label:(practiceCollections?.catalog?.collections||[]).find(c=>c.pool===publishedPilot.manifest.pool)?.label||'Release milestones',service:publishedPilot}]:[]),
-    ...[...(practiceCollections?.services||[])].map(([namespace,service])=>({namespace,label:practiceCollections.catalog.collections.find(c=>c.namespace===namespace)?.label||namespace,service}))]
-    .filter(p=>p.service.index);
+  const listedPools=()=>[...agentServices].map(([namespace,service])=>({namespace,label:labelOf(namespace),service})).filter(p=>p.service.index);
   const oracleNoticePools=oracle?.noticePools?.(store.command||null)||[];
   const metrics=userMetrics({command:store.command||null,origin:publicOrigin||`http://${hosts[0]}`,links,applications,operatorAccount:testingOperatorAccount,funding,
     openAccess:!previewAllows,reservedWallets,rpcUrl,pools:listedPools});
-  // Email notices to members about their own positions and settlement stages.
-  const notices=memberNotices({command:store.command||null,pools:()=>[...listedPools(),...oracleNoticePools,...hybridNotices],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
+  // Email notices to members about their own positions and settlement stages. Hybrid notices already cover
+  // every hybrid pool, agent pools included, so the agent pool services are not listed again.
+  const notices=memberNotices({command:store.command||null,pools:()=>[...oracleNoticePools,...hybridNotices],applications,links,origin:publicOrigin||`http://${hosts[0]}`,
     send:applications?.noticeEmail?noticeDelivery(applications.noticeEmail):null});
   const page=(res,status,title,body)=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
     res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | flurbo</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px;color:#14271d;background:#f5f4ec;line-height:1.5"><h1 style="font-size:1.5rem">${title}</h1>${body}</body></html>`);};
-  const assistant=publishedPilot&&store.command?evidenceAssistant({manifest:publishedPilot.manifest,command:store.command,...evidenceOptions}):null;
   if (hosted && (!HOSTED_ORIGINS.has(publicOrigin) || !rpcUrl.startsWith('https://'))) throw new Error('Invalid hosted API configuration');
   // Anonymous/public traffic never consumes authenticated account capacity. With sharedLimits off (a single
   // server), the rate windows count in memory instead of costing Redis commands on every request.
@@ -194,8 +185,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         if (!login || login.method !== 'passkey') return send(res, 401, {error:'Sign in first.'});
         if (!isTestingOperator(login, testingOperatorAccount)) return send(res, 403, {error:'Operator access only.'});
         if (req.method !== 'GET' || url.search) return send(res, 400, {error:'Semantic status accepts a GET without parameters'});
-        const services = [['pilot', publishedPilot], ...(practiceCollections ? [...practiceCollections.services] : [])]
-          .filter(([, service]) => service).map(([namespace, service]) => ({ namespace, manifest: service.manifest }));
+        const services = [...agentServices].map(([namespace, service]) => ({ namespace, manifest: service.manifest }));
         try { return send(res, 200, semanticDiagnostics(activeSemanticConfig(), services)); }
         catch { return send(res, 503, {code:'SEMANTICS_UNAVAILABLE', error:'Semantic configuration could not be loaded.'}); }
       }
@@ -269,13 +259,11 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
       if(url.pathname==='/api/market-directory'&&req.method==='GET'&&!url.search){
         const login=await getLogin();
         if(!login||login.method!=='passkey')return send(res,401,{error:'Sign in with your Flurbo passkey.'});
-        const entries=[...(practiceCollections?.catalog?.collections||[])];
-        if(publishedPilot&&!entries.some(row=>row.pool===publishedPilot.manifest.pool))entries.push({namespace:'pilot',label:'Release milestones',pool:publishedPilot.manifest.pool,closesAt:publishedPilot.manifest.publication.draft.closesAt});
         const oracleMarkets=oracle&&(!previewAllows||await previewAllows(login.address))?oracle.list():[];
         const hybridMarkets=hybrid&&(!previewAllows||await previewAllows(login.address))?hybrid.list():[];
-        return send(res,200,{schema:'flurbo.market-directory.v1',markets:entries,oracleMarkets,hybridMarkets});
+        return send(res,200,{schema:'flurbo.market-directory.v1',markets:agentPools?.collections??[],oracleMarkets,hybridMarkets});
       }
-      if (url.pathname === '/api/evidence-beta' || url.pathname.startsWith('/api/learning/')) {
+      if (url.pathname.startsWith('/api/learning/')) {
         const login = await getLogin();
         if (!login || login.method !== 'passkey') return send(res, 401, {error:'Sign in first.'});
         if (!isTestingOperator(login, testingOperatorAccount)) return send(res, 403, {error:'Testing tools are restricted to the operator.'});
@@ -336,21 +324,6 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
           return send(res,safe?400:503,{error:safe?e.message:'Account wallet storage is unavailable. Retry linking shortly.'});
         }
         return send(res,400,{error:'Invalid wallet linking request.'});
-      }
-      if(url.pathname==='/api/evidence-beta'){
-        const login=await getLogin();
-        if(!login||login.method!=='passkey')return send(res,401,{error:'Sign in with your Flurbo passkey'});
-        if(!assistant)return send(res,503,{error:'Evidence beta needs the configured real-event pilot and durable storage'});
-        const env=evidenceOptions.env||process.env;
-        const operator=!!env.FLURBO_EVIDENCE_OPERATOR&&login.address.toLowerCase()===env.FLURBO_EVIDENCE_OPERATOR.toLowerCase();
-        if(req.method==='GET')return send(res,200,{schema:'flurbo.evidence-beta.v1',operator,
-          model:env.FLURBO_EVIDENCE_MODEL||null,aiConfigured:env.FLURBO_EVIDENCE_FREE_TIER_CONFIRMED==='true'&&!!env.FLURBO_EVIDENCE_GEMINI_KEY,
-          events:publishedPilot.manifest.publication.draft.events.map(e=>({id:e.id,question:e.question}))});
-        if(req.method!=='POST')return send(res,405,{error:'Method not allowed'});
-        if(!operator)return send(res,403,{error:'Only the configured testnet operator may request source and model reads'});
-        const input=await body(req);
-        if(Object.keys(input).sort().join(',')!=='eventId,useAI'||typeof input.eventId!=='string'||typeof input.useAI!=='boolean')return send(res,400,{error:'Choose an event and whether to request AI assistance'});
-        return send(res,200,await assistant.review(input.eventId,input.useAI));
       }
       if (url.pathname === '/api/oracle/markets' || /^\/api\/oracle\/[a-z0-9-]{1,64}(?:\/(?:action|evidence|market|price-history))?$/.test(url.pathname)) {
         const login = await getLogin();
@@ -484,150 +457,34 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
             ? error.message : 'Market request unavailable. Refresh and retry.' });
         }
       }
-      if(url.pathname==='/api/practice-collections'){
-        const login=await getLogin();
-        if(!login||login.method!=='passkey')return send(res,401,{error:'Sign in with your Flurbo passkey'});
-        if(req.method!=='GET'||url.search)return send(res,400,{error:'Collection listing accepts a GET without parameters'});
-        if(!practiceCollections)return send(res,503,{error:'Practice collections are unavailable'});
-        return send(res,200,practiceCollections.catalog);
-      }
-      const archiveNamespace=url.pathname.match(/^\/api\/(practice-[0-9a-f]{40})\//)?.[1];
-      if(url.pathname.startsWith('/api/pilot/')||archiveNamespace) {
-        const pilot=archiveNamespace?practiceCollections?.services.get(archiveNamespace):publishedPilot;
-        if(archiveNamespace)url.pathname=url.pathname.replace('/api/'+archiveNamespace+'/','/api/pilot/');
-        // Content-addressed evidence is public so counterparties can inspect a cited URI.
-        const evidenceHash=url.pathname.match(/^\/api\/pilot\/evidence\/(0x[0-9a-f]{64})$/)?.[1];
+      // What remains of the namespaced routes: public evidence (its URIs are committed on chain), and for agent pools
+      // the market read, the RPC proxy and the semantic check that the Agents page uses.
+      const namespace=url.pathname.match(/^\/api\/(pilot|practice-[0-9a-f]{40})\//)?.[1];
+      if(namespace||url.pathname==='/api/practice-collections'){
+        const evidenceHash=url.pathname.match(/^\/api\/(?:pilot|practice-[0-9a-f]{40})\/evidence\/(0x[0-9a-f]{64})$/)?.[1];
         if(evidenceHash && req.method==='GET' && !url.search && evidence) {
           const content=await evidence.get(evidenceHash);
           res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'public, max-age=31536000, immutable'}); res.end(content); return;
         }
         const login=await getLogin();
         if(!login || login.method!=='passkey') return send(res,401,{error:'Sign in with your Flurbo passkey'});
-        if(!pilot) return send(res,archiveNamespace?404:503,{error:archiveNamespace?'That market collection is not available.':'The real-event pilot is not published yet. Reviewer identities, final event rules and a verified deployment are required.'});
-        if(req.method==='GET' && ['/api/pilot/status','/api/pilot/account'].includes(url.pathname)) {
-          if([...url.searchParams.keys()].some(k=>k!=='wallet') || url.searchParams.getAll('wallet').length>1) return send(res,400,{error:'Invalid pilot query'});
-          if(url.pathname==='/api/pilot/account') return send(res,200,await pilot.account(url.searchParams.get('wallet')));
-          return send(res,200,await pilot.status(url.searchParams.get('wallet')||undefined));
-        }
-        if(url.search) return send(res,400,{error:'Unexpected pilot query'});
-        if(req.method==='POST' && url.pathname==='/api/pilot/validate-trade') {
-          try { return send(res,200,assessSemantics(pilot.manifest,await body(req))); }
+        const operation=namespace&&namespace!=='pilot'?url.pathname.slice(`/api/${namespace}/`.length):null;
+        if(!(req.method==='GET'&&operation==='markets'||req.method==='POST'&&['rpc','validate-trade'].includes(operation))) return send(res,404,{error:'Unknown endpoint'});
+        const service=agentServices.get(namespace);
+        if(!service) return send(res,404,{error:'That market collection is not available.'});
+        if(url.search) return send(res,400,{error:'Unexpected query'});
+        if(operation==='markets') return send(res,200,await service.markets());
+        if(operation==='validate-trade') {
+          try { return send(res,200,assessSemantics(service.manifest,await body(req))); }
           catch(e) { return send(res,e.status===400?400:503,{code:e.status===400?'INVALID_INPUT':'SEMANTICS_UNAVAILABLE',error:e.status===400?e.message:'The semantic check is unavailable. Retry before trading.'}); }
         }
-        if(req.method==='GET' && url.pathname==='/api/pilot/price-history') {
-          if(!store.command)return send(res,503,{error:'Price history storage is unavailable.'});
-          try{
-            if(!priceArchives.has(pilot))priceArchives.set(pilot,priceHistory({service:pilot,command:store.command}));
-            return send(res,200,await priceArchives.get(pilot).read());
-          }catch{return send(res,503,{error:'Price history is temporarily unavailable. Trading is separate.'});}
-        }
-        if(req.method==='GET' && url.pathname==='/api/pilot/markets') return send(res,200,await pilot.markets());
-        if(req.method==='POST' && url.pathname==='/api/pilot/analytics') {
-          const input=await body(req);
-          if(!input||Array.isArray(input)||Object.keys(input).sort().join(',')!=='a,b'||![input.a,input.b].every(x=>Number.isInteger(x)&&x>=0&&x<pilot.manifest.publication.draft.events.length)||input.a===input.b) return send(res,400,{error:'Choose two different events.'});
-          try {if(!pilot.analytics)throw new Error('Unavailable');return send(res,200,await pilot.analytics(input));}
-          catch {return send(res,503,{error:'This comparison is temporarily unavailable. Try again shortly. Trading is separate.'});}
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/claim-analytics') {
-          const input=await body(req);
-          try {
-            if(!input||Array.isArray(input)||Object.keys(input).sort().join(',')!=='mask,scope')throw Error('Invalid input');
-            validateClaim(input.scope,input.mask,pilot.manifest.publication.draft.events.length);
-          }catch{return send(res,400,{error:'Choose a supported claim in this pool.'});}
-          try {if(!pilot.claimAnalytics)throw Error('Unavailable');return send(res,200,await pilot.claimAnalytics(input));}
-          catch{return send(res,503,{error:'This comparison is temporarily unavailable. Trading is separate.'});}
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/thesis') {
-          const input=await body(req);
-          try{validateThesisInput(input,pilot.manifest.publication.draft.events.length);}
-          catch{return send(res,400,{error:'Choose two questions and a supported share quantity.'});}
-          try{if(!pilot.thesisAnalytics)throw Error('Unavailable');return send(res,200,await pilot.thesisAnalytics(input));}
-          catch{return send(res,503,{error:'The pool comparison could not load. Your view is still available; retry shortly.'});}
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/prepare') {
-          const input = await body(req);
-          if (!['buy','sell','redeem','dispute','withdrawBond'].includes(input?.action) && !isTestingOperator(login, testingOperatorAccount)) return send(res,403,{error:'Testing tools are restricted to the operator.'});
-          // Buying and selling go only through wallets linked to this Flurbo account, so every bet made on the
-          // site belongs to a member. Redeeming stays open so winnings can never be stranded.
-          if(['buy','sell'].includes(input?.action)){
-            if(hosted&&!store.command)return send(res,503,{error:'Account wallet storage is unavailable.'});
-            const {wallets}=await links.list(login.address,origin);
-            if(!wallets.includes(String(input.owner||'').toLowerCase()))return send(res,403,{code:'WALLET_NOT_LINKED',error:'Link this MetaMask wallet to your Flurbo account before trading.'});
-          }
-          if(input?.action==='dispute'){
-            if(input.authorization||input.signature)return send(res,400,{error:'Request a fresh account eligibility check.'});
-            if(hosted&&!store.command)return send(res,503,{error:'Account wallet storage is unavailable.'});
-            const {wallets}=await links.list(login.address,origin),{stake,...action}=input;
-            if(!wallets.includes(input.owner?.toLowerCase())||!wallets.includes(stake?.holder?.toLowerCase()))return send(res,403,{error:'Link both MetaMask wallets to your Flurbo account before challenging.'});
-            if(!pilot.challengeStake||!(await pilot.challengeStake(input.event,stake)).eligible)return send(res,403,{error:'Your account needs shares in this event to challenge its answer.'});
-            if(pilot.manifest.challengePolicy){
-              try{return send(res,200,await pilot.prepare({...action,...await authorizeHolder(pilot,login,wallets,input)}));}
-              catch{return send(res,503,{error:'Challenge authorization could not be prepared. Refresh eligibility and retry before the deadline.'});}
-            }
-            return send(res,200,await pilot.prepare(action));
-          }
-          return send(res,200,await pilot.prepare(input));
-        }
-        if(req.method==='POST'&&url.pathname==='/api/pilot/challenge-eligibility'){
-          if(hosted&&!store.command)return send(res,503,{error:'Account wallet storage is unavailable.'});
-          const input=await body(req);
-          if(!input||Object.keys(input).some(k=>!['owner','event','cursor','stake'].includes(k)))return send(res,400,{error:'Invalid eligibility request.'});
-          const {wallets}=await links.list(login.address,origin);
-          if(!wallets.includes(input.owner?.toLowerCase()))return send(res,403,{error:'Link this MetaMask wallet to your Flurbo account first.'});
-          if(input.stake){
-            if(!wallets.includes(input.stake.holder?.toLowerCase()))return send(res,403,{error:'Qualifying shares must belong to this Flurbo account.'});
-            return send(res,200,await pilot.challengeStake(input.event,input.stake));
-          }
-          return send(res,200,await pilot.challengeEligibility(wallets,input.event,input.cursor??0));
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/position') {
-          const input=await body(req); return send(res,200,await pilot.position(input.owner,input.scope,input.mask));
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/positions') {
-          const input=await body(req); return send(res,200,await pilot.positions(input.owner,input.claims));
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/collected-payouts') {
-          const input=await body(req);
-          if(!pilot.payouts||Object.keys(input).length)return send(res,400,{error:'Payout history unavailable or unexpected input'});
-          try{await pilot.snapshot();return send(res,200,await pilot.payouts.refresh());}
-          catch(error){
-            const code=error?.code==='PAYOUT_ARCHIVE_UNAVAILABLE'?'PAYOUT_ARCHIVE_UNAVAILABLE':'PAYOUT_READ_FAILED';
-            console.warn(JSON.stringify({status:'payout_read_failed',pool:pilot.manifest.pool,code}));
-            return send(res,503,{code,error:'Collected payouts could not be checked. Your current holdings are separate.'});
-          }
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/history') {
-          const input=await body(req);
-          if(!pilot.index || Object.keys(input).length) return send(res,400,{error:'Pilot history unavailable or unexpected input'});
-          try {
-            await pilot.snapshot();
-            return send(res,200,await pilot.index.refresh());
-          } catch {
-            return send(res,503,{error:'Trade history is temporarily unavailable. Your on-chain holdings are loaded separately. Retry shortly.'});
-          }
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/evidence') {
-          if(!evidence) return send(res,503,{error:'Evidence storage unavailable'});
-          const input=await body(req);
-          const event=pilot.manifest.publication.draft.events.findIndex(e=>e.id===input?.eventId);
-          if(event<0) return send(res,400,{error:'Unknown pilot event'});
-          if (!isTestingOperator(login, testingOperatorAccount)) {
-            const state=await pilot.status(), current=state.cases[event];
-            if(current.phase!==1 || Number(current.challengeUntil)<=state.snapshot.timestamp || ![1,2,3].includes(input.outcome) || current.proposal===input.outcome)
-              return send(res,409,{error:'Choose a different answer during the open challenge period.'});
-          }
-          return send(res,200,await evidence.put(input,login.address,pilot.manifest.draftHash));
-        }
-        if(req.method==='POST' && url.pathname==='/api/pilot/rpc') {
-          const input=await body(req);
-          if(!input || !Array.isArray(input.params) || !['eth_chainId','eth_getBlockByNumber','eth_getCode','eth_call','eth_estimateGas','eth_gasPrice','eth_getTransactionCount','eth_getTransactionReceipt','eth_getTransactionByHash','eth_getBalance','eth_sendRawTransaction'].includes(input.method)) return send(res,400,{error:'Unsupported pilot RPC'});
-          if(input.method==='eth_sendRawTransaction') return send(res,403,{error:'Mera is account-only. Send transactions through MetaMask.'});
-          const upstream=await rpcFetch(fetch,rpcUrl,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:input.method,params:input.params}),signal:AbortSignal.timeout(20_000)});
-          const result=await upstream.json();
-          if(!upstream.ok || result.error) return send(res,400,{error:'Monad rejected the pilot request. Check tracking before retrying.'});
-          return send(res,200,{result:result.result});
-        }
-        return send(res,404,{error:'Unknown pilot endpoint'});
+        const input=await body(req);
+        if(!input || !Array.isArray(input.params) || !['eth_chainId','eth_getBlockByNumber','eth_getCode','eth_call','eth_estimateGas','eth_gasPrice','eth_getTransactionCount','eth_getTransactionReceipt','eth_getTransactionByHash','eth_getBalance','eth_sendRawTransaction'].includes(input.method)) return send(res,400,{error:'Unsupported RPC method'});
+        if(input.method==='eth_sendRawTransaction') return send(res,403,{error:'Mera is account-only. Send transactions through MetaMask.'});
+        const upstream=await rpcFetch(fetch,rpcUrl,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:input.method,params:input.params}),signal:AbortSignal.timeout(20_000)});
+        const result=await upstream.json();
+        if(!upstream.ok || result.error) return send(res,400,{error:'Monad rejected the request. Check tracking before retrying.'});
+        return send(res,200,{result:result.result});
       }
       if (['/api/learning/pool', '/api/learning/proposal'].includes(url.pathname)) {
         const session = await getLogin();

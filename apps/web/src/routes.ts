@@ -8,7 +8,6 @@ const loaders = {
   agents: () => import('./pages/Agents'),
   access: () => import('./pages/AccessPage'),
   fund: () => import('./pages/FundingPage'),
-  evidence: () => import('./pages/EvidenceReview'),
   metrics: () => import('./pages/Metrics'),
   workspace: () => import('./pages/Workspace'),
 } satisfies Record<string, () => Promise<{ default: ComponentType<any> }>>;

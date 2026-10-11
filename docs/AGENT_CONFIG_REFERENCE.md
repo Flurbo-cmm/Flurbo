@@ -1,6 +1,6 @@
 # Agent configuration reference
 
-All four runtimes (TypeScript, Python, Rust, C++) read the same `flurbo.agent-config.v1` JSON file. `init` writes a paper-mode file with safe defaults; `init --markets A,B` also writes the agent's markets (the agent's Setup page on Flurbo shows that exact line). This page describes every key. Key names are camelCase in every language. Secrets never go in this file: it names environment variables instead, and the runtimes refuse a file with a `privateKey` or `secret` field holding a key.
+All four runtimes (TypeScript, Python, Rust, C++) read the same `flurbo.agent-config.v1` JSON file. `init --markets A,B` writes a paper-mode file with safe defaults and the agent's markets (the agent's Setup page on Flurbo shows that exact line); `--markets` is required. This page describes every key. Key names are camelCase in every language. Secrets never go in this file: it names environment variables instead, and the runtimes refuse a file with a `privateKey` or `secret` field holding a key.
 
 ## Top level
 
@@ -8,7 +8,7 @@ All four runtimes (TypeScript, Python, Rust, C++) read the same `flurbo.agent-co
 |---|---|---|
 | `schema` | `flurbo.agent-config.v1` | Required, exact. |
 | `mode` | `paper` | `paper` simulates fills; `live` signs and sends. Live trading also needs "Allow live testnet trades" on the agent's Flurbo page. |
-| `markets` | `["pilot"]`, or the list given to `init --markets` | Market namespaces the agent may read: `pilot` or `practice-<pool address without 0x>`. |
+| `markets` | `[]`; `init --markets` writes the list | Market namespaces the agent may read, such as `practice-<pool address without 0x>`. At least one is required. |
 | `stateDir` | `.flurbo-agent` | Journal, paper book and runtime status. Keep it private; never delete the journal of a live agent. |
 | `api.baseUrl` | `https://flurbopm.singu.online` | Flurbo API. |
 | `api.credentialEnv` | `FLURBO_AGENT_TOKEN` | Environment variable holding the agent credential issued on the Agents page. |
@@ -65,11 +65,11 @@ A decision needs a forecast, and a forecast must cite retrieved evidence.
 
 ### `extraSources`
 
-A map from market namespace to a list of `{event, url}`. It is **not** a plain list; a list does not work (the Python runtime stops with an error).
+A map from market namespace (such as `practice-<pool address without 0x>`; the examples use a placeholder) to a list of `{event, url}`. It is **not** a plain list; a list does not work (the Python runtime stops with an error).
 
 ```json
 "extraSources": {
-  "pilot": [
+  "practice-0000000000000000000000000000000000000000": [
     { "event": 0, "url": "https://github.com/ethereum/go-ethereum/releases" },
     { "event": 1, "url": "https://github.com/paradigmxyz/reth/releases" }
   ]
@@ -86,7 +86,7 @@ A map from market namespace to per-event freshness rules. Each namespace must al
 
 ```json
 "evidenceRequirements": {
-  "pilot": [
+  "practice-0000000000000000000000000000000000000000": [
     { "event": 0, "freshness": "background" },
     { "event": 1, "freshness": "background" }
   ]

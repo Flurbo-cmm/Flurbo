@@ -1,10 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {settlementSources} from '../shared/settlement-sources.mjs';
-import {releaseSpec} from '../server/evidence-assistant.mjs';
-import {ETHEREUM_SOURCES} from '../server/ethereum-activity.mjs';
-import {activityEvent,ACTIVITY_MODE} from '../shared/ethereum-activity.mjs';
-import {deterministicManifest} from './deterministic-fixture.ts';
+import {poolFixture} from './pool-fixture.ts';
 
 const time=1800000000;
 const releaseEvent=(repository:string,tag:string)=>({id:repository.split('/')[1],question:`Will ${repository} publish stable release ${tag} during the specified observation window?`,
@@ -16,21 +13,16 @@ const releaseEvent=(repository:string,tag:string)=>({id:repository.split('/')[1]
 
 test('release questions publish the exact GitHub API record the settlement check reads',()=>{
   const manifest={publication:{mode:'official-releases',draft:{events:[releaseEvent('ethereum/go-ethereum','v1.17.7'),releaseEvent('paradigmxyz/reth','v2.6.1')]}}};
-  const sources=settlementSources(manifest);
-  for(const [i,event] of manifest.publication.draft.events.entries()){
-    assert.deepEqual(sources[i],{method:'github-stable-release-publication.v1',request:'GET',urls:[releaseSpec(manifest,event.id).endpoint]});
-  }
+  assert.deepEqual(settlementSources(manifest),[
+    {method:'github-stable-release-publication.v1',request:'GET',urls:['https://api.github.com/repos/ethereum/go-ethereum/releases/tags/v1.17.7']},
+    {method:'github-stable-release-publication.v1',request:'GET',urls:['https://api.github.com/repos/paradigmxyz/reth/releases/tags/v2.6.1']},
+  ]);
 });
 
-test('deterministic questions publish every exact address in their committed settlement rule',()=>{
-  const manifest=deterministicManifest(),sources=settlementSources(manifest);
+test('mechanical questions publish every exact address in their committed settlement rule',()=>{
+  const manifest:any=poolFixture().manifest,sources=settlementSources(manifest);
   assert.equal(sources.length,manifest.publication.draft.events.length);
-  sources.forEach((source,i)=>assert.deepEqual(source,{method:'json-record.v1',request:'GET',urls:manifest.publication.settlementRules[i].source.urls}));
-});
-
-test('Ethereum activity questions publish the node endpoints settlement queries, marked as JSON-RPC',()=>{
-  const target=time+120,manifest={publication:{mode:ACTIVITY_MODE,draft:{events:[activityEvent('fullness',target),activityEvent('transactions',target)]}}};
-  for(const source of settlementSources(manifest))assert.deepEqual(source,{method:'ethereum-activity.v1',request:'JSON-RPC',urls:ETHEREUM_SOURCES});
+  sources.forEach((source,i)=>assert.deepEqual(source,{method:'json-api.v1',request:'GET',urls:manifest.publication.settlementRules[i].source.urls}));
 });
 
 test('practice questions and questions without a machine-checked source publish nothing',()=>{

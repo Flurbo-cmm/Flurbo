@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {priceHistory} from '../server/price-history.mjs';
-import {pilotFixture} from './pilot-fixture.ts';
+import {poolFixture} from './pool-fixture.ts';
 
 function archive(){
   const rows=new Map<string,string[]>();let writes=0;
@@ -18,7 +18,7 @@ function archive(){
   return {rows,command,get writes(){return writes;}};
 }
 test('price archive survives service reconstruction, coalesces reads and contains no trader data',async()=>{
-  let now=1800000000,reads=0;const f=pilotFixture(now,4),db=archive();
+  let now=1800000000,reads=0;const f=poolFixture(now,4),db=archive();
   const service={manifest:f.manifest,markets:async()=>{reads++;return {...await f.service.markets(),snapshot:{...(await f.service.snapshot()),timestamp:now},owner:'PRIVATE',transaction:'PRIVATE'};}};
   const history=priceHistory({service,command:db.command,now:()=>now});
   const results=await Promise.all([history.read(),history.read(),history.read()]);
@@ -33,7 +33,7 @@ test('price archive survives service reconstruction, coalesces reads and contain
   const foreign=await other.read();assert.equal(foreign.points.length,0);assert.equal(foreign.sampling,'unavailable');
 });
 test('closed, stale and failed reads never invent price samples',async()=>{
-  let now=1800000000;const f=pilotFixture(now),db=archive();let mode='open';
+  let now=1800000000;const f=poolFixture(now),db=archive();let mode='open';
   const service={manifest:f.manifest,markets:async()=>{
     if(mode==='fail')throw Error('PRIVATE upstream');
     const value=await f.service.markets();

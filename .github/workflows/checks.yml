@@ -21,7 +21,9 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
-      - name: Envio config matches active collections
+      - name: Envio config generator tests
+        run: npm --prefix packages/envio-indexer test
+      - name: Envio config matches hybrid markets
         run: |
           npm --prefix packages/envio-indexer run config
           git diff --exit-code -- packages/envio-indexer/config.yaml
@@ -98,7 +100,6 @@ jobs:
           npm --prefix contracts ci
           forge build
           python3 -m pip install --quiet -e packages/sdk-python
-      # Runs after apps/web is installed: the CRE tests import apps/web modules that resolve viem from apps/web/node_modules.
       - name: Settlement preparation types and rules
         working-directory: workflows/cre
         run: |

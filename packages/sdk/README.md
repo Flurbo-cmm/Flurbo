@@ -79,7 +79,7 @@ The runtime journals every intent before signing, records the signed bytes befor
 
 ## Local chain and acceptance demonstration
 
-`tools/local-stack.ts` starts an anvil chain with chain id 10143, local test AUSD at the canonical address, a funded pilot pool and the real Flurbo API. `node tools/acceptance-demo.ts` runs an agent outside the browser through every acceptance step. Needs anvil and a `forge build` in the repository root.
+`tools/local-stack.ts` starts an anvil chain with chain id 10143, local test AUSD at the canonical address, a funded hybrid pool (`WidePilotPool` with a `HybridPilotResolver`, two mechanical questions) served as the agent pool `practice-<pool address without 0x>`, and the real Flurbo API. `node tools/acceptance-demo.ts` runs an agent outside the browser through every acceptance step. Needs anvil and a `forge build` in the repository root.
 
 ## Tests and typechecks
 

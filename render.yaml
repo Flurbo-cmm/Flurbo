@@ -11,11 +11,7 @@ services:
         value: https://flurbopm.singu.online
       - key: FLURBO_NETWORK
         value: public_testnet
-      - key: FLURBO_COLLECTIONS_SOURCE
-        value: registry
-      - key: FLURBO_PILOT_DISABLED
-        value: "true"
-      - key: FLURBO_SETTLEMENT_BOT
+      - key: FLURBO_SCHEDULER
         value: "false"
       - key: UPSTASH_REDIS_REST_URL
         sync: false

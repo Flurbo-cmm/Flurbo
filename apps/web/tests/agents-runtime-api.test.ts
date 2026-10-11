@@ -4,16 +4,19 @@ import {privateKeyToAccount,generatePrivateKey} from 'viem/accounts';
 import {encodeFunctionData,encodeAbiParameters,encodeEventTopics} from 'viem';
 import {pilotPoolAbi,pilotCash,pilotCashAbi} from '../shared/pilot.mjs';
 import {alice,bob,setup,forecast} from './agent-fixture.ts';
-import {owner} from './pilot-fixture.ts';
+import {owner} from './pool-fixture.ts';
 import {settlementSources} from '../shared/settlement-sources.mjs';
+import {claimAnalytics} from '../server/claim-analytics.mjs';
+import {pairAnalytics,runPairModel} from '../server/pair-analytics.mjs';
+import {rustExample} from './rust-example.ts';
 
 // Hosted side of the autonomous agent platform: credentials, wallet association, the headless runtime API
 // and verification of transactions a runtime signed itself. The fake chain answers the reads; signatures
 // are real (viem), keys are random test keys.
 type Setup=ReturnType<typeof setup>;
 const ALL=['markets:read','wallet:read','runtime:report','executions:report'];
-async function runtimeAgent(s:Setup,login=alice,name='Autonomous agent'){
-  const r=await s.call(login,'POST','/api/agents',{kind:'runtime',name,markets:['pilot']});
+async function runtimeAgent(s:Setup,login=alice,name='Autonomous agent',markets=['pilot']){
+  const r=await s.call(login,'POST','/api/agents',{kind:'runtime',name,markets});
   assert.equal(r.status,200,JSON.stringify(r.body));return r.body;
 }
 async function credential(s:Setup,id:string,scopes=ALL,login=alice,extra:Record<string,unknown>={}){
@@ -157,6 +160,48 @@ test('runtime reads: deployment record, market detail, quotes and the associated
   const {wallet}=await associate(s,agent.id);
   const state=(await rt(s,token,'POST','markets/pilot/wallet',{claims:[{scope:3,mask:'8'}]})).body;
   assert.deepEqual([state.wallet,state.collateralAtoms,state.nativeBalanceWei,state.holdings[0].quantityAtoms],[wallet.address.toLowerCase(),'100000000','1000000000000000000','1000000']);
+});
+
+test('a hybrid agent pool served under its practice namespace keeps the v1 deployment, market and analytics reads',async()=>{
+  const s=setup(),ns=s.f.namespace,m=s.f.manifest;
+  s.f.service.claimAnalytics=claimAnalytics({service:s.f.service,rpc:s.rpc,now:()=>s.clock()});
+  s.f.service.analytics=pairAnalytics({service:s.f.service,rpc:s.rpc,now:()=>s.clock(),model:(input:string)=>runPairModel(input,{file:rustExample('pair_analytics')})});
+  const agent=await runtimeAgent(s,alice,'Hybrid agent',[ns]),{token}=await credential(s,agent.id);
+  const deployments=(await rt(s,token,'GET','deployments')).body.deployments;
+  assert.deepEqual(deployments,[{schema:'flurbo.agent-deployment.v1',interface:'flurbo.pilot-pool.v1',namespace:ns,chainId:10143,pool:m.pool,resolver:m.resolver,
+    collateral:{address:pilotCash,decimals:6},codeHashes:{pool:m.codeHashes[m.pool],resolver:m.codeHashes[m.resolver]},rulesHash:m.rulesHash,
+    closesAt:m.publication.draft.closesAt,eventCount:3,limits:{maxQuantityAtoms:'100000000',maxLimitAtoms:'100000000',slippageBps:[10,50,100],maxDeadlineSeconds:300}}]);
+  const market=(await rt(s,token,'GET','markets/'+ns)).body;
+  assert.equal(market.namespace,ns);assert.equal(market.open,true);assert.equal(market.events.length,3);
+  for(const e of market.events){assert.ok(e.yesRule.length>20);assert.ok(e.noRule.length>20);assert.equal(e.source.publisher,'Official publisher');}
+  assert.deepEqual(market.events.map((e:any)=>e.settlement),settlementSources(m));
+  assert.equal(market.events[0].settlement.method,'json-api.v1');
+  const quote=(await rt(s,token,'POST','markets/'+ns+'/quote',{side:'buy',scope:3,mask:'8',quantityAtoms:'1000000'})).body;
+  assert.equal(quote.status,'ok');assert.equal(quote.quote.claim.pool,m.pool);
+  const claim=await rt(s,token,'POST','markets/'+ns+'/claim-analytics',{scope:3,mask:'8'});
+  assert.equal(claim.status,200,JSON.stringify(claim.body));assert.equal(claim.body.schema,'flurbo.claim-analytics.v1');assert.equal(claim.body.pool,m.pool);
+  const pair=await rt(s,token,'POST','markets/'+ns+'/pair-analytics',{a:0,b:1});
+  assert.equal(pair.status,200,JSON.stringify(pair.body));assert.equal(pair.body.schema,'flurbo.pair-analytics.v1');assert.equal(pair.body.pool,m.pool);
+  const {wallet}=await associate(s,agent.id);
+  const state=(await rt(s,token,'POST','markets/'+ns+'/wallet',{claims:[{scope:3,mask:'8'}]})).body;
+  assert.deepEqual([state.wallet,state.namespace,state.collateralAtoms,state.holdings[0].quantityAtoms],[wallet.address.toLowerCase(),ns,'100000000','1000000']);
+});
+
+test('runtime analytics routes accept exact input only and never expose upstream errors',async()=>{
+  const s=setup(),ns=s.f.namespace;let calls=0,fail=false;
+  s.f.service.claimAnalytics=async()=>{calls++;if(fail)throw Error('sensitive provider detail');return {ok:true};};
+  s.f.service.analytics=async()=>{calls++;if(fail)throw Error('private upstream');return {ok:true};};
+  const agent=await runtimeAgent(s,alice,'Analytics agent',[ns]),{token}=await credential(s,agent.id);
+  for(const bad of [null,[],{scope:3},{scope:3,mask:'14',to:'wallet'}])assert.equal((await rt(s,token,'POST','markets/'+ns+'/claim-analytics',bad)).status,400);
+  for(const bad of [null,[],{a:0},{a:0,b:1,to:'wallet'}])assert.equal((await rt(s,token,'POST','markets/'+ns+'/pair-analytics',bad)).status,400);
+  assert.equal(calls,0);
+  assert.equal((await rt(s,token,'POST','markets/'+ns+'/claim-analytics',{scope:3,mask:'14'})).status,200);
+  assert.equal((await rt(s,token,'POST','markets/'+ns+'/pair-analytics',{a:0,b:1})).status,200);
+  fail=true;
+  for(const [path,body] of [['claim-analytics',{scope:3,mask:'14'}],['pair-analytics',{a:0,b:1}]] as const){
+    const result=await rt(s,token,'POST','markets/'+ns+'/'+path,body);
+    assert.equal(result.status,503);assert.equal(result.body.code,'UNAVAILABLE');assert.ok(!/sensitive|private/.test(JSON.stringify(result.body)));
+  }
 });
 
 test('heartbeats, policy acknowledgement and pause are visible to the owner, and decisions are labelled self-reported',async()=>{

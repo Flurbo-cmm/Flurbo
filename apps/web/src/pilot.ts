@@ -1,6 +1,4 @@
 import { keccak256, type Hex } from 'viem';
-import {eligibilityTypedData} from '../shared/holder-challenge.mjs';
-import {verifyTypedData} from 'viem';
 import { appFetch as fetch } from './platform-fetch.ts';
 import { takeEarly } from './prefetch.ts';
 import { pilotCall, type PilotManifest } from '../shared/pilot.mjs';
@@ -23,9 +21,7 @@ export type PilotState={manifest:PilotManifest;snapshot:{blockNumber:string;bloc
   delivered:boolean;resolved:boolean;voidMask:number;requiredCollateral:string;poolCash:string;maxTradeQuantityAtoms?:string;
   factorScopes?:number[];eliminationOrder?:number[];
   wallet:null|{address:string;cash:string;credits:string;reviewer:boolean}};
-export type HoldingWitness={holder:string;scope:number;mask:string;wrapped:boolean};
-export type HolderAuthorization=HoldingWitness&{accountCommitment:Hex;challenger:string;nonce:string;deadline:string};
-export type PilotInput={owner:string;action:string;event?:number;outcome?:number;evidenceHash?:string;evidenceURI?:string;scope?:number;mask?:string;quantity?:string;slippageBps?:number;stake?:HoldingWitness;authorization?:HolderAuthorization;signature?:Hex};
+export type PilotInput={owner:string;action:string;event?:number;outcome?:number;evidenceHash?:string;evidenceURI?:string;scope?:number;mask?:string;quantity?:string;slippageBps?:number};
 export type PilotReview={schema:string;manifest:PilotManifest;snapshot:PilotState['snapshot'];expiresAt:number;action:string;requested:PilotInput;title:string;amountAtoms:string;minimumReceivedAtoms?:string;
   gasLimit:string;gasPrice:string;maximumFeeWei:string;semanticAssessment?:SemanticAssessment|null;impact?:{quoteAtoms:string;oneShareAtoms:string}|null;quotedCostAtoms?:string|null;
   transaction:{from:Hex;to:Hex;data:Hex;value:Hex;chainId:Hex};notice:string};
@@ -41,7 +37,7 @@ export function priceImpact(review:Pick<PilotReview,'impact'|'requested'|'action
     return {averageAtoms,bps:Number(worse*10_000n/one)};
   }catch{return null;}
 }
-const practiceModes = ['rehearsal','ethereum-activity','deterministic-source-v1'];
+const practiceModes = ['hybrid-v4'];
 export type PilotNamespace='pilot'|`practice-${string}`;
 export const isPracticeNamespace=(value:string):value is Exclude<PilotNamespace,'pilot'>=>/^practice-[0-9a-f]{40}$/.test(value);
 export const pendingKeyFor=(namespace:PilotNamespace)=>{
@@ -112,15 +108,6 @@ export function validatePilotReview(r:PilotReview,now=Date.now(),tracking=false)
   if(BigInt(r.gasLimit)>15_000_000n||BigInt(r.gasPrice)>500_000_000_000n||BigInt(r.maximumFeeWei)!==BigInt(r.gasLimit)*BigInt(r.gasPrice))throw new Error('Fee exceeds pilot policy');
   if(!plan || plan.name!==r.action) throw new Error('Transaction differs from the displayed action');
   const a=plan.args, wanted=r.requested;
-  if(wanted.action==='dispute'&&r.manifest.challengePolicy){
-    const e=wanted.authorization;
-    if(!e||!wanted.signature||e.challenger.toLowerCase()!==wanted.owner.toLowerCase()||!tracking&&Number(e.deadline)<=now/1000)throw Error('Challenge eligibility expired. Review again.');
-    if(plan.name==='dispute'){
-      const encoded=a[4] as Record<string,unknown>;
-      for(const key of ['accountCommitment','challenger','holder','scope','mask','wrapped','nonce','deadline'] as const)if(String(encoded[key]).toLowerCase()!==String(e[key]).toLowerCase())throw Error('Challenge eligibility changed.');
-      if(a[5]!==wanted.signature)throw Error('Challenge signature changed.');
-    }
-  }
   if(plan.name==='approve') {
     const spender=['buy','sell','redeem'].includes(wanted.action)?r.manifest.pool:r.manifest.resolver;
     if(String(a[0]).toLowerCase()!==spender || String(a[1])!==r.amountAtoms || !['buy','assertOutcome','dispute'].includes(wanted.action)) throw new Error('Unexpected approval');
@@ -172,7 +159,6 @@ export async function validatePurchaseSemantics(r:PilotReview, namespace:PilotNa
 
 export async function submitPilot(p:Provider,r:PilotReview,login:string,save:(value:PilotPending|null)=>void,current:()=>boolean,options:{namespace?:PilotNamespace;acknowledgment?:{rulesDigest:string;phrase:string}}={}) {
   validatePilotReview(r); await walletIdentity(p,r);
-  if(r.requested.action==='dispute'&&r.manifest.challengePolicy&&!await verifyTypedData({...eligibilityTypedData(r.manifest.resolver,r.requested,r.requested.authorization),address:r.manifest.challengePolicy.authority as Hex,signature:r.requested.signature!}))throw Error('Invalid challenge eligibility signature.');
   for(const to of [r.manifest.pool,r.manifest.resolver]) {
     const code=await p.request({method:'eth_getCode',params:[to,'latest']}) as Hex;
     if(keccak256(code)!==r.manifest.codeHashes[to]) throw new Error('Wallet contract code differs from the verified deployment.');
