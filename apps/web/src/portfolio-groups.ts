@@ -1,11 +1,10 @@
 import {claimEvents,decodeClaim} from '../shared/claims.mjs';
-import type {PilotNamespace} from './pilot';
-import type {HybridMarket,MarketGroup} from './market-directory';
+import type {HybridMarket} from './market-directory';
 
 export type HybridNamespace=`hybrid-0x${string}`;
-export type PortfolioNamespace=PilotNamespace|HybridNamespace;
+export type PortfolioNamespace=HybridNamespace;
 export type HybridPortfolioGroup={kind:'hybrid';namespace:HybridNamespace;label:string;pool:string;closesAt:number};
-export type PortfolioGroup=MarketGroup|HybridPortfolioGroup;
+export type PortfolioGroup=HybridPortfolioGroup;
 export const isHybridNamespace=(value:string):value is HybridNamespace=>/^hybrid-0x[0-9a-f]{40}$/.test(value);
 export const isHybridGroup=(group:PortfolioGroup):group is HybridPortfolioGroup=>'kind' in group&&group.kind==='hybrid';
 export function hybridNamespace(pool:string):HybridNamespace{
@@ -20,6 +19,11 @@ export function hybridPortfolioGroups(markets:Pick<HybridMarket,'pool'|'poolTitl
     if(!groups.has(pool))groups.set(pool,{kind:'hybrid',namespace:hybridNamespace(pool),label:market.poolTitle,pool,closesAt:market.closesAt});
   }
   return [...groups.values()];
+}
+// Old practice market links name the agent pool namespace; the same pool is now a hybrid market page.
+export function legacyPracticeRedirect(pathname:string):string|null{
+  const match=pathname.match(/^\/markets\/practice-([0-9a-f]{40})\/([0-3])(\/thesis)?$/);
+  return match?`/markets/hybrid/0x${match[1]}/${match[2]}${match[3]??''}`:null;
 }
 export const firstEvent=(scope:number):number=>claimEvents(scope)[0];
 export function hybridClaimHref(pool:string,scope:number,mask:string):string{

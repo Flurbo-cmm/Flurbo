@@ -5,7 +5,7 @@ import { decodeAbiParameters, encodeAbiParameters, keccak256, parseAbiParameters
 import { canonical, settlementRuleHash, validateSettlementRule } from '../server/settlement-rules.mjs';
 import { hybridArbitrator, SEPOLIA_REALITY, TEST_AUSD } from '../server/oracle-integration.mjs';
 
-const configAbi = parseAbiParameters('(address collateral,bytes32 draftHash,uint64 closesAt,bytes32[] eventHashes,uint64[] observationEnds,uint8[] routes,address proposer,address relay,uint128 bond,uint32 assertionPeriod,uint32 challengePeriod,uint32 reportPeriod,uint32 arbitrationPeriod) config');
+export const hybridConfigAbi = parseAbiParameters('(address collateral,bytes32 draftHash,uint64 closesAt,bytes32[] eventHashes,uint64[] observationEnds,uint8[] routes,address proposer,address relay,uint128 bond,uint32 assertionPeriod,uint32 challengePeriod,uint32 reportPeriod,uint32 arbitrationPeriod) config');
 const address = value => /^0x[0-9a-fA-F]{40}$/.test(value || '') && !/^0x0{40}$/i.test(value);
 const hash = value => /^0x[0-9a-fA-F]{64}$/.test(value || '') && !/^0x0{64}$/i.test(value);
 const duration = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
@@ -18,12 +18,12 @@ export function realityQuestionText(question, ruleURI) {
 export function hybridRulesHash(prepared, resolver) {
   if (prepared?.schema !== 'flurbo.hybrid-prepared.v4' || !address(resolver))
     throw Error('Invalid hybrid rules hash input');
-  const [config] = decodeAbiParameters(configAbi, prepared.resolverConfig);
+  const [config] = decodeAbiParameters(hybridConfigAbi, prepared.resolverConfig);
   if (keccak256(prepared.resolverConfig) !== prepared.configHash
     || config.draftHash !== prepared.draftHash || !same(config.proposer, prepared.proposer)
     || !same(config.relay, prepared.relay)) throw Error('Hybrid configuration changed');
   return keccak256(encodeAbiParameters([
-    ...parseAbiParameters('string domain,uint256 chainId,address resolver,address creator'), ...configAbi,
+    ...parseAbiParameters('string domain,uint256 chainId,address resolver,address creator'), ...hybridConfigAbi,
   ], ['flurbo.pilot.hybrid.v4', 10143n, resolver, prepared.creator, config]));
 }
 
@@ -103,7 +103,7 @@ export function prepareHybridPilot(input) {
     proposer: input.proposer, relay: input.relay, bond: BigInt(input.bondAtoms),
     assertionPeriod: input.assertionPeriod, challengePeriod: input.challengePeriod,
     reportPeriod: input.reportPeriod, arbitrationPeriod: input.arbitrationPeriod };
-  const resolverConfig = encodeAbiParameters(configAbi, [config]);
+  const resolverConfig = encodeAbiParameters(hybridConfigAbi, [config]);
   return { schema: 'flurbo.hybrid-prepared.v4', chainId: 10143, creator: input.creator,
     proposer: input.proposer, relay: input.relay,
     draft, draftHash, eventHashes, configHash: keccak256(resolverConfig), resolverConfig,

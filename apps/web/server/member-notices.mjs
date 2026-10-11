@@ -169,7 +169,7 @@ ${url}${stage.href}`;
     return { to: [email], subject, text, unsubscribeUrl };
   }
 
-  // Runs every settlement-bot cycle. Returns a short status for /healthz.
+  // Runs every scheduler cycle. Returns a short status for /healthz.
   async function tick() {
     if (env.FLURBO_NOTIFY_ENABLED !== 'true') return 'disabled';
     if (!applications?.contacts || !secret || !send) return 'not_configured';

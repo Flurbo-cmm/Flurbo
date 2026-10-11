@@ -34,7 +34,7 @@ export function fundingAlerts({ env = process.env, rpcUrl, command, dispenser = 
 
   const describe = (name, w) => `${name} ${w.address}: ${w.balance} ${w.unit} left, enough for about ${w.left} ${w.leftLabel}. Alert threshold: ${w.threshold} ${w.unit}.`;
 
-  // Called every settlement-bot cycle; reads balances at most every 30 minutes.
+  // Called every scheduler cycle; reads balances at most every 30 minutes.
   async function tick() {
     if (now() - lastAt < checkEveryMs) return latest ? (['dispenser', 'starter'].some(k => latest[k]?.low) ? 'low' : 'ok') : 'not_checked';
     const result = await check();

@@ -13,10 +13,8 @@ const rel = (file: string) => relative(SRC, file).split(sep).join('/');
 const text = (file: string) => readFile(file, 'utf8');
 
 // Operator pages may keep dropdowns and their own wide tables.
-const OPERATOR_PAGES = ['Workspace.tsx', 'Metrics.tsx', 'MetricsSummary.tsx', 'EvidenceReview.tsx', 'LearningPool.tsx', 'LearningExecution.tsx', 'LearningComparison.tsx'];
-// Pilot.tsx keeps native selects for the operator view and the challenge answer, which existing tests drive with selectOption.
-const NATIVE_SELECT_PAGES = ['Pilot.tsx'];
-const OPERATOR_SELECTORS = /^(\.(metrics|workspace|ws|learning|comparison|evidence-review|operator)[\w-]*)/;
+const OPERATOR_PAGES = ['Workspace.tsx', 'Metrics.tsx', 'MetricsSummary.tsx', 'LearningPool.tsx', 'LearningExecution.tsx', 'LearningComparison.tsx'];
+const OPERATOR_SELECTORS = /^(\.(metrics|workspace|ws|learning|comparison|operator)[\w-]*)/;
 const BANNED = /\b(bet|betting|wager|odds|jackpot|gamble|gambling|punt|parlay|degen|win big|cash out|lock it in|hot|streak|boost)\b/i;
 
 test('no em or en dashes anywhere in the web source', async () => {
@@ -49,7 +47,7 @@ test('member pages render no dropdowns', async () => {
     const member = (/^pages\/[^/]+\.tsx$/.test(path) && !OPERATOR_PAGES.includes(path.slice(6))) || /^components\/market\//.test(path) || /^landing\//.test(path);
     if (!member) continue;
     const source = await text(file);
-    if ((/<select[\s>]/.test(source) && !NATIVE_SELECT_PAGES.includes(path.slice(6))) || /components\/ui\/Select['"]/.test(source) || /from ['"]\.\/ui\/Select['"]/.test(source)) bad.push(path);
+    if (/<select[\s>]/.test(source) || /components\/ui\/Select['"]/.test(source) || /from ['"]\.\/ui\/Select['"]/.test(source)) bad.push(path);
   }
   assert.deepEqual(bad, []);
 });

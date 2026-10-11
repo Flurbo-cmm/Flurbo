@@ -37,6 +37,4 @@ export function prefetchAccess(pathname: string) {
 export function prefetchApprovedData(pathname: string) {
   if (!/^\/(?:markets|portfolio)(?:\/|$)/.test(pathname)) return;
   prefetch('/api/market-directory');
-  const market = /^\/markets\/(pilot|practice-[0-9a-f]{40})\/\d+$/.exec(pathname);
-  if (market) { prefetch(`/api/${market[1]}/status`); prefetch(`/api/${market[1]}/markets`); }
 }

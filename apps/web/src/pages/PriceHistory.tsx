@@ -1,5 +1,4 @@
 import {useCallback,useEffect,useId,useRef,useState} from 'react';
-import {pilotRequest,type PilotNamespace} from '../pilot';
 import {appFetch} from '../platform-fetch';
 
 type Point={timestamp:number;blockNumber:string;prices:{event:number;yes:string|null;no:string|null}[]};
@@ -8,7 +7,7 @@ const stamp=(n:number)=>new Date(n*1000).toLocaleString(undefined,{month:'short'
 const axisStamp=(n:number)=>new Date(n*1000).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
 const TOP=20,BOTTOM=206,HEIGHT=240,LEFT=44;
 const square=(cx:number,cy:number,size:number)=>`M${cx-size/2} ${cy-size/2}h${size}v${size}h${-size}Z`;
-export default function PriceHistory({namespace,oracleId,hybridId,event,pool,refresh}:{event:number;pool:string;refresh:number}&({namespace:PilotNamespace;oracleId?:never;hybridId?:never}|{namespace?:never;oracleId:string;hybridId?:never}|{namespace?:never;oracleId?:never;hybridId:string})){
+export default function PriceHistory({oracleId,hybridId,event,pool,refresh}:{event:number;pool:string;refresh:number}&({oracleId:string;hybridId?:never}|{oracleId?:never;hybridId:string})){
   const [data,setData]=useState<History|null>(null),[error,setError]=useState(false);
   const [range,setRange]=useState<'day'|'all'>('all');
   // The chart draws in real pixels of its column, so labels stay legible from phones to wide screens.
@@ -20,15 +19,15 @@ export default function PriceHistory({namespace,oracleId,hybridId,event,pool,ref
   },[]);
   useEffect(()=>()=>observer.current?.disconnect(),[]);
   useEffect(()=>{const abort=new AbortController();setError(false);
-    const load=oracleId||hybridId?appFetch(`/api/${oracleId?'oracle':'hybrid'}/${oracleId||hybridId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
+    const load=appFetch(`/api/${oracleId?'oracle':'hybrid'}/${oracleId||hybridId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
       if(!response.ok)throw Error('Price history unavailable');
       return response.json() as Promise<History>;
-    }):pilotRequest<History>('price-history',undefined,namespace!,abort.signal);
+    });
     void load.then(value=>{
       if(value.pool!==pool)throw Error('Different collection');
       if(!abort.signal.aborted)setData(value);
     }).catch(()=>{if(!abort.signal.aborted)setError(true);});return()=>abort.abort();
-  },[namespace,oracleId,hybridId,pool,event,refresh]);
+  },[oracleId,hybridId,pool,event,refresh]);
   const points=(data?.points||[]).filter(p=>range==='all'||p.timestamp>=Date.now()/1000-86400);
   const start=points[0]?.timestamp||0,end=points.at(-1)?.timestamp||start;
   const ceiling=Math.max(1,...points.flatMap(p=>{const q=p.prices.find(q=>q.event===event);return [Number(q?.yes||0)/1e6,Number(q?.no||0)/1e6];}));

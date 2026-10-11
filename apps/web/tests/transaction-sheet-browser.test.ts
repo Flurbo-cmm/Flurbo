@@ -3,8 +3,6 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { encodeFunctionData, parseAbi } from 'viem';
-import { pilotFixture, owner as pilotOwner, hash as pilotHash, code } from './pilot-fixture.ts';
-import { assessSemantics } from '../server/semantic-validation.mjs';
 
 const skip = !process.env.FLURBO_TEST_PLAYWRIGHT;
 const ORIGIN = 'https://flurbo.singu.online';
@@ -121,63 +119,5 @@ test('a sheet waiting for the wallet cannot be dismissed, and a sent transaction
     await page.waitForURL(url => new URL(url).pathname === `/markets/hybrid/${pool}/0`);
     await page.getByRole('dialog', { name: 'Waiting for confirmation' }).waitFor();
     assert.deepEqual(errors, []);
-  } finally { await browser.close(); }
-});
-
-test('the pilot ticket docks its auto-prepared review with the confirm button in view', { skip }, async () => {
-  const { chromium } = await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.FLURBO_TEST_BROWSER });
-  const f = pilotFixture(Math.floor(Date.now() / 1000), 4), namespace = 'practice-' + f.manifest.pool.slice(2), login = '0x' + '99'.repeat(20);
-  f.manifest.publication.mode = 'rehearsal';
-  try {
-    for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 664 }]) {
-      const page = await browser.newPage({ viewport }), errors: string[] = [];
-      let linked = false;
-      page.on('pageerror', (error: Error) => errors.push(error.message));
-      await page.addInitScript(({ owner, hash, code }: any) => {
-        (window as any).ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {}, request: async ({ method }: any) => {
-          if (method === 'wallet_requestPermissions') return [];
-          if (method === 'personal_sign') return '0x' + '11'.repeat(65);
-          if (['eth_accounts', 'eth_requestAccounts'].includes(method)) return [owner];
-          if (method === 'eth_chainId') return '0x279f';
-          if (method === 'eth_getBlockByNumber') return { number: '0x65', hash };
-          if (method === 'eth_getCode') return code;
-          if (method === 'eth_call') return '0x';
-          if (method === 'eth_estimateGas') return '0x186a0';
-          if (method === 'eth_gasPrice') return '0x3b9aca00';
-          if (method === 'eth_getBalance') return '0xde0b6b3a7640000';
-          if (method === 'eth_getTransactionCount') return 121;
-          throw new Error(method);
-        } };
-      }, { owner: pilotOwner, hash: pilotHash, code });
-      await page.route('**/*', async (route: any) => {
-        const url = new URL(route.request().url()), path = url.pathname;
-        if (path === '/api/auth/session') return route.fulfill({ json: { session: { address: login, method: 'passkey', expiresAt: Date.now() + 3600_000 } } });
-        if (path === '/api/account/access') return route.fulfill({ json: { approved: true, testingTools: false } });
-        if (path === '/api/account/wallets' || path === '/api/account/portfolio-sources') return route.fulfill({ json: { account: login, wallets: linked ? [pilotOwner] : [], agentWallets: [] } });
-        if (path === '/api/account/wallets/challenge') return route.fulfill({ json: { id: 'fixture-proof', message: 'Link this MetaMask wallet to your Flurbo account; no transaction.' } });
-        if (path === '/api/account/wallets/verify') { linked = true; return route.fulfill({ json: { account: login, wallets: [pilotOwner] } }); }
-        if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', active: namespace, markets: [{ namespace, label: 'Sheet fixture', pool: f.manifest.pool, closesAt: f.manifest.publication.draft.closesAt }] } });
-        if (path === `/api/${namespace}/markets`) return route.fulfill({ json: await f.service.markets() });
-        if (path === `/api/${namespace}/status`) return route.fulfill({ json: await f.service.status(url.searchParams.get('wallet') || undefined) });
-        if (path === `/api/${namespace}/prepare`) return route.fulfill({ json: await f.service.prepare(route.request().postDataJSON()) });
-        if (path === `/api/${namespace}/validate-trade`) return route.fulfill({ json: assessSemantics(f.manifest, route.request().postDataJSON()) });
-        if (path === `/api/${namespace}/positions`) return route.fulfill({ json: { rows: [{ mask: '2', quantity: '0', payoutAtoms: null }, { mask: '1', quantity: '0', payoutAtoms: null }] } });
-        if (path === `/api/${namespace}/position`) return route.fulfill({ json: { quantity: '0', payoutAtoms: null } });
-        if (path === `/api/${namespace}/price-history`) return route.fulfill({ json: { pool: f.manifest.pool, sampling: 'current', points: [] } });
-        if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unavailable fixture' } });
-        return asset(route, path);
-      });
-      await page.goto(`${ORIGIN}/markets/${namespace}/0`);
-      await page.getByRole('button', { name: /^(Connect MetaMask|Link selected wallet)$/ }).click();
-      const sheet = page.getByRole('dialog', { name: 'Step 1 of 2: allow this payment' });
-      await sheet.waitFor({ timeout: 20000 });
-      const allow = sheet.getByRole('button', { name: 'Allow payment', exact: true });
-      await page.waitForTimeout(400);
-      assert.ok(await inView(page, allow), `${viewport.width}x${viewport.height}: confirm button out of view`);
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-      assert.deepEqual(errors, []);
-      await page.close();
-    }
   } finally { await browser.close(); }
 });

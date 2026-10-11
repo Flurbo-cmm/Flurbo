@@ -14,10 +14,9 @@ import {configureApplications} from './access-applications.mjs';
 import { RedisSessionStore, redisCommand } from './redis-session.mjs';
 import { runComparison } from './learning-comparison.mjs';
 import { learningService, learningRpc, loadLearningModel } from './learning-pool.mjs';
-import { pilotEvidence, pilotRpc } from './pilot.mjs';
-import { configurePilot } from './pilot-config.mjs';
+import { poolRpc } from './pool-rpc.mjs';
+import { evidenceArchive } from './evidence-archive.mjs';
 import { androidAssetLinks } from './native-association.mjs';
-import { configurePracticeCollections } from './practice-collections.mjs';
 import { loadSemanticConfig, semanticDiagnostics } from './semantic-validation.mjs';
 import { createSettlementStores } from './settlement-persistence.mjs';
 import { starterConfig, starterFunds } from './starter-funds.mjs';
@@ -35,6 +34,8 @@ import { hybridNoticePools } from './hybrid-notices.mjs';
 import { hybridPoolIndexes, hybridPortfolioService } from './hybrid-portfolio.mjs';
 import { hybridMarketService } from './hybrid-market-service.mjs';
 import { proofCaptureRules, proofCaptureService } from './proof-captures.mjs';
+import { hybridAgentPools } from './hybrid-pool-service.mjs';
+import { periodicTasks } from './scheduler.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -47,24 +48,19 @@ const security = {
 export function productionServer(config, store, staticRoot = dist) {
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
-    learningDashboardUrl: config.learningDashboardUrl, pilot: config.pilot, practiceCollections:config.practiceCollections, evidence: config.pilotEvidence, evidenceOptions: config.evidenceOptions, challengeOptions:config.challengeOptions, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures });
+    learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures });
   config.metrics = api.metrics;
   config.notices = api.notices;
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', pilot_pool: config.pilot ? 'configured' : 'disabled', pilot_address: config.pilot?.manifest.pool || null, pilot_rules_hash: config.pilot?.manifest.rulesHash || null, settlement_bot: config.settlementBot ? config.settlementBot.status() : 'disabled', oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled', practice_collections: config.practiceCollections ? { active: config.practiceCollections.catalog.active, configured: [...config.practiceCollections.services].map(([namespace, service]) => ({ namespace, pool: service.manifest.pool, rulesHash: service.manifest.rulesHash, closesAt: service.manifest.publication.draft.closesAt })) } : null })); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled' })); return; }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
     if (req.url === '/envio') { await envioProxy(req, res, config.envioGraphqlUrl); return; }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
       const body = config.androidAssetLinks;
       res.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify(body || { error: 'Android association is not configured' })); return;
-    }
-    if(req.url==='/rehearsal-rules'&&req.method==='GET'){
-      res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});
-      res.end(JSON.stringify({schema:'flurbo-rehearsal.v1',notice:'Scripted testnet fixtures only. These records do not describe real-world events and must never settle the official release market.',
-        fixtures:[{event:'A',result:'YES',exercise:'Unchallenged assertion'},{event:'B',result:'NO',exercise:'Intentionally propose YES, challenge with NO, two reviewers vote NO'},{event:'C',result:null,exercise:'No assertion; finalize VOID after its assertion deadline'},{event:'D',result:'YES',exercise:'Unchallenged assertion'}]}));return;
     }
     if (!req.url || req.url.length > 4096) { res.writeHead(414); res.end(); return; }
     await api(req, res, async () => {
@@ -89,7 +85,7 @@ export function productionServer(config, store, staticRoot = dist) {
         }
         // Serve agent deep links on direct visits too; API session and invite gates still protect data.
         const agentPage = /^\/agents(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(pathname);
-        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/oracle\/[a-z0-9-]{1,64}$/.test(pathname) || /^\/markets\/hybrid\/0x[0-9a-f]{40}\/(?:[0-9]|[12][0-9]|3[01])(?:\/thesis)?$/i.test(pathname) || /^\/markets\/(?:pilot|practice-[0-9a-f]{40})\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/evidence', '/metrics'].includes(pathname);
+        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/oracle\/[a-z0-9-]{1,64}$/.test(pathname) || /^\/markets\/hybrid\/0x[0-9a-f]{40}\/(?:[0-9]|[12][0-9]|3[01])(?:\/thesis)?$/i.test(pathname) || /^\/markets\/practice-[0-9a-f]{40}\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/metrics'].includes(pathname);
         const brandAsset=/^\/brand\/(?:flurbo-icon-512\.png|flurbo-profile-2026\.png|flurbo-logo\.svg|flurbo-social-(?:landscape|portrait|banner|banner-v2)\.png)$/.test(pathname);
         const publicationAsset=pathname==='/technical_litepaper.pdf'||pathname==='/hybrid-meta-evidence.json';
         if (!page && !brandAsset && !publicationAsset && !/^\/(?:assets\/[a-zA-Z0-9_.-]+|favicon(?:-contour)?\.svg|robots\.txt)$/.test(pathname)) { await notFound(pathname); return; }
@@ -121,16 +117,15 @@ async function main() {
   // FLURBO_SHARED_LIMITS=true when running more than one instance so they share the budgets again.
   const sharedLimits = config.sharedLimits = process.env.FLURBO_SHARED_LIMITS === 'true';
   installRpcCapacity({command:sharedLimits?store.command:null});
-    config.pilotEvidence = pilotEvidence(store.command, config.origin);
+    config.evidenceArchive = evidenceArchive(store.command, config.origin);
     const settlementStores = createSettlementStores({command:store.command,origin:config.origin});
     config.settlementPackets = settlementStores.packetStore;
   config.starter = starterFunds({ config: starterConfig(), command: store.command, rpcUrl: config.rpcUrl });
   if (companySite && config.starter && config.starter.address.toLowerCase() !== process.env.FLURBO_COMPANY_STARTER_ADDRESS?.toLowerCase())
     throw Error('Company starter wallet needs an explicit matching public address');
-  // Low-balance email for the AUSD dispenser and the starter MON wallet, checked by the settlement bot.
+  // Low-balance email for the AUSD dispenser and the starter MON wallet, checked by the scheduler.
   config.fundingAlerts = fundingAlerts({ rpcUrl: config.rpcUrl, command: store.command, dispenser: config.testFaucet,
     starter: config.starter ? { address: config.starter.address, amount: config.starter.amountWei } : null });
-  config.pilot = companySite ? null : await configurePilot({rpcUrl:config.rpcUrl,command:store.command});
   if (companySite) {
     const catalog = oracleCatalog(JSON.parse(await readFile(resolve(root, 'config/oracle-markets.json'), 'utf8')));
     const hybrid = hybridSettlementCatalog(JSON.parse(await readFile(resolve(root, 'config/hybrid-markets.json'), 'utf8')));
@@ -144,8 +139,10 @@ async function main() {
     config.oracleEvidence = oracleEvidence(store.command, config.origin);
     const juror = /^0x[0-9a-fA-F]{40}$/.test(process.env.FLURBO_HYBRID_JUROR_ADDRESS || '') ? process.env.FLURBO_HYBRID_JUROR_ADDRESS : null;
     const hybridIndexes = hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
-      fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : pilotRpc('https://testnet-rpc.monad.xyz') });
+      fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : poolRpc('https://testnet-rpc.monad.xyz') });
     config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command, indexes: hybridIndexes });
+    // The same index Map as notices and Portfolio, so each persisted index keeps a single writer.
+    config.agentPools = await hybridAgentPools({ catalog: hybrid, rpc: poolRpc(config.rpcUrl), indexes: hybridIndexes });
     if (hybrid.pools.length) config.hybridPortfolio = hybridPortfolioService({ catalog: hybrid, market, indexes: hybridIndexes });
     if (hybrid.pools.length) config.hybrid = hybridMarketService({ catalog: hybrid,
       market, source, evidence: config.oracleEvidence, origin: config.origin, command: store.command });
@@ -167,7 +164,7 @@ async function main() {
     }
     if (process.env.FLURBO_HYBRID_SETTLEMENT_ENABLED === 'true' && hybrid.pools.length) {
       config.hybridSettlement = hybridSettlementWorker({ pools: hybrid.pools, source, market,
-        command: store.command, archive: config.pilotEvidence,
+        command: store.command, archive: config.evidenceArchive,
         captureStore: settlementStores.captureStore, packetStore: settlementStores.packetStore,
         oracleEvidence: config.oracleEvidence, origin: config.origin, marketRpcUrl: config.rpcUrl,
         proposerPrivateKey: process.env.FLURBO_HYBRID_PROPOSER_PRIVATE_KEY,
@@ -205,12 +202,10 @@ async function main() {
       } catch { console.error('Hybrid alerts disabled: set FLURBO_MONITOR_EMAIL_TO, FLURBO_MONITOR_EMAIL_FROM and FLURBO_MONITOR_RESEND_KEY'); }
     }
   }
-  config.practiceCollections=await configurePracticeCollections({rpcUrl:config.rpcUrl,command:store.command});
-  for(const service of config.practiceCollections.services.values())if(config.pilot&&(service.manifest.pool===config.pilot.manifest.pool||service.manifest.resolver===config.pilot.manifest.resolver))throw Error('Practice collections must be separate from the real pilot');
   // Invalid semantic configuration fails the deploy here instead of failing purchases later.
   const semantics = loadSemanticConfig();
-  const semanticStatus = semanticDiagnostics(semantics, [['pilot', config.pilot], ...config.practiceCollections.services]
-    .filter(([, service]) => service).map(([namespace, service]) => ({ namespace, manifest: service.manifest })));
+  const semanticStatus = semanticDiagnostics(semantics, [...(config.agentPools?.services ?? [])]
+    .map(([namespace, service]) => ({ namespace, manifest: service.manifest })));
   console.log(`Semantic validation ${semantics.mode} (revision ${semantics.revision.slice(0, 12)}): `
     + semanticStatus.markets.map(m => `${m.namespace}=${m.status}`).join(', '));
   for (const m of semanticStatus.markets) if (m.error) console.error(`Semantic rules for ${m.namespace} are misconfigured; new purchases there stop until fixed: ${m.error}`);
@@ -272,21 +267,24 @@ async function main() {
   config.hybridArbitration?.start();
   config.hybridCourt?.start();
   config.hybridAlerts?.start();
-  // Optional settlement monitor and resolution worker for hosts without a reliable free scheduler.
-  // Disabled unless explicitly enabled; the separate GitHub Actions path is unchanged.
-  if (process.env.FLURBO_SETTLEMENT_BOT === 'true') {
-    const { settlementBot } = await import('./settlement-bot.mjs');
-    // Operator metrics ride the same cycle: advance the trade scan, then send the daily summary when due.
-    config.settlementBot = settlementBot({ env: process.env, metrics: config.metrics ? () => config.metrics.tick() : null,
-      funds: config.fundingAlerts ? () => config.fundingAlerts.tick() : null, notices: config.notices ? async () => {
+  // Optional periodic tasks for hosts without a reliable free cron: retry agent pools still pending, advance the
+  // operator metrics scan, check funding balances and send member notices. FLURBO_SETTLEMENT_BOT is the legacy name.
+  const schedulerOn = process.env.FLURBO_SCHEDULER === 'true' || process.env.FLURBO_SETTLEMENT_BOT === 'true';
+  if (process.env.FLURBO_SETTLEMENT_BOT === 'true' && process.env.FLURBO_SCHEDULER !== 'true') console.warn('FLURBO_SETTLEMENT_BOT is a legacy name; set FLURBO_SCHEDULER=true');
+  if (schedulerOn) {
+    config.scheduler = periodicTasks({ log: console.log, tasks: {
+      agentPools: config.agentPools ? () => config.agentPools.refresh() : null,
+      metrics: config.metrics ? () => config.metrics.tick() : null,
+      funds: config.fundingAlerts ? () => config.fundingAlerts.tick() : null,
+      notices: config.notices ? async () => {
         const result = await config.notices.tick(), d = config.notices.diagnostics?.();
         return d && d.stages && !d.emailed ? `${result} (stages ${d.stages}, wallets ${d.wallets}, unlinked ${d.unlinked}, no verified email ${d.withoutEmail})` : result;
-      } : null });
-    config.settlementBot.start();
-    console.log('Settlement bot enabled: monitor, worker and metrics every 2 minutes');
+      } : null } });
+    config.scheduler.start();
+    console.log('Scheduler enabled: agent pools, metrics, funding alerts and notices every 2 minutes');
   }
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => {
-    comparison.abort(); config.settlementBot?.stop(); config.oracleAnswerer?.stop(); config.oracleRelay?.stop();
+    comparison.abort(); config.scheduler?.stop(); config.oracleAnswerer?.stop(); config.oracleRelay?.stop();
     config.hybridSettlement?.stop(); config.hybridArbitration?.stop(); config.hybridCourt?.stop(); config.hybridAlerts?.stop();
     server.close(() => process.exit(0)); reader?.kill(); learningReader?.kill();
     setTimeout(() => process.exit(0), 5000).unref();

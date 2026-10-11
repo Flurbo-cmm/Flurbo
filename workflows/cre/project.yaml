@@ -3,7 +3,3 @@ synthetic:
   rpcs:
     - chain-name: monad-testnet
       url: https://testnet-rpc.monad.xyz
-pilot:
-  rpcs:
-    - chain-name: monad-testnet
-      url: https://testnet-rpc.monad.xyz

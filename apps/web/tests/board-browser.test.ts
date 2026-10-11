@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { pilotFixture, owner } from './pilot-fixture.ts';
+import { owner } from './pool-fixture.ts';
 
 const skip = !process.env.FLURBO_TEST_PLAYWRIGHT;
 const ORIGIN = 'https://flurbo.singu.online';
@@ -10,11 +10,12 @@ const ORIGIN = 'https://flurbo.singu.online';
 async function setup(viewport: { width: number; height: number }) {
   const { chromium } = await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
   const browser = await chromium.launch({ headless: true, executablePath: process.env.FLURBO_TEST_BROWSER });
-  const f = pilotFixture(Math.floor(Date.now() / 1000), 4), errors: string[] = [];
-  f.manifest.publication.mode = 'rehearsal';
-  const closesAt = f.manifest.publication.draft.closesAt;
-  const groups = Array.from({ length: 13 }, (_, i) => { const pool = '0x' + (0x20 + i).toString(16).padStart(2, '0').repeat(20); return { namespace: 'practice-' + pool.slice(2), label: `Collection ${i + 1}`, pool, closesAt }; });
-  const oraclePool = '0x' + '44'.repeat(20);
+  const errors: string[] = [], now = Math.floor(Date.now() / 1000), closesAt = now + 86400;
+  // Thirteen hybrid pools of four questions; uncatalogued pools fall in Other.
+  const hybridMarkets = Array.from({ length: 13 }, (_, i) => '0x' + (0x20 + i).toString(16).padStart(2, '0').repeat(20)).flatMap((pool, i) => [0, 1, 2, 3].map(eventIndex =>
+    ({ id: `${pool}-${eventIndex}`, pool, poolTitle: `Collection ${i + 1}`, eventIndex, question: `Test event ${eventIndex + 1} in collection ${i + 1}?`, route: 'mechanical', closesAt, observationEndsAt: closesAt + 3600 })));
+  // A catalogued crypto pool, so the oracle market is alone in its category.
+  const oraclePool = '0x8301d8de76528cd2e0965b21b7e0d926c30c5932';
   const oracleMarkets = [{ id: 'oracle-board-0', pool: oraclePool, poolTitle: 'Source pool', eventIndex: 0, question: 'Will the source block be even?', closesAt: closesAt + 600, observationEndsAt: closesAt + 1200 }];
   const page = await browser.newPage({ viewport });
   page.on('pageerror', (e: Error) => errors.push(e.message));
@@ -22,10 +23,10 @@ async function setup(viewport: { width: number; height: number }) {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/account/access') return route.fulfill({ json: { approved: true, testingTools: false } });
     if (path === '/api/auth/session') return route.fulfill({ json: { session: { address: owner, method: 'passkey', expiresAt: Date.now() + 3600000 } } });
-    if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: groups, oracleMarkets } });
+    if (path === '/api/market-directory') return route.fulfill({ json: { schema: 'flurbo.market-directory.v1', markets: [], oracleMarkets, hybridMarkets } });
     if (path === '/api/oracle/oracle-board-0/market') return route.fulfill({ json: { schema: 'flurbo.oracle-market.v1', id: 'oracle-board-0', pool: oraclePool, marketNow: Math.floor(Date.now() / 1000), funded: true, resolved: false, prices: { yes: '450000', no: '550000' } } });
-    const group = groups.find(g => path.startsWith('/api/' + g.namespace + '/'));
-    if (group && path.endsWith('/markets')) { const v = await f.service.markets(); return route.fulfill({ json: { ...v, manifest: { ...v.manifest, pool: group.pool } } }); }
+    const market = hybridMarkets.find(m => path === `/api/hybrid/${m.id}/market`);
+    if (market) return route.fulfill({ json: { schema: 'flurbo.hybrid-market.v1', id: market.id, pool: market.pool, marketNow: Math.floor(Date.now() / 1000), funded: true, resolved: false, prices: { yes: '450000', no: '550000' } } });
     if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unused fixture endpoint' } });
     const relative = path.startsWith('/assets/') ? path.slice(1) : 'index.html';
     return route.fulfill({ body: await readFile(new URL('../dist/' + relative, import.meta.url)), contentType: relative.endsWith('.js') ? 'text/javascript' : relative.endsWith('.css') ? 'text/css' : relative.endsWith('.woff2') ? 'font/woff2' : 'text/html' });
@@ -61,12 +62,12 @@ test('categories, pages, search and keys keep their state in the URL', { skip },
     await page.goto(ORIGIN + '/markets');
     await ready(page);
     const categories = page.getByRole('navigation', { name: 'Market categories' });
-    await categories.getByRole('link', { name: /^Other/ }).click();
-    await page.waitForURL(url => new URL(url).searchParams.get('category') === 'other');
+    await categories.getByRole('link', { name: /^Crypto/ }).click();
+    await page.waitForURL(url => new URL(url).searchParams.get('category') === 'crypto');
     assert.deepEqual(await tileLinks(page), ['/markets/oracle/oracle-board-0']);
-    assert.equal(await categories.getByRole('link', { name: /^Other/ }).getAttribute('aria-current'), 'page');
+    assert.equal(await categories.getByRole('link', { name: /^Crypto/ }).getAttribute('aria-current'), 'page');
 
-    await page.goto(ORIGIN + '/markets?category=practice&page=2');
+    await page.goto(ORIGIN + '/markets?category=other&page=2');
     await ready(page);
     const pager = page.getByRole('navigation', { name: 'Pages' });
     assert.equal(await pager.getByRole('button', { name: 'Page 2', exact: true }).getAttribute('aria-current'), 'page');

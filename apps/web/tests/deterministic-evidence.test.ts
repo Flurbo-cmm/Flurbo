@@ -6,16 +6,10 @@ import { join } from 'node:path';
 import { deterministicEvidence } from '../server/deterministic-evidence.mjs';
 import { createSettlementStores, SETTLEMENT_PACKET_PATH } from '../server/settlement-persistence.mjs';
 import { createLocalSettlementCommand } from '../server/local-settlement-command.mjs';
-import { settlementEvent, settlementBindings, pilotRulesHash, DETERMINISTIC_MODE } from '../server/settlement-publication.mjs';
+import { settlementEvent, settlementBindings, pilotRulesHash, DETERMINISTIC_MODE, validateSettlementManifest } from '../server/settlement-publication.mjs';
 import { canonical, digest, settlementRuleHash, validateSettlementRule } from '../server/settlement-rules.mjs';
 import { evaluateSettlement, parseSettlementCapture } from '../server/settlement-evidence.mjs';
-import { pilotEvidence } from '../server/pilot.mjs';
-import { runResolution } from '../scripts/run-resolution.mjs';
-import { monitorIdentity } from '../server/settlement-monitor.mjs';
-import { createHash } from 'node:crypto';
-import { privateKeyToAccount } from 'viem/accounts';
-import { encodeFunctionData, keccak256, parseTransaction } from 'viem';
-import { resolverAbi } from '../shared/pilot.mjs';
+import { evidenceArchive } from '../server/evidence-archive.mjs';
 
 const start=1800000000, origin='https://evidence.flurbo.example.org', owner='0x'+'12'.repeat(20);
 export function deterministicFixture(rules?:any[]) {
@@ -36,11 +30,22 @@ export function deterministicFixture(rules?:any[]) {
 }
 const state={delivered:false,cases:[{phase:0},{phase:0}]};
 
+test('a manifest cannot alter the rule plus event hash, dates, identity or resolver binding after deployment',()=>{
+  assert.deepEqual(validateSettlementManifest(deterministicFixture()),deterministicFixture().publication.settlementRules);
+  for(const change of [(m:any)=>{m.publication.settlementRules[0].decision.value='4.3';},
+    (m:any)=>{m.publication.settlementRules[0].decision.value='4.3';m.publication.draft.events[0]=settlementEvent(m.publication.settlementRules[0]);},
+    (m:any)=>{m.publication.draft.closesAt--;},(m:any)=>{m.resolver='0x'+'77'.repeat(20);},(m:any)=>{m.publication.creator='0x'+'88'.repeat(20);},
+    (m:any)=>{m.configHash='0x'+'00'.repeat(32);},(m:any)=>{m.publication.settlementRules.reverse();},
+    (m:any)=>{m.publication.draft.events[0].source.selectionRule='Use a different source';}]){
+    const m=deterministicFixture();change(m);assert.throws(()=>validateSettlementManifest(m));
+  }
+});
+
 test('durable general-source capture precedes observation end; NO evidence survives restart and public readback',async()=>{
   const directory=await mkdtemp(join(tmpdir(),'flurbo-general-'));let at=start+5,unavailable=false,publicWrong=false,value='3';
   try{
     const command=await createLocalSettlementCommand({directory,now:()=>at*1000});
-    const stores=createSettlementStores({command,origin,now:()=>at}),archive=pilotEvidence(command,origin,()=>at*1000),manifest=deterministicFixture();
+    const stores=createSettlementStores({command,origin,now:()=>at}),archive=evidenceArchive(command,origin,()=>at*1000),manifest=deterministicFixture();
     const request=async(url:string)=>{
       if(url.startsWith('https://data.example.org/')){
         if(unavailable)return new Response('unavailable',{status:503});
@@ -103,7 +108,7 @@ test('USGS collection freezes the first complete valid snapshot and records a mi
   try{
     const a=usgsRule(),b=structuredClone(a);b.eventId='usgs-b';b.question='Second synthetic question for fixture';
     const manifest=deterministicFixture([a,b]),command=await createLocalSettlementCommand({directory,now:()=>at*1000});
-    const stores=createSettlementStores({command,origin,now:()=>at}),archive=pilotEvidence(command,origin,()=>at*1000);
+    const stores=createSettlementStores({command,origin,now:()=>at}),archive=evidenceArchive(command,origin,()=>at*1000);
     const request=async()=>{calls++;return new Response(usgsCapture(a,at).body,{headers:{'content-type':'application/json'}});};
     const make=()=>deterministicEvidence({manifest,owner,command,archive,...stores,origin,request,now:()=>at});
     await make().collect(state);assert.equal(calls,2);
@@ -116,42 +121,3 @@ test('USGS collection freezes the first complete valid snapshot and records a mi
   }finally{await rm(directory,{recursive:true,force:true});}
 });
 
-test('runResolution integrates durable pre-cutoff observation and a publicly verified deterministic NO through the bounded worker',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'flurbo-worker-'));let at=start+5,signed=0;
-  const privateKey=('0x'+'12'.repeat(32)) as `0x${string}`,account=privateKeyToAccount(privateKey),signer=account.address.toLowerCase();
-  try{
-    const manifest:any=deterministicFixture(),command=await createLocalSettlementCommand({directory,now:()=>at*1000});
-    const stores=createSettlementStores({command,origin,now:()=>at}),archive=pilotEvidence(command,origin,()=>at*1000);
-    const chain:any={manifest,snapshot:{timestamp:at},poolCash:'1000000',requiredCollateral:'0',delivered:false,
-      cases:[0,1].map(()=>({phase:0,assertionDeadline:String(start+3720)}))};
-    const service={status:async()=>({...chain,snapshot:{timestamp:at}}),prepare:async(input:any)=>({schema:'flurbo.pilot-review.v1',manifest,
-      action:input.action,requested:input,expiresAt:at+60,snapshot:{timestamp:at},amountAtoms:'1000000',gasLimit:'100000',gasPrice:'1000000000',
-      transaction:{from:signer,to:manifest.resolver,chainId:10143,value:'0',data:encodeFunctionData({abi:resolverAbi,functionName:'assertOutcome',
-        args:[input.event,input.outcome,input.evidenceHash,input.evidenceURI]})}})};
-    const request=async(url:string)=>{
-      if(url.startsWith('https://data.example.org/')){
-        const i=url.includes('/0.')?0:1;
-        return Response.json({id:`release-${i}`,series:`series-${i}`,period:'2026-01',unit:'count',publishedAt:start,kind:'initial',value:'0'});
-      }
-      if(url.startsWith(origin+SETTLEMENT_PACKET_PATH))return new Response(canonical(await stores.packetStore.get(url)),{headers:{'content-type':'application/json'}});
-      return new Response(await archive.get(url.split('/').at(-1)),{headers:{'content-type':'application/json'}});
-    };
-    const transport={sign:async(review:any)=>{signed++;assert.equal(review.requested.outcome,1);return account.signTransaction({chainId:10143,type:'legacy',nonce:0,
-      to:review.transaction.to,data:review.transaction.data,value:0n,gas:100000n,gasPrice:1000000000n});},
-      broadcast:async(raw:any)=>{assert.equal(parseTransaction(raw).to,manifest.resolver);return keccak256(raw);},receipt:async()=>({confirmed:true,success:true})};
-    const deps={command,service,archive,settlementStores:stores,request,transport,now:()=>at,
-      proposerHoldings:async()=>({clear:true,positions:[],wrapped:[],blockNumber:'1',checkedClaims:2})};
-    const env:any={FLURBO_RESOLUTION_MANIFEST_JSON:JSON.stringify(manifest),FLURBO_RESOLUTION_POOL:manifest.pool,FLURBO_RESOLUTION_RULES_HASH:manifest.rulesHash,
-      FLURBO_RESOLUTION_SIGNER_ADDRESS:signer,FLURBO_RESOLUTION_PRIVATE_KEY:privateKey,FLURBO_RESOLUTION_PROPOSALS:'true',FLURBO_RESOLUTION_EXECUTE:'false',
-      FLURBO_RESOLUTION_SOURCE_MODE:DETERMINISTIC_MODE,FLURBO_RESOLUTION_EVIDENCE_ORIGIN:origin};
-    const monitorKey='flurbo:monitor:v1:'+createHash('sha256').update(monitorIdentity(manifest)).digest('hex')+':state';
-    await command('SET',monitorKey,JSON.stringify({checkpoint:{identity:monitorIdentity(manifest),checkedAt:at},report:{status:'observed'},queue:[]}));
-    const collecting=await runResolution(env,deps);assert.equal(collecting.status,'dry-run');assert.equal(collecting.sourceObservations[0].status,'captured');assert.equal(signed,0);
-    at=start+120;env.FLURBO_RESOLUTION_EXECUTE='true';
-    const result=await runResolution(env,deps);assert.equal(result.status,'submitted');assert.equal(result.action,'assertOutcome');assert.equal(signed,1);
-    assert.equal((await runResolution(env,deps)).status,'confirmed');assert.equal(signed,1);
-    const wrong={...env,FLURBO_RESOLUTION_SOURCE_MODE:'legacy'};await assert.rejects(runResolution(wrong,deps));
-    const changed=structuredClone(manifest);changed.publication.settlementRules[0].decision.value='0';
-    await assert.rejects(runResolution({...env,FLURBO_RESOLUTION_MANIFEST_JSON:JSON.stringify(changed)},deps));
-  }finally{await rm(directory,{recursive:true,force:true});}
-});

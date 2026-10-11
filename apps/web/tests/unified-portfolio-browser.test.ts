@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {pilotFixture,owner,hash} from './pilot-fixture.ts';
+import {owner,hash} from './pool-fixture.ts';
 test('one portfolio combines pools, shows account-only trades and reveals real PnL only after full history',{skip:!process.env.FLURBO_TEST_PLAYWRIGHT},async()=>{
  const {chromium}=await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href),browser=await chromium.launch({headless:true,executablePath:process.env.FLURBO_TEST_BROWSER});
- const login='0x'+'99'.repeat(20),second='0x'+'88'.repeat(20),poolB='0x'+'aa'.repeat(20),f=pilotFixture(Math.floor(Date.now()/1000)),nsB='practice-'+poolB.slice(2);
- f.manifest.publication.draft.events[0].question='Will the selected Ethereum block contain at least 150 transactions and have a higher base fee than the previous block, according to the published observation rules?';
+ const login='0x'+'99'.repeat(20),second='0x'+'88'.repeat(20),poolA='0x'+'22'.repeat(20),poolB='0x'+'aa'.repeat(20),now=Math.floor(Date.now()/1000),closesAt=now+86400;
+ const questions=['Will the selected Ethereum block contain at least 150 transactions and have a higher base fee than the previous block, according to the published observation rules?','Test event 2'];
+ const hybridMarkets=[[poolA,'Hidden group A'],[poolB,'Hidden group B']].flatMap(([pool,poolTitle])=>questions.map((question,eventIndex)=>({id:`${pool}-${eventIndex}`,pool,poolTitle,eventIndex,question,route:'mechanical',closesAt,observationEndsAt:closesAt+3600})));
+ const snapshot={blockNumber:'200',blockHash:hash,timestamp:now};
  let complete=false,fail=false,active=0,max=0,accounts=0;const errors:string[]=[];
  const log=(index:number,trader:string,isBuy:boolean,quantity:string,collateralAmount:string,name='Traded')=>({name,hash,index,block:100+index,args:{trader,owner:trader,scope:1,mask:'2',isBuy,quantity,collateralAmount}});
  const logsA=[log(0,owner,true,'10000000','5000000'),log(1,second,true,'2000000','1000000'),log(2,owner,false,'4000000','3000000'),log(9,'0x'+'77'.repeat(20),true,'9000000','4000000')];
@@ -15,17 +17,17 @@ test('one portfolio combines pools, shows account-only trades and reveals real P
   const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',(e:Error)=>errors.push(e.message));
   await page.clock.install();await page.clock.pauseAt(new Date());
   await page.route('**/*',async(route:any)=>{
-   const u=new URL(route.request().url()),p=u.pathname,b=p.startsWith('/api/'+nsB+'/'),manifest={...f.manifest,pool:b?poolB:f.manifest.pool,publication:{...f.manifest.publication,mode:'rehearsal'}};
+   const p=new URL(route.request().url()).pathname,b=p.startsWith(`/api/hybrid/pool/${poolB}/`),pool=b?poolB:poolA;
    if(p==='/api/auth/session')return route.fulfill({json:{session:{address:login,method:'passkey',expiresAt:Date.now()+3600000}}});
    if(p==='/api/account/access')return route.fulfill({json:{approved:true}});
    if((p==='/api/account/wallets'||p==='/api/account/portfolio-sources'))return route.fulfill({json:{account:login,wallets:[owner,second]}});
-   if(p==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[{namespace:'practice-2222222222222222222222222222222222222222',label:'Hidden group A',pool:f.manifest.pool,closesAt:f.manifest.publication.draft.closesAt},{namespace:nsB,label:'Hidden group B',pool:poolB,closesAt:f.manifest.publication.draft.closesAt}]}});
-   if(p.endsWith('/account')){accounts++;return route.fulfill({json:{...await f.service.account(u.searchParams.get('wallet')),manifest}});}
-   if(p.endsWith('/status'))return route.fulfill({json:{...await f.service.status(),manifest}});
+   if(p==='/api/market-directory')return route.fulfill({json:{schema:'flurbo.market-directory.v1',markets:[],oracleMarkets:[],hybridMarkets}});
+   if(p.endsWith('/account')){accounts++;return route.fulfill({json:{schema:'flurbo.hybrid-portfolio-account.v1',manifest:{pool,resolver:'0x'+'33'.repeat(20),chainId:10143,publication:{draft:{title:b?'Hidden group B':'Hidden group A',closesAt,
+    events:questions.map((question,i)=>({id:`event-${i}`,question,route:'mechanical',observationEndsAt:closesAt+3600}))}}},snapshot,claimScopes:[]}});}
    if(p.endsWith('/positions')){
     const q=route.request().postDataJSON();assert.ok(q.claims.length<=30);active++;max=Math.max(max,active);await new Promise(r=>setTimeout(r,15));active--;
     if(fail&&b)return route.fulfill({status:503,json:{error:'Unavailable'}});
-    return route.fulfill({json:{owner:q.owner,snapshot:{blockNumber:'200'},rows:q.claims.map((c:any)=>{const quantity=c.scope===1&&c.mask==='2'?(b?(q.owner===second?'3000000':'0'):(q.owner===owner?'6000000':q.owner===second?'2000000':'0')):'0';return {...c,quantity,payoutAtoms:b?quantity:null};})}});
+    return route.fulfill({json:{schema:'flurbo.hybrid-portfolio-positions.v1',owner:q.owner,snapshot,resolved:b,rows:q.claims.map((c:any)=>{const quantity=c.scope===1&&c.mask==='2'?(b?(q.owner===second?'3000000':'0'):(q.owner===owner?'6000000':q.owner===second?'2000000':'0')):'0';return {scope:c.scope,mask:c.mask,quantity,payoutAtoms:b?quantity:null};})}});
    }
    if(p.endsWith('/collected-payouts'))return route.fulfill({json:{complete:true,through:200,target:200,logs:b?[logsB[1],log(10,'0x'+'77'.repeat(20),false,'50000000','50000000','Redeemed')]:[]}});
    if(p.endsWith('/history'))return route.fulfill({json:{complete,through:150,target:200,logs:b?logsB:logsA}});

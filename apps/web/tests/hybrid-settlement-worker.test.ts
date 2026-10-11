@@ -4,7 +4,7 @@ import { buildRealityObservation, hybridCaptureStep, hybridRealityOutcome, hybri
   nextHybridAction, nextHybridActions, planRealityAnswer, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
 import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
-import { pilotEvidence } from '../server/pilot.mjs';
+import { evidenceArchive } from '../server/evidence-archive.mjs';
 import { digest } from '../server/settlement-rules.mjs';
 import { keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -122,7 +122,7 @@ function publicRequest(store: any) {
 
 test('missing capture after the cutoff freezes a Void observation', async () => {
   const rule = (realityCatalog().pools[0].prepared.draft.events[0] as any).rule;
-  const archive = pilotEvidence(memory().command, origin);
+  const archive = evidenceArchive(memory().command, origin);
   const input = { rule, questionId: questionOf(0), captures: [], attempt: null, archive,
     packetStore: null, owner: account('9'), draftHash: `0x${'1'.repeat(64)}`, origin, request: fetch };
   assert.equal(await buildRealityObservation({ ...input, now: rule.timing.publicationCutoff }), null);
@@ -143,7 +143,7 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
     rulesHash: hybridRulesHash(first.prepared, account('7')) }] : [first];
   const events: any[] = pools[0].prepared.draft.events;
   const redis = memory();
-  const archive = pilotEvidence(redis.command, origin);
+  const archive = evidenceArchive(redis.command, origin);
   const writes: any[] = [];
   const market = {
     getChainId: async () => 10143,

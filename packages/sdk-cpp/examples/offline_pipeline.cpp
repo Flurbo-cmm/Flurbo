@@ -44,7 +44,11 @@ int main() {
       out[claim_key(10143, pool, scope, mask)] = {quantity * __builtin_popcount(mask) / (i128{1} << __builtin_popcount(scope)) + 20000, now + 50, "0x" + std::string(64, 'f')};
     return out;
   };
-  json::Value config = parse_config(default_config());
+  std::string ns = "practice-" + pool.substr(2);
+  json::Value raw = default_config(), markets = json::Value::array();
+  markets.push(ns);
+  raw.set("markets", markets);
+  json::Value config = parse_config(raw);
   StrategyMarket market{pool, 2, true, false, 1790900000, "0x" + std::string(64, 'f')};
   JointForecast forecast{found.output.events, found.output.states_ppm, found.fresh_evidence};
   JointEdgeStrategy strategy(JointEdgeStrategy::config_of(config));
@@ -53,7 +57,6 @@ int main() {
   if (!decision.proposal) return 0;
   const auto& p = *decision.proposal;
   i128 limit = buy_limit(p.quote_atoms, p.slippage_bps);
-  std::string ns = "practice-" + pool.substr(2);
   PolicyInput in;
   in.policy = Policy::from_json(config["policy"]);
   in.policy.markets = {ns};

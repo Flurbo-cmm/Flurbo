@@ -9,7 +9,8 @@ import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {previewAccess} from '../server/preview-access.mjs';
 import {TESTNET} from '../server/network.mjs';
 import {productionServer} from '../server/production.mjs';
-import {pilotFixture,owner} from './pilot-fixture.ts';
+import {poolFixture,owner} from './pool-fixture.ts';
+import {privateKeyToAccount,generatePrivateKey} from 'viem/accounts';
 
 test('agents persist per account across restarts and cannot be read or changed by another account',async()=>{
   const s=setup();
@@ -183,10 +184,10 @@ test('a mismatched or reverted transaction fails the proposal; rejection and exp
 });
 
 test('hosted agent routes enforce sign-in and invite approval before any agent code runs',async()=>{
-  const fixture=pilotFixture(),redis=fakeRedis();
+  const fixture=poolFixture(),redis=fakeRedis(),ns=fixture.namespace;
   const policy=previewAccess({FLURBO_TESTNET_APPROVED_ACCOUNTS:alice});
   const store={command:redis.command,read:async(id:string)=>id==='approved'?{address:alice,method:'passkey'}:id==='pending'?{address:bob,method:'passkey'}:id==='wallet'?{address:alice,method:'wallet'}:null};
-  const server=productionServer({origin,rpcUrl:TESTNET.rpc,previewAccess:policy,pilot:fixture.service,pilotEvidence:{get:async()=>'{}'}},store);
+  const server=productionServer({origin,rpcUrl:TESTNET.rpc,previewAccess:policy,agentPools:{collections:[],services:new Map([[ns,fixture.service]]),reservedAddresses:new Set()},evidenceArchive:{get:async()=>'{}'}},store);
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const request=(path:string,id='',body?:object):Promise<any>=>new Promise((resolve,reject)=>{
     const req=httpRequest({hostname:'127.0.0.1',port:(server.address() as any).port,path,method:body?'POST':'GET',headers:{host:'flurbo.singu.online',origin,'content-type':'application/json',cookie:'flurbo_session='+id}},
@@ -194,7 +195,7 @@ test('hosted agent routes enforce sign-in and invite approval before any agent c
     req.on('error',reject);req.end(body?JSON.stringify(body):undefined);
   });
   try{
-    for(const [path,body] of [['/api/agents'],['/api/agents',{name:'Test agent',namespace:'pilot',mode:'paper'}],['/api/agents/quote',{namespace:'pilot',scope:1,mask:'2',quantityAtoms:'1000000',side:'buy'}]] as const){
+    for(const [path,body] of [['/api/agents'],['/api/agents',{name:'Test agent',namespace:ns,mode:'paper'}],['/api/agents/quote',{namespace:ns,scope:1,mask:'2',quantityAtoms:'1000000',side:'buy'}]] as const){
       assert.equal((await request(path,'',body)).status,401,path);
       assert.equal((await request(path,'wallet',body)).status,401,path);
       const pending=await request(path,'pending',body);
@@ -203,6 +204,39 @@ test('hosted agent routes enforce sign-in and invite approval before any agent c
     const listed=await request('/api/agents','approved');
     assert.equal(listed.status,200);assert.equal(listed.data.durable,true);
     assert.equal((await request('/api/agents?owner='+alice,'approved')).status,400);
-    assert.equal((await request('/api/agents','approved',{name:'Hosted agent',namespace:'pilot',mode:'paper'})).status,200);
+    assert.equal((await request('/api/agents','approved',{name:'Hosted agent',namespace:ns,mode:'paper'})).status,200);
+    assert.equal((await request('/api/agents','approved',{name:'Retired market',namespace:'pilot',mode:'paper'})).status,404,'the server never serves pilot');
   }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+});
+
+test('agents on a pool that is no longer served still list and keep the portfolio, while runtime reads answer 404',async()=>{
+  const s=setup(),ALL=['markets:read','wallet:read','runtime:report','executions:report'];
+  const rt=(token:string,method:string,path:string,body?:unknown,which=s.api)=>which.runtime({method,path:'/api/agent-runtime/v1/'+path,
+    headers:{authorization:'Bearer '+token,'flurbo-agent-protocol':'1'},body:body===undefined?'':JSON.stringify(body)});
+  const agent=(await s.call(alice,'POST','/api/agents',{kind:'runtime',name:'Retired pool agent',markets:['pilot']})).body;
+  const assisted=(await s.call(alice,'POST','/api/agents',{name:'Retired assisted agent',namespace:'pilot',mode:'paper'})).body;
+  const {token}=(await s.call(alice,'POST',`/api/agents/${agent.id}/credentials`,{scopes:ALL})).body;
+  const wallet=privateKeyToAccount(generatePrivateKey()),from=wallet.address.toLowerCase();
+  const challenge=(await s.call(alice,'POST',`/api/agents/${agent.id}/wallet/challenge`,{wallet:wallet.address})).body;
+  assert.equal((await s.call(alice,'POST',`/api/agents/${agent.id}/wallet/verify`,{id:challenge.id,signature:await wallet.signMessage({message:challenge.message})})).status,200);
+  const hash='0x'+'b2'.repeat(32),intent={action:'buy',claim:{scope:3,mask:'8'},quantityAtoms:'1000000',limitAtoms:'260000',deadline:1_800_000_300};
+  const tx={from,to:s.f.manifest.pool,data:encodeFunctionData({abi:pilotPoolAbi,functionName:'buy',args:[3,8n,1_000_000n,260_000n,1_800_000_300n]})};
+  s.mine(tx,hash,{logs:[{address:s.f.manifest.pool,topics:encodeEventTopics({abi:pilotPoolAbi,eventName:'Traded',args:{trader:from as `0x${string}`,scope:3,mask:8n}}),
+    data:encodeAbiParameters([{type:'bool'},{type:'uint128'},{type:'uint128'}],[true,1_000_000n,250_000n])}]});
+  assert.equal((await rt(token,'POST','executions',{namespace:'pilot',hash,intent})).body.status,'confirmed');
+  assert.equal((await s.api.portfolio(alice,origin)).executions.length,1);
+  // The same durable store, served by a release that no longer serves the pool.
+  const retired=s.make({serviceFor:()=>null});
+  const listed=await s.call(alice,'GET','/api/agents',undefined,retired);
+  assert.equal(listed.status,200);assert.deepEqual(listed.body.agents.map((a:any)=>a.id).sort(),[agent.id,assisted.id].sort());
+  assert.equal((await s.call(alice,'GET',`/api/agents/${agent.id}`,undefined,retired)).status,200);
+  assert.equal((await s.call(alice,'GET',`/api/agents/${assisted.id}`,undefined,retired)).status,200);
+  const portfolio=await retired.portfolio(alice,origin);
+  assert.deepEqual(portfolio.executions,[]);assert.deepEqual(portfolio.wallets,[from]);
+  const deployments=await rt(token,'GET','deployments',undefined,retired);
+  assert.equal(deployments.status,200);assert.deepEqual(deployments.body.deployments,[]);
+  const market=await rt(token,'GET','markets/pilot',undefined,retired);
+  assert.equal(market.status,404);assert.equal(market.body.code,'NOT_FOUND');
+  assert.equal((await s.call(alice,'POST',`/api/agents/${agent.id}/runtime-policy`,{markets:['pilot']},retired)).status,400);
+  assert.equal((await s.call(alice,'POST',`/api/agents/${assisted.id}/evaluate`,{forecast:forecast(s.f.manifest.pool)},retired)).status,404);
 });

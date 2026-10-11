@@ -1,5 +1,6 @@
-// Captures the screenshots shown on /docs from the production bundle (dist) with sample data. Nothing reaches a
-// network: the pool, agent API and MetaMask are the same in-process fixtures the browser tests use.
+// Captures the account and agent screenshots shown on /docs from the production bundle (dist) with sample data.
+// Nothing reaches a network: the pool, agent API and MetaMask are the same in-process fixtures the browser tests use.
+// The market, ticket, timeline and portfolio images were taken from the retired pilot pool and are not recaptured here.
 //
 //   npm run build
 //   FLURBO_TEST_PLAYWRIGHT=<playwright-core/index.mjs> FLURBO_TEST_BROWSER=<chrome> \
@@ -10,17 +11,16 @@ import {mkdir,readFile} from 'node:fs/promises';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {decodeFunctionData,encodeFunctionResult} from 'viem';
 import {privateKeyToAccount} from 'viem/accounts';
-import {pilotService} from '../server/pilot.mjs';
+import {hybridPoolService} from '../server/hybrid-pool-service.mjs';
 import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {TESTNET} from '../server/network.mjs';
-import {assessSemantics} from '../server/semantic-validation.mjs';
-import {owner,hash,code} from '../tests/pilot-fixture.ts';
+import {owner,hash,code} from '../tests/pool-fixture.ts';
 import {setup,alice,origin,forecast} from '../tests/agent-fixture.ts';
 
 const OUT=new URL('../src/pages/docs-media/',import.meta.url);
 const at=Math.floor(Date.now()/1000);
 const s=setup({at,links:[owner]});
-const {manifest}=s.f,pool=manifest.pool;
+const {manifest,namespace}=s.f,pool=manifest.pool;
 manifest.publication.draft.title='Example: releases and network activity';
 ['Will go-ethereum publish stable release v1.17.7 by 7 October 2026?','Will reth publish stable release v2.6.1 by 7 October 2026?',
   'Will Monad mainnet record at least 5,100 transactions in the sampled blocks on 1 October 2026?']
@@ -46,14 +46,13 @@ const rpc=async(method:string,params:any[]=[])=>{
   }
   return base(method,params);
 };
-s.f.service=pilotService({manifest,rpc,now:()=>at});
+s.f.service=hybridPoolService({manifest,rpc,now:()=>at});
 
-// Holdings: the member's own wallet and one agent wallet.
+// The agent's trading wallet.
 const agentKey='0x'+'5e'.repeat(32) as `0x${string}`,agentWallet=privateKeyToAccount(agentKey).address.toLowerCase();
-const held:Record<string,Record<string,string>>={[owner]:{'1:2':'3000000','2:1':'2000000','3:8':'1000000'},[agentWallet]:{'1:2':'1000000'}};
 
 // One registered agent with a wallet, a credential, a running heartbeat and two decisions.
-const created=(await s.call(alice,'POST','/api/agents',{kind:'runtime',name:'release-watcher',markets:['pilot']})).body;
+const created=(await s.call(alice,'POST','/api/agents',{kind:'runtime',name:'release-watcher',markets:[namespace]})).body;
 const challenge=(await s.call(alice,'POST',`/api/agents/${created.id}/wallet/challenge`,{wallet:agentWallet})).body;
 await s.call(alice,'POST',`/api/agents/${created.id}/wallet/verify`,{id:challenge.id,signature:await privateKeyToAccount(agentKey).signMessage({message:challenge.message})});
 const {token}=(await s.call(alice,'POST',`/api/agents/${created.id}/credentials`,{scopes:['markets:read','wallet:read','runtime:report','executions:report'],label:'laptop'})).body;
@@ -61,7 +60,7 @@ const runtime=(method:string,path:string,body:unknown)=>s.api.runtime({method,pa
 await runtime('POST','heartbeat',{runtimeId:'rt-docs',sdk:{language:'python',version:'0.2.0'},mode:'paper',state:'running',policy:{hash:'a'.repeat(64),flurboVersion:1,summary:{maxTradeCostAtoms:'2000000',totalAtoms:'20000000'}},pending:0,startedAt:at-600});
 const evidence=[{id:'src-1',title:'https://github.com/ethereum/go-ethereum/releases',source:'github.com',url:'https://github.com/ethereum/go-ethereum/releases',observedAt:new Date((at-120)*1000).toISOString(),note:'Release page.'},
   {id:'src-2',title:'https://github.com/paradigmxyz/reth/releases',source:'github.com',url:'https://github.com/paradigmxyz/reth/releases',observedAt:new Date((at-120)*1000).toISOString(),note:'Release page.'}];
-for(const [i,outcome] of [[0,'abstain'],[1,'paper']] as const)await runtime('POST','decisions',{schema:'flurbo.agent-runtime-decision.v1',decisionId:'d-docs-'+i,namespace:'pilot',createdAt:at-300+i*240,outcome,
+for(const [i,outcome] of [[0,'abstain'],[1,'paper']] as const)await runtime('POST','decisions',{schema:'flurbo.agent-runtime-decision.v1',decisionId:'d-docs-'+i,namespace,createdAt:at-300+i*240,outcome,
   reasons:outcome==='abstain'?['edge_below_threshold']:[],provenance:{kind:'model',name:'anthropic/your-model'},
   ...(outcome==='paper'?{forecast:forecast(pool,{evidence,createdAt:new Date((at-61)*1000).toISOString()},at),candidate:{claim:{scope:1,mask:'2'},quoteAtoms:'626200'}}:{})});
 
@@ -91,9 +90,7 @@ async function open(session:boolean){
     if(p==='/api/account/access')return json(route,{approved:true,nativeApplications:true,testingTools:false,applicationUrl:null});
     if(p==='/api/account/application')return json(route,{application:{account:alice,email:'you@example.com',state:'approved',verified:true,revision:1,createdAt:new Date().toISOString(),notification:'none'}});
     if(p==='/api/account/wallets')return json(route,{account:alice,wallets:[owner]});
-    if(p==='/api/account/portfolio-sources')return json(route,{account:alice,wallets:[owner],agentWallets:[agentWallet],agentExecutions:[{agentId:created.id,agentName:'release-watcher',namespace:'pilot',pool,owner:agentWallet,
-      hash:'0x'+'7a'.repeat(32),block:101,timestamp:at-200,action:'Buy',scope:1,mask:'2',quantity:'1000000',cash:'626200'}]});
-    if(p==='/api/market-directory')return json(route,{schema:'flurbo.market-directory.v1',active:'pilot',markets:[{namespace:'pilot',label:'Example markets',pool,closesAt:manifest.publication.draft.closesAt}]});
+    if(p==='/api/market-directory')return json(route,{schema:'flurbo.market-directory.v1',markets:[{namespace,label:'Example markets',pool,closesAt:manifest.publication.draft.closesAt}],oracleMarkets:[],hybridMarkets:[]});
     if(p==='/api/network')return json(route,{...TESTNET,flurboFaucet:true,starterMon:'0.5'});
     if(p==='/api/fund/starter')return json(route,{status:'sent',amountMon:'0.5'});
     if(p==='/api/rpc'){
@@ -101,18 +98,7 @@ async function open(session:boolean){
       const result=m==='eth_getBalance'?'0x429d069189e0000':m==='eth_call'?(params[0].data.startsWith('0x70a08231')?'0x2faf080':'0x0'):m==='eth_getBlockByNumber'?{hash,number:'0x64'}:'0x0';
       return json(route,{result});
     }
-    if(p==='/api/pilot/markets')return json(route,await s.f.service.markets());
-    if(p==='/api/pilot/status')return json(route,await s.f.service.status(url.searchParams.get('wallet')||undefined));
-    if(p.startsWith('/api/pilot/account'))return json(route,await s.f.service.account(url.searchParams.get('wallet')||owner));
-    if(p==='/api/pilot/prepare')return json(route,await s.f.service.prepare(body));
-    if(p==='/api/pilot/validate-trade')return json(route,assessSemantics(manifest,body));
-    if(p==='/api/pilot/positions')return json(route,{owner:body.owner,snapshot:{blockNumber:'100'},rows:body.claims.map((c:any)=>({...c,quantity:held[body.owner?.toLowerCase()]?.[`${c.scope}:${c.mask}`]??'0',payoutAtoms:null}))});
-    if(p==='/api/pilot/position')return json(route,{quantity:held[owner][`${body.scope}:${body.mask}`]??'0',payoutAtoms:null});
-    if(p==='/api/pilot/history'||p==='/api/pilot/collected-payouts')return json(route,{complete:true,through:100,target:100,logs:[]});
-    if(p==='/api/pilot/price-history'){
-      const end=at;return json(route,{pool,sampling:'current',points:[0,1,2,3,4,5].map(i=>({timestamp:end-3000+i*600,blockNumber:String(90+i),prices:[0,1,2].map(event=>({event,yes:String(Math.round((yes[event]-0.05+i*0.01)*1e6)),no:String(Math.round((1-yes[event]+0.05-i*0.01)*1e6))}))}))});
-    }
-    if(p==='/api/pilot/claim-analytics'){const snapshot=(await s.f.service.status()).snapshot;return json(route,{schema:'flurbo.claim-analytics.v1',model:'bounded-lmsr-enumeration-v1',chainId:10143,pool,rulesHash:manifest.rulesHash,...body,snapshot,expiresAt:snapshot.timestamp+60,stateDigest:'ab'.repeat(32),unit:'tenths_of_percentage_point',closed:false,values:{market:254,independent:254,difference:0}});}
+    if(p===`/api/${namespace}/markets`)return json(route,await s.f.service.markets());
     if(p==='/api/agents'||p.startsWith('/api/agents/')){const result=await s.call(alice,method,p,body);return json(route,result.body,result.status);}
     if(p.startsWith('/api/'))return json(route,{error:'Not part of the docs fixture'},503);
     const file=p.startsWith('/assets/')?p.slice(1):'index.html';
@@ -154,30 +140,6 @@ try{
   page=await open(true);await page.goto(origin+'/fund');await ready(page);await page.getByText('Trading balance').waitFor();
   // main fills the tall capture window, so stop at the last step instead of its bottom edge.
   await shotRange(page,'test-funds',page.locator('main'),page.getByText('Back to markets'),page.getByRole('button',{name:'Request test AUSD'}),24);await page.close();
-
-  // The market board, one screen.
-  page=await open(true);await page.goto(origin+'/markets');await ready(page);await page.getByText(manifest.publication.draft.events[0].question.slice(0,30)).first().waitFor();
-  await shotRange(page,'markets',page.locator('main'),page.getByRole('navigation',{name:'Market categories'}),page.locator('.market-card').last(),16);
-
-  // One question: the trade ticket with its first step, then a combination, then the settlement timeline.
-  await page.goto(origin+'/markets/pilot/0');await ready(page);
-  const ticket=page.locator('.trade-ticket, aside').filter({hasText:'Buy or sell'}).first();
-  await page.getByText('Step 1 of 2: allow this payment').waitFor({timeout:20000});
-  await shotRange(page,'ticket-buy',ticket,ticket.getByText('Your prediction',{exact:true}),ticket.getByRole('button',{name:'Allow payment'}),10);
-  await ticket.getByRole('button',{name:/Combine with another prediction/}).click();
-  const builder=page.getByRole('region',{name:'Combined prediction builder'});
-  await builder.locator('input[type=checkbox]').nth(1).check();
-  await builder.locator('input[type=radio][value=OR]').check();
-  await page.getByText('Step 1 of 2: allow this payment').waitFor({timeout:20000});
-  await builder.locator('details').evaluateAll((list:any[])=>list.forEach(d=>{d.open=false;}));
-  await shot(page,'ticket-combination',builder);
-  await page.getByRole('tab',{name:'Timeline'}).click();
-  await shot(page,'settlement-timeline',page.locator('section.detail-settlement'));
-  await page.close();
-
-  // Portfolio with your holdings and an agent's holding on separate rows.
-  page=await open(true);await page.goto(origin+'/portfolio');await ready(page);await page.getByText('Via release-watcher').first().waitFor({timeout:20000});
-  await shot(page,'portfolio',page.locator('.unified-holdings'));await page.close();
 
   // Agents: register, setup, research settings, live confirmation, activity.
   page=await open(true);await page.goto(origin+'/agents');await ready(page);

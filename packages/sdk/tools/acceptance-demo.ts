@@ -39,7 +39,7 @@ show('chain', stack.rpcUrl); show('Flurbo API and dashboard', stack.apiUrl); sho
 try {
   step(2, 'Sign in, register the agent, link its wallet by ownership proof, issue a credential, fund the wallet');
   const cookie = await stack.signIn(generatePrivateKey());
-  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Demo relationship agent', markets: ['pilot'] } })).body;
+  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Demo relationship agent', markets: [stack.namespace] } })).body;
   const agentKey = generatePrivateKey(), wallet = localKeySigner(agentKey).address;
   const env = { ...process.env, FLURBO_AGENT_PRIVATE_KEY: agentKey } as Record<string, string>;
   // A separate operating-system process, as an operator would run it. Asynchronous, because the Flurbo API
@@ -55,10 +55,10 @@ try {
   const provider = process.env.FLURBO_DEMO_BASE_URL && process.env.FLURBO_DEMO_MODEL
     ? { kind: 'openai-compatible' as const, baseUrl: process.env.FLURBO_DEMO_BASE_URL, model: process.env.FLURBO_DEMO_MODEL, apiKeyEnv: process.env.FLURBO_DEMO_API_KEY_ENV ?? null }
     : { kind: 'fixture' as const, replyFile: 'model-reply.json' };
-  const config: AgentConfig = { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'FLURBO_AGENT_TOKEN' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: 'state', mode: 'live',
+  const config: AgentConfig = { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'FLURBO_AGENT_TOKEN' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: 'state', mode: 'live', markets: [stack.namespace],
     schedule: { intervalSeconds: 30, heartbeatSeconds: 10, waitSeconds: 30 },
     research: { retriever: { kind: 'http', allowHosts: [], allowLocalHttp: true }, provider, perCycle: 2, perHour: 20, maxEvidenceAgeDays: 14 },
-    policy: { ...defaultConfig().policy, minSecondsBeforeClose: 600 } };
+    policy: { ...defaultConfig().policy, markets: [stack.namespace], minSecondsBeforeClose: 600 } };
   const writeConfig = (c: AgentConfig) => writeFileSync(join(demo, 'flurbo-agent.json'), JSON.stringify(c, null, 2));
   writeConfig(config);
   const reply = (statesPpm: number[]) => JSON.stringify({ schema: MODEL_SCHEMA, abstain: false, abstainReason: null, events: [0, 1], statesPpm, evidenceIds: ['src-1', 'src-2'],

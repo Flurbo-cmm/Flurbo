@@ -74,7 +74,7 @@ function fixture({ digestEnv = {} as Record<string, string>, deliver = null as a
   const service = { manifest: { pool, verifiedBlock: String(started), publication: { draft: { closesAt: 1 } } },
     index: { refresh: async () => { refreshes.push('refresh'); return { through: 200, target: 200, complete: true, logs }; } } };
   const metrics = userMetrics({ command: redis.command, origin, links, applications, operatorAccount: OPERATOR,
-    reservedWallets: new Set([creator]), pools: () => [{ namespace: 'pilot', label: 'Release milestones', service }], now: () => NOW,
+    reservedWallets: new Set([creator]), pools: () => [{ namespace: 'practice-' + pool.slice(2), label: 'Agent pool', service }], now: () => NOW,
     env: { FLURBO_TESTNET_APPROVED_ACCOUNTS: legacyMember, FLURBO_MONITOR_EMAIL_TO: 'to@example.com', FLURBO_MONITOR_EMAIL_FROM: 'from@example.com', FLURBO_MONITOR_RESEND_KEY: 're_test', ...digestEnv },
     rpc: async (method: string, params: any[]) => ({ timestamp: '0x' + (Math.floor(NOW / 1000)).toString(16), method, params }), deliver })!;
   return { redis, metrics, refreshes, people: { alice, bob, carol, dave, legacyMember, OPERATOR, stranger, agentWallet } };
@@ -153,11 +153,11 @@ test('daily metrics from two sites use distinct Resend idempotency keys', async 
   assert.match(sent[1].body.text, /Flurbo daily metrics for flurbopm\.singu\.online, 2026-10-05 \(UTC\)/);
 });
 
-test('metrics routes are for the operator passkey only, and trading requires a linked wallet', async () => {
+test('metrics routes are for the operator passkey only, and listing linked wallets records older links', async () => {
   const { productionServer } = await import('../server/production.mjs');
   const { TESTNET } = await import('../server/network.mjs');
   const { DEFAULT_TESTING_OPERATOR } = await import('../server/testing-access.mjs');
-  const redis = fakeRedis(), origin = 'https://flurbo.singu.online', member = addr(0x31), linked = addr(0x32), other = addr(0x33);
+  const redis = fakeRedis(), origin = 'https://flurbo.singu.online', member = addr(0x31), linked = addr(0x32);
   const wallets = new Map([[member, [linked]]]);
   const baseCommand = redis.command;
   const command = async (op: string, ...a: any[]) => {
@@ -165,11 +165,8 @@ test('metrics routes are for the operator passkey only, and trading requires a l
     if (op === 'EVAL') return 1;
     return baseCommand(op, ...a);
   };
-  const prepared: any[] = [];
-  const service = { manifest: { pool: addr(0x70), resolver: addr(0x71), verifiedBlock: '1', draftHash: 'x', publication: { draft: { events: [{ id: 'e0' }], closesAt: 1 } } },
-    prepare: async (input: any) => { prepared.push(input.action); return input; } };
   const store: any = { command, read: async (id: string) => id === 'operator' ? { address: DEFAULT_TESTING_OPERATOR, method: 'passkey', expiresAt: Date.now() + 60_000 } : id === 'member' ? { address: member, method: 'passkey' } : null };
-  const server = productionServer({ previewAccess: null, origin, rpcUrl: TESTNET.rpc, pilot: service }, store);
+  const server = productionServer({ previewAccess: null, origin, rpcUrl: TESTNET.rpc }, store);
   await new Promise<void>(r => server.listen(0, '127.0.0.1', r));
   const port = (server.address() as any).port;
   const call = (method: string, path: string, id: string, body?: unknown) => new Promise<{ status: number; json: any }>((resolve, reject) => {
@@ -185,18 +182,10 @@ test('metrics routes are for the operator passkey only, and trading requires a l
     const report = await call('GET', '/api/admin/metrics', 'operator');
     assert.equal(report.status, 200); assert.equal(report.json.schema, 'flurbo.user-metrics.v1');
     assert.equal((await call('GET', '/api/admin/metrics?x=1', 'operator')).status, 400);
-    for (const action of ['buy', 'sell']) {
-      const refused = await call('POST', '/api/pilot/prepare', 'member', { action, owner: other });
-      assert.equal(refused.status, 403); assert.equal(refused.json.code, 'WALLET_NOT_LINKED');
-      assert.equal((await call('POST', '/api/pilot/prepare', 'member', { action, owner: linked.toUpperCase().replace('0X', '0x') })).status, 200);
-    }
     // Loading linked wallets records an older link for the metrics without changing the response.
     assert.deepEqual((await call('GET', '/api/account/wallets', 'member')).json.wallets, [linked]);
     await new Promise(r => setTimeout(r, 20));
     assert.equal(JSON.parse(redis.hashes.get(LINKS)!.get(linked)!).account, member);
-    // Redeeming is never blocked, so winnings cannot be stranded in an unlinked wallet.
-    assert.equal((await call('POST', '/api/pilot/prepare', 'member', { action: 'redeem', owner: other })).status, 200);
-    assert.deepEqual(prepared, ['buy', 'sell', 'redeem']);
   } finally { server.closeAllConnections(); await new Promise<void>(r => server.close(() => r())); }
 });
 

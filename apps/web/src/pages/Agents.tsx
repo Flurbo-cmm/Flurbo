@@ -329,7 +329,7 @@ function Approvals({ id, profile, records, setRecords, questions, login, reload 
     if (recovery === 'resolved') {
       const current = localStorage.getItem(pendingKeyFor(namespace));
       if (current !== JSON.stringify(pending)) return;
-      if (registered.status === 'confirmed' && !registered.attributedElsewhere) rememberConfirmedClaim(namespace, pending);
+      if (registered.status === 'confirmed' && !registered.attributedElsewhere) rememberConfirmedClaim(pending);
       save(null);
     } else if (recovery === 'unregistered' && !busy && !resumed.current.has(pending.hash!)) {
       resumed.current.add(pending.hash!);

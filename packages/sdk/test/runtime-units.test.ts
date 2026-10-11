@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generatePrivateKey } from 'viem/accounts';
@@ -15,6 +15,7 @@ import { MODEL_SCHEMA } from '../src/research.ts';
 import { evidenceFixture } from './evidence-fixture.ts';
 
 const TOKEN = 'fla1_0123456789abcdef_' + 'A'.repeat(43);
+const NS = 'practice-' + '22'.repeat(20);
 type Call = { url: string; init: RequestInit };
 const stubFetch = (respond: (call: Call, n: number) => Response | Promise<Response>) => { const calls: Call[] = []; const f = (async (url: string, init: RequestInit) => { calls.push({ url: String(url), init }); return respond({ url: String(url), init }, calls.length); }) as unknown as typeof fetch; return { f, calls }; };
 const json = (v: unknown, status = 200, headers: Record<string, string> = {}) => new Response(JSON.stringify(v), { status, headers: { 'content-type': 'application/json', ...headers } });
@@ -107,10 +108,10 @@ test('signer and CLI: keys only from the environment, association messages only 
   const key = generatePrivateKey(), signer = localKeySigner(key), dir = mkdtempSync(join(tmpdir(), 'flurbo-cli-'));
   const out: string[] = [], err: string[] = [], io = { out: (s: string) => out.push(s), err: (s: string) => err.push(s) }, config = join(dir, 'flurbo-agent.json');
   try {
-    assert.equal(await main(['init', '--config', config], io), 0);
+    assert.equal(await main(['init', '--config', config, '--markets', NS], io), 0);
     assert.doesNotThrow(() => parseConfig(JSON.parse(readFileSync(config, 'utf8'))));
     assert.ok(!readFileSync(config, 'utf8').includes(key.slice(2)), 'no secrets in the configuration');
-    assert.equal(await main(['init', '--config', config], io), 1, 'never overwrites');
+    assert.equal(await main(['init', '--config', config, '--markets', NS], io), 1, 'never overwrites');
     const message = (wallet: string) => `Flurbo agent wallet association\nOrigin: http://localhost\nMera account: 0x${'44'.repeat(20)}\nAgent: a\nAgent wallet: ${wallet}\nChain: Monad testnet (10143)\nNonce: n\nIssued: x\nExpires: y\nThis proves control of this wallet.`;
     writeFileSync(join(dir, 'm.txt'), message(signer.address));
     process.env.FLURBO_AGENT_PRIVATE_KEY = key;
@@ -124,4 +125,26 @@ test('signer and CLI: keys only from the environment, association messages only 
     assert.ok(!err.join('\n').includes(key.slice(2)));
     assert.throws(() => parseConfig({ ...defaultConfig(), mode: 'autonomous' }), /mode/);
   } finally { delete process.env.FLURBO_AGENT_PRIVATE_KEY; rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the default configuration names no market, so init needs --markets', async () => {
+  const defaults = defaultConfig();
+  assert.deepEqual(defaults.markets, []); assert.deepEqual(defaults.policy.markets, []);
+  assert.throws(() => parseConfig(defaultConfig()), (e: any) => e.code === 'invalid_input' && /list at least one market/.test(e.message));
+  const dir = mkdtempSync(join(tmpdir(), 'flurbo-cli-')), config = join(dir, 'flurbo-agent.json'), err: string[] = [];
+  const io = { out: () => {}, err: (s: string) => err.push(s) };
+  const required = 'invalid_input: Pass --markets as the comma separated market names shown on the agent page: practice- followed by the pool address without 0x.';
+  try {
+    for (const args of [[], ['--markets', ''], ['--markets', 'practice-1234']]) {
+      err.length = 0;
+      assert.equal(await main(['init', '--config', config, ...args], io), 1, args.join(' '));
+      assert.deepEqual(err, [required]); assert.equal(existsSync(config), false);
+    }
+    assert.equal(await main(['init', '--config', config, '--markets', NS], io), 0);
+    const written = JSON.parse(readFileSync(config, 'utf8'));
+    assert.deepEqual(written.markets, [NS]); assert.deepEqual(written.policy.markets, [NS]);
+    assert.equal(await main(['help'], { out: (s: string) => err.push(s), err: () => {} }), 1);
+    assert.match(err.at(-1)!, /practice- followed by the pool address without 0x/);
+    assert.ok(!err.at(-1)!.includes('pilot'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

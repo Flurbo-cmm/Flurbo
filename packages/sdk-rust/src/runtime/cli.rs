@@ -2,7 +2,7 @@
 //! or runs anything on Flurbo's servers. Closing the dashboard does not stop it; `stop` (or Ctrl+C) does.
 //!
 //! ```text
-//! flurbo-agent-rs <init [--markets A,B]|start [--once]|stop|status|recover|address|sign-message --file F> [--config flurbo-agent.json]
+//! flurbo-agent-rs <init --markets A,B|start [--once]|stop|status|recover|address|sign-message --file F> [--config flurbo-agent.json]
 //! ```
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,7 +14,7 @@ use super::runner::{AgentRunner, RunnerOptions};
 use crate::error::{FlurboError, Result};
 use crate::signer::{LocalKeySigner, Signer};
 
-pub const USAGE: &str = "usage: flurbo-agent-rs <init [--markets A,B]|start [--once]|stop|status|recover|address|sign-message --file F> [--config flurbo-agent.json]";
+pub const USAGE: &str = "usage: flurbo-agent-rs <init --markets A,B|start [--once]|stop|status|recover|address|sign-message --file F> [--config flurbo-agent.json]";
 
 struct Args {
     command: String,
@@ -77,17 +77,14 @@ pub fn main_with(argv: &[String], out: &mut dyn FnMut(&str), err: &mut dyn FnMut
                     return Err(FlurboError::new("conflict", format!("{} already exists.", path.display())));
                 }
                 let mut config = default_config();
-                if let Some(markets) = &args.markets {
-                    let list: Vec<String> = markets.split(',').map(|m| m.trim().to_string()).filter(|m| !m.is_empty()).collect();
-                    if list.is_empty() || !list.iter().all(|m| crate::protocol::namespace_ok(m)) {
-                        return Err(FlurboError::invalid(
-                            "Pass --markets as the comma separated market names shown on the agent page: pilot, or practice- followed by the pool address without 0x.",
-                        ));
-                    }
-                    config["markets"] = json!(list);
-                    config["policy"]["markets"] = json!(list);
-                    parse_config(&config)?;
+                let markets = args.markets.as_deref().unwrap_or("");
+                let list: Vec<String> = markets.split(',').map(|m| m.trim().to_string()).filter(|m| !m.is_empty()).collect();
+                if list.is_empty() || !list.iter().all(|m| crate::protocol::namespace_ok(m)) {
+                    return Err(FlurboError::invalid("Pass --markets as the comma separated market names shown on the agent page: practice- followed by the pool address without 0x."));
                 }
+                config["markets"] = json!(list);
+                config["policy"]["markets"] = json!(list);
+                parse_config(&config)?;
                 let names: Vec<&str> = config["markets"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
                 fs::write(&path, serde_json::to_string_pretty(&config).unwrap() + "\n").map_err(|_| FlurboError::new("io", "The configuration could not be written."))?;
                 out(&format!(

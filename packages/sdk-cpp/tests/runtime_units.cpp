@@ -13,6 +13,15 @@ using namespace flurbo;
 using json::Value;
 
 static const std::string TOKEN = "fla1_0123456789abcdef_" + std::string(43, 'A');
+static const std::string NS = "practice-" + std::string(40, '2');
+// The default configuration names no market; unit fixtures use the grammar-valid token pilot.
+static Value configured() {
+  Value c = default_config(), markets = Value::array();
+  markets.push("pilot");
+  c.set("markets", markets);
+  c.get_or_add("policy").set("markets", markets);
+  return c;
+}
 static std::string self_path;
 
 struct Call {
@@ -405,9 +414,9 @@ TEST(signer_cli_and_configuration) {
   auto run = [&](std::vector<std::string> args) {
     return cli_main(args, [&](const std::string& s) { out.push_back(s); }, [&](const std::string& s) { err.push_back(s); });
   };
-  CHECK_EQ(run({"init", "--config", config}), 0);
+  CHECK_EQ(run({"init", "--config", config, "--markets", NS}), 0);
   parse_config(json::parse(*read_file(config)));
-  CHECK_EQ(run({"init", "--config", config}), 1);
+  CHECK_EQ(run({"init", "--config", config, "--markets", NS}), 1);
   auto message = [](const std::string& w) {
     return "Flurbo agent wallet association\nOrigin: http://localhost\nMera account: 0x" + std::string(40, '4') + "\nAgent: a\nAgent wallet: " + w +
            "\nChain: Monad testnet (10143)\nNonce: n\nIssued: x\nExpires: y\nThis proves control of this wallet.";
@@ -434,11 +443,32 @@ TEST(signer_cli_and_configuration) {
   Value bad = default_config();
   bad.set("mode", "autonomous");
   CHECK(message_of([&] { parse_config(bad); }).find("mode") != std::string::npos);
-  Value secret = default_config();
+  Value secret = configured();
   Value provider = json::parse(R"({"kind":"anthropic","model":"m","apiKeyEnv":"K"})");
   provider.set("privateKey", key);
   secret.get_or_add("research").set("provider", provider);
   CHECK(message_of([&] { parse_config(secret); }).find("secrets") != std::string::npos);
+  std::filesystem::remove_all(d);
+}
+
+TEST(default_config_names_no_market_and_init_requires_markets) {
+  Value defaults = default_config();
+  CHECK_EQ(defaults["markets"].size(), size_t(0));
+  CHECK_EQ(defaults["policy"]["markets"].size(), size_t(0));
+  CHECK(message_of([&] { parse_config(defaults); }).find("list at least one market") != std::string::npos);
+  std::string d = temp("init-markets"), config = path_join(d, "flurbo-agent.json");
+  const std::string required = "invalid_input: Pass --markets as the comma separated market names shown on the agent page: practice- followed by the pool address without 0x.";
+  for (const auto& extra : std::vector<std::vector<std::string>>{{}, {"--markets", ""}, {"--markets", "practice-1234"}}) {
+    std::vector<std::string> args{"init", "--config", config}, err;
+    args.insert(args.end(), extra.begin(), extra.end());
+    CHECK_EQ(cli_main(args, [](const std::string&) {}, [&](const std::string& s) { err.push_back(s); }), 1);
+    CHECK(err.size() == 1 && err[0] == required);
+    CHECK(!file_exists(config));
+  }
+  CHECK_EQ(cli_main({"init", "--config", config, "--markets", NS}, [](const std::string&) {}, [](const std::string&) {}), 0);
+  Value written = json::parse(*read_file(config));
+  CHECK(written["markets"].size() == 1 && written["markets"][0].as_string() == NS);
+  CHECK(written["policy"]["markets"].size() == 1 && written["policy"]["markets"][0].as_string() == NS);
   std::filesystem::remove_all(d);
 }
 

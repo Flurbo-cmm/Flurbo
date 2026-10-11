@@ -44,19 +44,11 @@ test('host configuration rejects local/mainnet RPC and session storage never fal
   const env = {FLURBO_ORIGIN:origin,FLURBO_NETWORK:'public_testnet'};
   assert.equal(hostedConfig(env).rpcUrl,TESTNET.rpc + '/');
   const companyOrigin = 'https://flurbopm.singu.online';
-  const company = {...env,FLURBO_ORIGIN:companyOrigin,FLURBO_COLLECTIONS_SOURCE:'registry',FLURBO_PILOT_DISABLED:'true'};
+  const company = {...env,FLURBO_ORIGIN:companyOrigin};
+  // The company site needs none of the retired pilot registry, pilot switch or settlement bot variables.
   assert.equal(hostedConfig(company).origin,companyOrigin);
-  assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:companyOrigin}),/own registry/);
-  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true'}),/evidence origin/);
-  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin}),/monitor and worker/);
-  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
-    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true'}),/proposals enabled/);
-  assert.throws(()=>hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
-    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true',FLURBO_RESOLUTION_PROPOSALS:'true',
-    FLURBO_RESOLUTION_SIGNER_ADDRESS:'0x632a158d5eccc10f864ab94cec99511e1cc514f3'}),/dedicated new signer/);
-  assert.equal(hostedConfig({...company,FLURBO_SETTLEMENT_BOT:'true',FLURBO_RESOLUTION_EVIDENCE_ORIGIN:companyOrigin,
-    FLURBO_MONITOR_ENABLED:'true',FLURBO_RESOLUTION_ENABLED:'true',FLURBO_RESOLUTION_PROPOSALS:'true',
-    FLURBO_RESOLUTION_SIGNER_ADDRESS:'0x'+'44'.repeat(20)}).origin,companyOrigin);
+  for(const extra of [{FLURBO_SCHEDULER:'true'},{FLURBO_SETTLEMENT_BOT:'true'},{FLURBO_COLLECTIONS_SOURCE:'registry',FLURBO_PILOT_DISABLED:'true',FLURBO_SETTLEMENT_BOT:'true'}])
+    assert.equal(hostedConfig({...company,...extra}).origin,companyOrigin);
   assert.throws(()=>hostedConfig({...env,FLURBO_ORIGIN:'https://evil.singu.online'}));
   for(const url of ['http://127.0.0.1:18545','https://rpc.monad.xyz','https://evil.example']) assert.throws(()=>hostedConfig({...env,FLURBO_ALCHEMY_TESTNET_RPC_URL:url}));
   assert.throws(()=>hostedConfig({...env,FLURBO_NETWORK:'mainnet'}));
@@ -114,7 +106,7 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
     // Direct visits and refreshes must serve the same shell as client-side navigation.
     // Agent data remains protected by the API's passkey and invite checks.
     const agentPath='/agents/12345678-1234-4234-8234-123456789abc';
-    for(const path of ['/agents',agentPath,agentPath+'?view=activity','/markets/pilot/0/thesis','/markets/practice-'+ '22'.repeat(20)+'/2/thesis']) {
+    for(const path of ['/agents',agentPath,agentPath+'?view=activity','/markets/practice-'+ '22'.repeat(20)+'/0','/markets/practice-'+ '22'.repeat(20)+'/2/thesis']) {
       for(const method of ['GET','HEAD']) {
         const page=await request(path,undefined,'','flurbo.singu.online','',method);
         assert.equal(page.status,200,method+' '+path);
@@ -139,8 +131,10 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
     assert.equal((await request('/markets/rehearsal/1/thesis')).status,404);
     assert.equal((await request('/markets/practice-'+'12'.repeat(20)+'/0')).status,200);
     assert.equal((await request('/markets/unknown/99')).status,404);
-    assert.equal((await request('/rehearsal-rules')).json().fixtures.length,4);
-    assert.equal((await request('/rehearsal-rules')).json().fixtures[1].result,'NO');
+    assert.equal((await request('/rehearsal-rules')).status,404);
+    // Retired pilot market links get the normal "Market not found" page; old practice links redirect in the app.
+    for(const path of ['/markets/pilot/0','/markets/pilot/0/thesis','/markets/practice-'+'12'.repeat(20)+'/4','/markets/practice-'+'AB'.repeat(20)+'/0'])
+      assert.equal((await request(path)).status,404,path);
     assert.equal((await request('/.env')).status,404);
     for(const path of ['/brand/flurbo-social-landscape.png','/brand/flurbo-social-portrait.png','/brand/flurbo-social-banner.png','/brand/flurbo-social-banner-v2.png','/brand/flurbo-profile-2026.png']) {
       const asset=await request(path);
@@ -185,17 +179,19 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
     assert.equal((await request('/api/rpc',{method:'anvil_setBalance',params:[]})).status,400);
     assert.equal((await request('/api/learning/comparison')).status,401);
     assert.equal((await request('/healthz')).json().learning_comparison,'ready');
-    assert.equal((await request('/healthz')).json().pilot_pool,'disabled');
-    assert.equal((await request('/healthz')).json().rehearsal_pool,undefined);
-    // The in-process settlement bot is opt-in; hosting without FLURBO_SETTLEMENT_BOT reports it disabled.
-    assert.equal((await request('/healthz')).json().settlement_bot,'disabled');
-    const ns='practice-'+pool.slice(2),rulesHash='0x'+'44'.repeat(32);
-    (config as any).practiceCollections={catalog:{active:ns},services:new Map([[ns,{manifest:{pool,rulesHash,publication:{draft:{closesAt:1800000000}}},secret:'must-not-leak'}]])};
+    const idle=(await request('/healthz')).json();
+    for(const key of ['pilot_pool','pilot_address','pilot_rules_hash','practice_collections','rehearsal_pool'])assert.ok(!(key in idle),key);
+    // The in-process scheduler is opt-in; hosting without FLURBO_SCHEDULER reports it disabled, under both names.
+    assert.equal(idle.scheduler,'disabled');assert.equal(idle.settlement_bot,'disabled');assert.equal(idle.agent_pools,null);
+    const ns='practice-'+pool.slice(2);
+    (config as any).agentPools={services:new Map([[ns,{manifest:{pool},secret:'must-not-leak'}]]),pending:()=>1};
+    (config as any).scheduler={status:()=>({enabled:true,cycles:3,agentPools:'added 0, pending 1'})};
     const health=(await request('/healthz')).json();
     assert.equal(health.chain_state,'not_checked');
-    assert.deepEqual(health.practice_collections,{active:ns,configured:[{namespace:ns,pool,rulesHash,closesAt:1800000000}]});
+    assert.deepEqual(health.agent_pools,{configured:1,pending:1});
+    assert.deepEqual(health.scheduler,{enabled:true,cycles:3,agentPools:'added 0, pending 1'});assert.deepEqual(health.settlement_bot,health.scheduler);
     assert.ok(!JSON.stringify(health).includes('must-not-leak'));
-    delete (config as any).practiceCollections;
+    delete (config as any).agentPools;delete (config as any).scheduler;
 
     assert.equal((await request('/api/auth/challenge',{address:signer.address,method:'wallet'})).status,400);
     const challenge=await request('/api/auth/challenge',{address:signer.address,method:'passkey'});

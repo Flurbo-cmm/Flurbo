@@ -25,6 +25,7 @@ from flurbo_sdk.runtime.runner import default_config, parse_config
 from flurbo_sdk.runtime.signer import LocalKeySigner, signer_from_env
 
 TOKEN = "fla1_0123456789abcdef_" + "A" * 43
+NS = "practice-" + "22" * 20
 
 
 class Server:
@@ -183,9 +184,9 @@ class SignerAndCli(unittest.TestCase):
         self.assertNotIn(key[2:], repr(signer))
         with tempfile.TemporaryDirectory() as d:
             out, err, config = [], [], str(Path(d) / "flurbo-agent.json")
-            self.assertEqual(main(["init", "--config", config], out.append, err.append), 0)
+            self.assertEqual(main(["init", "--config", config, "--markets", NS], out.append, err.append), 0)
             parse_config(json.loads(Path(config).read_text()))
-            self.assertEqual(main(["init", "--config", config], out.append, err.append), 1)
+            self.assertEqual(main(["init", "--config", config, "--markets", NS], out.append, err.append), 1)
             message = lambda w: f"Flurbo agent wallet association\nOrigin: http://localhost\nMera account: 0x{'44' * 20}\nAgent: a\nAgent wallet: {w}\nChain: Monad testnet (10143)\nNonce: n\nIssued: x\nExpires: y\nThis proves control of this wallet."
             Path(d, "m.txt").write_text(message(signer.address))
             Path(d, "other.txt").write_text(message("0x" + "55" * 20))
@@ -202,6 +203,29 @@ class SignerAndCli(unittest.TestCase):
                 del os.environ["FLURBO_AGENT_PRIVATE_KEY"]
         with self.assertRaisesRegex(FlurboError, "mode"):
             parse_config({**default_config(), "mode": "autonomous"})
+
+
+
+class DefaultConfigTest(unittest.TestCase):
+    def test_default_config_names_no_market_and_init_requires_markets(self):
+        defaults = default_config()
+        self.assertEqual(defaults["markets"], [])
+        self.assertEqual(defaults["policy"]["markets"], [])
+        with self.assertRaisesRegex(FlurboError, "list at least one market") as raised:
+            parse_config(default_config())
+        self.assertEqual(raised.exception.code, "invalid_input")
+        required = "invalid_input: Pass --markets as the comma separated market names shown on the agent page: practice- followed by the pool address without 0x."
+        with tempfile.TemporaryDirectory() as d:
+            config = str(Path(d) / "flurbo-agent.json")
+            for extra in ([], ["--markets", ""], ["--markets", "practice-1234"]):
+                err = []
+                self.assertEqual(main(["init", "--config", config, *extra], lambda s: None, err.append), 1, extra)
+                self.assertEqual(err, [required])
+                self.assertFalse(Path(config).exists())
+            self.assertEqual(main(["init", "--config", config, "--markets", NS], lambda s: None, lambda s: None), 0)
+            written = json.loads(Path(config).read_text())
+            self.assertEqual(written["markets"], [NS])
+            self.assertEqual(written["policy"]["markets"], [NS])
 
 
 if __name__ == "__main__":

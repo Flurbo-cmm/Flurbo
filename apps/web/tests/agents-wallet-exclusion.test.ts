@@ -69,3 +69,29 @@ test('both final writes racing on separate servers: exactly one wins, decided at
   assert.equal(Boolean(agentKey)&&Boolean(linked),false,'never both');
   assert.equal(Boolean(agentKey)||Boolean(linked),true,'one of them holds the wallet');
 });
+
+test('catalog operator addresses of the agent pools can never be agent wallets',async()=>{
+  const {createServer,request}=await import('node:http');
+  const {localApi}=await import('../server/local-api.mjs');
+  const {poolFixture}=await import('./pool-fixture.ts');
+  const f=poolFixture(),host='localhost:18767';
+  const reserved=[f.manifest.pool,f.manifest.resolver,f.record.prepared.proposer,f.record.prepared.relay].map((a:string)=>a.toLowerCase());
+  const api=localApi({store:{read:async(id:string)=>id==='alice'?{address:alice,method:'passkey'}:null},
+    agentPools:{collections:[],services:new Map([[f.namespace,f.service]]),reservedAddresses:new Set(reserved)}} as any);
+  const server=createServer((req,res)=>api(req,res,()=>{res.writeHead(404);res.end();}));
+  await new Promise<void>(r=>server.listen(0,'127.0.0.1',()=>r()));
+  const call=(path:string,body:unknown):Promise<{status:number;data:any}>=>new Promise((resolve,reject)=>{
+    const req=request({hostname:'127.0.0.1',port:(server.address() as any).port,path,method:'POST',headers:{host,origin:`http://${host}`,'content-type':'application/json',cookie:'flurbo_session=alice'}},res=>{
+      let text='';res.on('data',c=>text+=c);res.on('end',()=>resolve({status:res.statusCode!,data:JSON.parse(text)}));});
+    req.on('error',reject);req.end(JSON.stringify(body));
+  });
+  try{
+    const created=await call('/api/agents',{kind:'runtime',name:'Reserved',markets:[f.namespace]});
+    assert.equal(created.status,200,JSON.stringify(created.data));
+    for(const wallet of reserved){
+      const r=await call(`/api/agents/${created.data.id}/wallet/challenge`,{wallet});
+      assert.equal(r.status,400,wallet);assert.match(r.data.error,/reserved for Flurbo operations/);
+    }
+    assert.equal((await call(`/api/agents/${created.data.id}/wallet/challenge`,{wallet:'0x'+'ef'.repeat(20)})).status,200);
+  }finally{server.closeAllConnections();await new Promise<void>(r=>server.close(()=>r()));}
+});

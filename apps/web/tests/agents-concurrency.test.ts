@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {decodeFunctionData} from 'viem';
 import {pilotPoolAbi} from '../shared/pilot.mjs';
 import {alice,setup,forecast} from './agent-fixture.ts';
-import {owner} from './pilot-fixture.ts';
+import {owner} from './pool-fixture.ts';
 
 // Regressions for concurrent writes and durable lifecycle records. Two API instances share one durable
 // store, as two hosted servers would. Gates make each interleaving deterministic.

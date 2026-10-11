@@ -21,7 +21,7 @@ export function writeBoardSnapshot(account:string,value:{directoryHash:string;ro
 
 // FNV-1a over the directory, enough to notice that the list of markets changed.
 export function directoryHash(directory:MarketDirectory){
-  const text=JSON.stringify([directory.groups,directory.oracleMarkets,directory.hybridMarkets]);
+  const text=JSON.stringify([directory.agentPools,directory.oracleMarkets,directory.hybridMarkets]);
   let hash=0x811c9dc5;
   for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,0x01000193)>>>0;}
   return hash.toString(16).padStart(8,'0');

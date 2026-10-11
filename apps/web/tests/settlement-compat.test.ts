@@ -14,8 +14,6 @@ function rulesIn(value: any, path = '', found: Record<string, any> = {}) {
 }
 
 const GOLDEN: Record<string, string> = {
-  'collections.json /collections/0/manifest/publication/settlementRules/0': '79d1d912018c7a8ee6f32f600168286c808e6b725ba4d963c684ed2233a686f8',
-  'collections.json /collections/0/manifest/publication/settlementRules/1': '60a0984823f05fba261380547f00a188bd62315d8fd6024721117d0117101c62',
   'hybrid-markets.json /pools/0/prepared/draft/events/0/rule': '294ee813e724176a0a6071e6307c8f6b9e4a5d41667930632a11e89a34f60ef1',
   'hybrid-markets.json /pools/0/prepared/draft/events/1/rule': '8fac80b7adedeed41878579e5d73e68c86d227c6dbd24588f951951cafca0ed7',
   'hybrid-markets.json /pools/1/prepared/draft/events/0/rule': '0880716327216685b7766bef3a70210c498917ddb1aef51f8e7fb009f2da0867',
@@ -33,8 +31,7 @@ const jsonRule = (reader: any) => ({ schema: 'flurbo.settlement-rule.v1', eventI
 
 test('deployed rules keep their hashes', () => {
   const actual: Record<string, string> = {};
-  for (const file of ['collections.json', 'hybrid-markets.json'])
-    for (const [path, rule] of Object.entries(rulesIn(load(file)))) actual[`${file} ${path}`] = settlementRuleHash(rule);
+  for (const [path, rule] of Object.entries(rulesIn(load('hybrid-markets.json')))) actual[`hybrid-markets.json ${path}`] = settlementRuleHash(rule);
   assert.deepEqual(actual, GOLDEN);
 });
 

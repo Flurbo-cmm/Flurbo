@@ -19,7 +19,8 @@ test('hybrid namespaces are validated', () => {
   for (const bad of ['hybrid-0x' + hex.toUpperCase(), 'practice-0x' + hex, 'pilot', 'hybrid-0x123']) assert.equal(isHybridNamespace(bad), false);
   assert.equal(hybridNamespace('0x' + hex.toUpperCase()), 'hybrid-0x' + hex);
   assert.throws(() => hybridNamespace('nope'), /Invalid hybrid pool/);
-  assert.equal(isHybridGroup({ namespace: 'pilot', label: '', pool: '0x' + hex, closesAt: 1 }), false);
+  const [group] = hybridPortfolioGroups([{ pool: '0x' + hex, poolTitle: 'Only pool', closesAt: 1 }]);
+  assert.equal(isHybridGroup(group), true); assert.equal(group.kind, 'hybrid');
 });
 
 test('claim links preselect the purchased claim', () => {

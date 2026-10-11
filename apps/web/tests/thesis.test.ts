@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {percentageBps,thesisDistribution,thesisCandidates,thesisProbability,thesisPayout,thesisQuantity,scenarioWins,validateThesisInput,THESIS_DENOMINATOR} from '../shared/thesis.mjs';
-import {assertCheckoutBinding} from '../src/checkout.ts';
 
 test('forecasts form a complete exact joint distribution, not a conditional bet or independent product',()=>{
   // P(A)=30%, P(B|A)=80%, P(B|not A)=20% gives P(B)=38%, P(A AND B)=24%.
@@ -41,14 +40,8 @@ test('every pair orientation and Yes/No selection matches Boolean intent and ful
   assert.equal(thesisPayout(and,2,0,1,null,null,10_000_000n),2_500_000n);
 });
 
-test('request accepts no forecast, wallet, notes or arbitrary claims; checkout pins pool and rules',()=>{
+test('request accepts no forecast, wallet, notes or arbitrary claims',()=>{
   const input={a:0,b:1,yesA:true,yesB:false,quantity:'1000000'};
   assert.equal(validateThesisInput(input,4).length,4);
   for(const bad of [null,[],{...input,a:1},{...input,a:4},{...input,quantity:'0'},{...input,quantity:'100000001'},{...input,note:'personal'},{...input,forecast:[]},{...input,owner:'wallet'},{...input,scope:3},{...input,yesB:1}])assert.throws(()=>validateThesisInput(bad,4));
-  const binding={pool:'0x'+'11'.repeat(20),rulesHash:'0x'+'22'.repeat(32)};
-  const draft={event:0,yes:true,legs:[0],answers:{0:true},quantity:'1',side:'buy' as const,binding};
-  assert.doesNotThrow(()=>assertCheckoutBinding(draft,binding));
-  assert.throws(()=>assertCheckoutBinding(draft,{...binding,pool:'0x'+'33'.repeat(20)}));
-  assert.throws(()=>assertCheckoutBinding(draft,{...binding,rulesHash:'0x'+'44'.repeat(32)}));
-  assert.doesNotThrow(()=>assertCheckoutBinding(null,binding));
 });

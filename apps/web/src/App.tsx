@@ -151,10 +151,10 @@ function AccountRoute() {
   const authenticated = !!state.address && state.expiresAt !== null && state.expiresAt > Date.now();
   const checkingAccess = authenticated && !preview.access && !preview.error;
   const checking = state.restoring || checkingAccess;
-  const operatorPath = ['/account','/events','/evidence','/metrics'].includes(location);
+  const operatorPath = ['/account','/events','/metrics'].includes(location);
   // Same page choice as before; the page for this address starts loading during the checks.
   const locationKey: RouteKey | null = location==='/access' ? 'access' : location==='/fund' ? 'fund'
-    : operatorPath ? (checking || !testingAccess ? null : location==='/evidence' ? 'evidence' : location==='/metrics' ? 'metrics' : 'workspace')
+    : operatorPath ? (checking || !testingAccess ? null : location==='/metrics' ? 'metrics' : 'workspace')
     : location==='/agents'||location.startsWith('/agents/') ? 'agents'
     : location.startsWith('/markets/')||['/markets','/portfolio'].includes(location) ? 'markets' : 'workspace';
   const approved = !!preview.access?.approved;
@@ -218,7 +218,6 @@ function pageTitle(location: string) {
     : location === "/portfolio" ? "Your portfolio | flurbo"
     : location.startsWith("/agents") ? "Agents | flurbo"
     : location === "/events" ? "Real events | flurbo"
-    : location === "/evidence" ? "Evidence review | flurbo"
     : location === "/metrics" ? "Metrics | flurbo"
     : location === "/" ? "flurbo | combine what you know" : "Page not found | flurbo";
 }
@@ -261,7 +260,7 @@ export default function App() {
       <Route path="/agents/:id" component={AccountRoute} />
       <Route path="/history"><Redirect to="/portfolio" replace /></Route>
       <Route path="/events">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
-      <Route path="/evidence">{companySite ? <Redirect to="/markets" replace /> : <AccountRoute />}</Route>
+      <Route path="/evidence"><Redirect to="/markets" replace /></Route>
       <Route path="/metrics" component={AccountRoute} />
       <Route component={NotFoundRoute} />
     </Switch>

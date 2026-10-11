@@ -12,12 +12,11 @@ import './workspace.css';
 import Funding from './Funding';
 import LearningComparison from './LearningComparison';
 import LearningPool from './LearningPool';
-import Pilot from './Pilot';
 import { walletKey, tradingWalletKey, rememberedTradingWallet } from '../portfolio';
 const publicTestnet = import.meta.env.PROD;
 
 type Panel = 'trade' | 'positions' | 'activity';
-type Market = 'original' | 'learning' | 'pilot';
+type Market = 'original' | 'learning';
 function CoreMarket({ account, panel, market, onBusy }: { account: string | null; panel: Panel; market: 'original' | 'learning'; onBusy(busy: boolean): void }) {
   const { controller, state } = useAuth();
   const host = useRef<HTMLDivElement>(null);
@@ -91,33 +90,26 @@ export default function Workspace() {
   const { controller, state } = useAuth();
   const [location, navigate] = useLocation();
   const [accountPanel, setPanel] = useState<Panel>('trade');
-  const pilotPage = location === '/events';
   const portfolioPage = location === '/portfolio';
   const panel = portfolioPage ? 'positions' : accountPanel;
   const [copied, setCopied] = useState(false);
   const [market, setMarket] = useState<Market>(() => {
-    try { const saved = sessionStorage.getItem('flurbo.trading.market'); return publicTestnet && (saved === 'learning' || saved === 'pilot') ? saved : 'original'; }
+    try { const saved = sessionStorage.getItem('flurbo.trading.market'); return publicTestnet && saved === 'learning' ? saved : 'original'; }
     catch { return 'original'; }
   });
   const [marketBusy, setMarketBusy] = useState(false);
-  useEffect(() => {
-    if (pilotPage) {
-      setMarket('pilot');
-      try { sessionStorage.setItem('flurbo.trading.market', 'pilot'); } catch { /* View preference only. */ }
-    }
-  }, [pilotPage]);
   const address = state.address;
-  const tabs = [{ key: 'markets', label: 'Markets', icon: Layers3, href: '/markets' }, { key: 'trade', label: 'Explore & trade', icon: Layers3, href: '/account' }, { key: 'positions', label: 'Portfolio', icon: Wallet, href: '/portfolio' }, { key: 'events', label: 'Real events', icon: Layers3, href: '/events' }] as const;
+  const tabs = [{ key: 'markets', label: 'Markets', icon: Layers3, href: '/markets' }, { key: 'trade', label: 'Explore & trade', icon: Layers3, href: '/account' }, { key: 'positions', label: 'Portfolio', icon: Wallet, href: '/portfolio' }] as const;
   return <main id="main" tabIndex={-1} className="consumer-workspace">
     <aside className="workspace-sidebar">
       <Link className="workspace-back" href="/"><ArrowLeft size={16} /> Back to the idea</Link>
       <span className="eyebrow">Your workspace</span>
-      <nav aria-label="Workspace">{tabs.map(({key,label,icon: Icon,href}) => <Link key={key} href={href} aria-disabled={marketBusy || undefined} aria-current={location === href && (key !== 'trade' || accountPanel === 'trade') ? 'page' : undefined} onClick={event => { if (marketBusy) event.preventDefault(); else setPanel('trade'); }}><Icon size={18}/>{label}{location === href && <span className="workspace-nav-dot"/>}</Link>)}<button disabled={marketBusy} aria-current={!portfolioPage && !pilotPage && accountPanel === 'activity' ? 'page' : undefined} onClick={() => { setPanel('activity'); navigate('/account'); }}><Activity size={18}/>Activity & network</button></nav>
-      <div className="workspace-note"><span className="eyebrow">One shared pool</span><p>Separate ideas.<br/><em>Connected possibilities.</em></p><span>{(pilotPage || market === 'pilot') ? 'Official-source pilot. Named testnet reviewers. Test assets only.' : publicTestnet ? 'Synthetic events on public Monad testnet. Test assets only.' : 'Synthetic events on a local Monad fork. Test assets only.'}</span></div>
+      <nav aria-label="Workspace">{tabs.map(({key,label,icon: Icon,href}) => <Link key={key} href={href} aria-disabled={marketBusy || undefined} aria-current={location === href && (key !== 'trade' || accountPanel === 'trade') ? 'page' : undefined} onClick={event => { if (marketBusy) event.preventDefault(); else setPanel('trade'); }}><Icon size={18}/>{label}{location === href && <span className="workspace-nav-dot"/>}</Link>)}<button disabled={marketBusy} aria-current={!portfolioPage && accountPanel === 'activity' ? 'page' : undefined} onClick={() => { setPanel('activity'); navigate('/account'); }}><Activity size={18}/>Activity & network</button></nav>
+      <div className="workspace-note"><span className="eyebrow">One shared pool</span><p>Separate ideas.<br/><em>Connected possibilities.</em></p><span>{publicTestnet ? 'Synthetic events on public Monad testnet. Test assets only.' : 'Synthetic events on a local Monad fork. Test assets only.'}</span></div>
       {address && <button className="workspace-signout" onClick={() => { void controller.signOut('Signed out. Your wallet and passkey remain yours.'); }}><LogOut size={15}/> Sign out</button>}
     </aside>
     <div className="workspace-body">
-      <header className="workspace-heading"><div><span className="eyebrow">Flurbo / {pilotPage ? 'Real events' : panel === 'trade' ? 'Make your move' : panel === 'positions' ? 'Keep the bigger picture' : 'Follow the details'}</span><h1>{pilotPage ? <>Questions with <em>real outcomes.</em></> : panel === 'trade' ? <>A view worth <em>combining.</em></> : panel === 'positions' ? <>Your piece of <em>the picture.</em></> : <>Every move, <em>in view.</em></>}</h1><p>{pilotPage ? 'Explore official-source questions and follow every step of resolution.' : panel === 'trade' ? 'Choose the outcomes you believe in. Get one price from one shared pool.' : panel === 'positions' ? 'Follow your holdings and what they pay when the outcome is known.' : 'Check transactions, pool contracts and settlement on Monad.'}</p></div><span className="workspace-network"><i/> {publicTestnet ? 'Monad testnet' : 'Local test market'}</span></header>
+      <header className="workspace-heading"><div><span className="eyebrow">Flurbo / {panel === 'trade' ? 'Make your move' : panel === 'positions' ? 'Keep the bigger picture' : 'Follow the details'}</span><h1>{panel === 'trade' ? <>A view worth <em>combining.</em></> : panel === 'positions' ? <>Your piece of <em>the picture.</em></> : <>Every move, <em>in view.</em></>}</h1><p>{panel === 'trade' ? 'Choose the outcomes you believe in. Get one price from one shared pool.' : panel === 'positions' ? 'Follow your holdings and what they pay when the outcome is known.' : 'Check transactions, pool contracts and settlement on Monad.'}</p></div><span className="workspace-network"><i/> {publicTestnet ? 'Monad testnet' : 'Local test market'}</span></header>
       <section className="workspace-identity" aria-label="Account access">
         <div className="identity-symbol"><Wallet size={20}/></div>
         <div className="identity-copy"><span className="eyebrow">{address ? 'Your Flurbo account / Mera' : 'Make yourself at home'}</span>{state.restoring ? <p>Restoring your session...</p> : address ? <><button title="Copy full account address" onClick={async () => { try { await navigator.clipboard.writeText(address); setCopied(true); } catch { setCopied(false); } }} className="identity-address">{address.slice(0, 8)}...{address.slice(-6)} {copied ? <Check size={14}/> : <Copy size={14}/>}</button><span className="identity-caption">Signed in with Mera. Connect MetaMask below to trade.</span></> : <p>Sign in with Mera to open your Flurbo account.</p>}</div>
@@ -126,22 +118,22 @@ export default function Workspace() {
       {state.error && <p role="alert" className="auth-error">{state.error}</p>}
       {state.notice && <p role="status" className="auth-feedback">{state.notice}</p>}
       {publicTestnet && address && !portfolioPage && <Funding key={address + state.method}/>}
-      {publicTestnet && !pilotPage && <section className="workspace-market" aria-label="Trading market">
+      {publicTestnet && <section className="workspace-market" aria-label="Trading market">
         <label htmlFor="trading-market">Market</label>
         <select id="trading-market" value={market} disabled={marketBusy} onChange={event => {
           const next = event.target.value as Market;
           try { sessionStorage.setItem('flurbo.trading.market', next); } catch { /* The selected market still works for this visit. */ }
           setMarketBusy(false); setMarket(next);
         }}>
-          <option value="original">Original pool</option><option value="learning">Learning pool</option><option value="pilot">Real-event pilot</option>
+          <option value="original">Original pool</option><option value="learning">Learning pool</option>
         </select>
-        <p className="auth-help">{market === 'pilot' ? 'Separate real-event pool with official-source questions and a named testnet reviewer panel. Publication requires verified deployment.' : market === 'learning' ? 'Synthetic test market with funded operator price updates. Its positions and pool allowance are separate from the original pool.' : 'Original synthetic market. Your existing positions remain here.'} AUSD wallet funds can be used across these pools. Positions and allowances are separate.</p>
+        <p className="auth-help">{market === 'learning' ? 'Synthetic test market with funded operator price updates. Its positions and pool allowance are separate from the original pool.' : 'Original synthetic market. Your existing positions remain here.'} AUSD wallet funds can be used across these pools. Positions and allowances are separate.</p>
         {marketBusy && <p className="auth-help">Finish or cancel the review, or resolve the pending transaction, before switching markets.</p>}
       </section>}
-      {pilotPage ? <Pilot key={`pilot:${address}`} namespace="pilot" onBusy={setMarketBusy}/> : address && portfolioPage ? <AccountPortfolio key={address+market+location} account={address} namespace={market}/> : market === 'pilot' ? <Pilot key={`pilot-market:${address}`} namespace="pilot" onBusy={setMarketBusy}/> : <CoreMarket key={`market:${market}`} account={address} panel={panel} market={market} onBusy={setMarketBusy}/>}
-      {publicTestnet && panel === 'activity' && !pilotPage && market !== 'pilot' && <LearningComparison key={`comparison:${address}`}/>}
-      {publicTestnet && panel === 'activity' && !pilotPage && market !== 'pilot' && <LearningPool key={`pool:${address}`}/>}
-      <footer className="workspace-footer"><span>One pool. More possibilities.</span><span>{(pilotPage || market === 'pilot') ? 'Monad testnet / Real-event pilot / Test AUSD' : publicTestnet ? 'Monad testnet / Test AUSD / Synthetic outcomes' : 'Local prototype / AUSD collateral / Synthetic outcomes'}</span></footer>
+      {address && portfolioPage ? <AccountPortfolio key={address+market+location} account={address} namespace={market}/> : <CoreMarket key={`market:${market}`} account={address} panel={panel} market={market} onBusy={setMarketBusy}/>}
+      {publicTestnet && panel === 'activity' && <LearningComparison key={`comparison:${address}`}/>}
+      {publicTestnet && panel === 'activity' && <LearningPool key={`pool:${address}`}/>}
+      <footer className="workspace-footer"><span>One pool. More possibilities.</span><span>{publicTestnet ? 'Monad testnet / Test AUSD / Synthetic outcomes' : 'Local prototype / AUSD collateral / Synthetic outcomes'}</span></footer>
     </div>
   </main>;
 }

@@ -46,7 +46,7 @@ after(async () => { await stack?.stop(); model?.close(); });
 // A signed-in Mera test identity with a runtime agent, a credential and an associated, funded wallet.
 async function setupAgent(opts: { live?: boolean } = {}) {
   const cookie = await stack.signIn(generatePrivateKey());
-  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Local test agent', markets: ['pilot'] } })).body;
+  const agent = (await stack.api('/api/agents', { cookie, body: { kind: 'runtime', name: 'Local test agent', markets: [stack.namespace] } })).body;
   const token = (await stack.api(`/api/agents/${agent.id}/credentials`, { cookie, body: { scopes: ALL } })).body.token;
   const key = generatePrivateKey(), signer = localKeySigner(key);
   const challenge = (await stack.api(`/api/agents/${agent.id}/wallet/challenge`, { cookie, body: { wallet: signer.address } })).body;
@@ -56,10 +56,10 @@ async function setupAgent(opts: { live?: boolean } = {}) {
   await stack.mint(signer.address, 20_000_000n);
   if (opts.live !== false) assert.equal((await stack.api(`/api/agents/${agent.id}/runtime-policy`, { cookie, body: { liveEnabled: true } })).body.liveEnabled, true);
   const dir = mkdtempSync(join(tmpdir(), 'flurbo-agent-'));
-  const config: AgentConfig = { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'FLURBO_AGENT_TOKEN' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: dir, mode: 'live',
+  const config: AgentConfig = { ...defaultConfig(), api: { baseUrl: stack.apiUrl, credentialEnv: 'FLURBO_AGENT_TOKEN' }, chain: { rpcUrl: stack.rpcUrl }, stateDir: dir, mode: 'live', markets: [stack.namespace],
     schedule: { intervalSeconds: 10, heartbeatSeconds: 5, waitSeconds: 30 },
     research: { retriever: { kind: 'http', allowHosts: [] }, provider: { kind: 'openai-compatible', baseUrl: modelUrl, model: 'stub-model', apiKeyEnv: null }, perCycle: 1, perHour: 50, maxEvidenceAgeDays: 14 },
-    policy: { ...defaultConfig().policy, minSecondsBeforeClose: 600 } };
+    policy: { ...defaultConfig().policy, markets: [stack.namespace], minSecondsBeforeClose: 600 } };
   const env = { FLURBO_AGENT_TOKEN: token };
   const make = (over: Partial<Parameters<typeof agentRunner>[0]> = {}, cfg: AgentConfig = config) => agentRunner({ config: cfg, env, signer, retriever: fixtureRetriever(EVIDENCE), log: () => {}, ...over });
   return { cookie, agent, token, signer, key, dir, config, env, make, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
