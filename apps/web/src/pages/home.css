@@ -118,10 +118,6 @@
 .home-visitor-status { display: grid; gap: var(--s-3); align-content: start; padding: var(--s-6); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--surface); }
 .home-visitor-status h3 { font-size: 18px; }
 .home-visitor-status p { max-width: 60ch; color: var(--ink-2); }
-.home-litepaper { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-4); align-items: start; padding: var(--s-6); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--surface); transition: border-color var(--t-fast) var(--ease-out); }
-.home-litepaper:hover { border-color: var(--ink); }
-.home-litepaper span { display: grid; gap: 4px; }
-.home-litepaper small { color: var(--ink-3); font-size: 14px; }
 
 .home-faq { display: grid; gap: var(--s-8); }
 .home-faq-list { max-width: 820px; border-bottom: 1px solid var(--rule); }

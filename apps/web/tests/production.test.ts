@@ -145,13 +145,6 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
     const favicon=await request('/favicon-contour.svg');
     assert.equal(favicon.status,200);
     assert.equal(favicon.headers['content-type'],'image/svg+xml');
-    for(const method of ['GET','HEAD']) {
-      const litepaper=await request('/technical_litepaper.pdf',undefined,'','flurbo.singu.online','',method);
-      assert.equal(litepaper.status,200);
-      assert.equal(litepaper.headers['content-type'],'application/pdf');
-      assert.equal(litepaper.headers['cache-control'],'public, max-age=3600');
-      assert.equal(litepaper.text,method==='HEAD'?'':'%PDF-fixture');
-    }
     // Unknown page-like paths keep a 404 status but show the Flurbo shell; assets stay plain.
     for(const path of ['/does-not-exist','/markets/unknown/99','/agents/not-an-id','/rehearsal']) {
       const missing=await request(path);
@@ -160,7 +153,8 @@ test('hosted HTTP serves guarded SPA routes, secure login and MetaMask-only subm
       assert.equal(missing.headers['cache-control'],'no-store',path);
       assert.equal(missing.text,'<html>Flurbo</html>',path);
     }
-    for(const path of ['/assets/missing.js','/brand/not-public.png','/.env','/technical_litepaper.pdf.exe']) {
+    // The litepaper is withdrawn: a stale copy in the build output must not be served.
+    for(const path of ['/assets/missing.js','/brand/not-public.png','/.env','/technical_litepaper.pdf','/technical_litepaper.pdf.exe']) {
       const missing=await request(path);
       assert.equal(missing.status,404,path);
       assert.equal(missing.text,'Not found',path);

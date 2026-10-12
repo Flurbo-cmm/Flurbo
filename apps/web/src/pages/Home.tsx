@@ -1,11 +1,10 @@
-import {ArrowUpRight,FileText} from 'lucide-react';
+import {ArrowUpRight} from 'lucide-react';
 import {useEffect,useRef,useState} from 'react';
 import {Link} from 'wouter';
 import {useAuth} from '../auth/context';
 import './home.css';
 import VisitorStatus from './VisitorStatus';
 import {usePreviewAccess} from '../auth/preview-access';
-import {LITEPAPER} from '../components/SiteFooter';
 import {INK} from '../components/BrandLogo';
 import {drawHalftone} from '../halftone';
 import SegmentedControl from '../components/ui/SegmentedControl';
@@ -143,9 +142,7 @@ export default function Home(){
         <li><span className="home-step-index">2</span><div><h3>Connect and fund MetaMask</h3><p>Once approved, connect MetaMask and get test AUSD and test MON. Your trading wallet signs every transaction.</p></div></li>
         <li><span className="home-step-index">3</span><div><h3>Pick your prediction</h3><p>Choose an answer, review the cost and confirm in MetaMask. Follow your shares in Portfolio.</p></div></li>
       </ol>
-      <div className="home-start-foot"><VisitorStatus access={access}/>
-        <a className="home-litepaper" href={LITEPAPER.href} type="application/pdf"><FileText size={20} strokeWidth={1.75}/><span><strong>{LITEPAPER.label}</strong><small>How pricing, combinations and settlement work. {LITEPAPER.detail}.</small></span><ArrowUpRight size={16} strokeWidth={1.75}/></a>
-      </div>
+      <div className="home-start-foot"><VisitorStatus access={access}/></div>
     </section>
 
     <section className="home-faq home-band" id="faq" aria-labelledby="faq-title"><h2 id="faq-title">A few things, made clear.</h2><div className="home-faq-list">{FAQ.map(([q,a])=><details key={q} className="disclosure"><summary>{q}</summary><p>{a}</p></details>)}</div></section>
