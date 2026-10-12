@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeAbiParameters, parseAbiParameters } from 'viem';
+import { decodeAbiParameters, encodeAbiParameters, keccak256, parseAbiParameters } from 'viem';
 import { readFileSync } from 'node:fs';
-import { prepareHybridPilot, realityQuestionText } from '../scripts/prepare-hybrid-pilot.mjs';
+import { hybridConfigAbi, hybridRulesHash, isLsPrepared, LS_PREPARED, prepareHybridPilot, realityQuestionText } from '../scripts/prepare-hybrid-pilot.mjs';
 import { settlementRuleHash } from '../server/settlement-rules.mjs';
 import { hybridSettlementCatalog } from '../server/hybrid-settlement-worker.mjs';
 import { SEPOLIA_KLEROS, SEPOLIA_KLEROS_LIQUID, SEPOLIA_KLEROS_SUBCOURT3, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
@@ -123,4 +123,36 @@ test('reality rule timing must match the Reality timeout', () => {
 test('committed hybrid catalog still re-prepares', () => {
   const catalog = JSON.parse(readFileSync(new URL('../../../config/hybrid-markets.json', import.meta.url), 'utf8'));
   assert.doesNotThrow(() => hybridSettlementCatalog(catalog));
+});
+
+test('v5 publication commits the commission and keeps the rules hash domain', () => {
+  const prepared = prepareHybridPilot({ ...publication(), schema: 'flurbo.hybrid-publication.v5', commissionBps: 500 });
+  assert.equal(prepared.schema, 'flurbo.hybrid-prepared.v5');
+  assert.equal(LS_PREPARED, 'flurbo.hybrid-prepared.v5');
+  assert.equal(isLsPrepared(prepared), true);
+  assert.equal(isLsPrepared(prepareHybridPilot(publication())), false);
+  assert.equal(prepared.commissionBps, 500);
+  assert.equal(prepared.draft.commissionBps, 500);
+  assert.equal(prepared.liquidityAtoms, '10000000');
+  assert.deepEqual(Object.keys(prepared.draft).slice(-3), ['liquidityAtoms', 'commissionBps', 'events']);
+  const other = prepareHybridPilot({ ...publication(), schema: 'flurbo.hybrid-publication.v5', commissionBps: 1000 });
+  assert.notEqual(other.draftHash, prepared.draftHash);
+  assert.notEqual(prepareHybridPilot(publication()).draftHash, prepared.draftHash);
+  const resolver = account('4');
+  const [config] = decodeAbiParameters(hybridConfigAbi, prepared.resolverConfig);
+  const manual = keccak256(encodeAbiParameters([
+    ...parseAbiParameters('string domain,uint256 chainId,address resolver,address creator'), ...hybridConfigAbi,
+  ], ['flurbo.pilot.hybrid.v4', 10143n, resolver, prepared.creator, config]));
+  assert.equal(hybridRulesHash(prepared, resolver), manual);
+});
+
+test('v5 rejects a commission outside 100 to 2000, and v4 rejects any commission', () => {
+  for (const commissionBps of [99, 2001, 1.5, '500', null, undefined])
+    assert.throws(() => prepareHybridPilot({ ...publication(), schema: 'flurbo.hybrid-publication.v5', commissionBps }),
+      /Invalid hybrid publication/);
+  for (const commissionBps of [100, 2000])
+    assert.equal(prepareHybridPilot({ ...publication(), schema: 'flurbo.hybrid-publication.v5', commissionBps }).commissionBps, commissionBps);
+  assert.throws(() => prepareHybridPilot({ ...publication(), commissionBps: 500 }), /Invalid hybrid publication/);
+  assert.throws(() => prepareHybridPilot({ ...publication(), schema: 'flurbo.hybrid-publication.v6', commissionBps: 500 }),
+    /Invalid hybrid publication/);
 });

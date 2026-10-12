@@ -7,9 +7,13 @@ import { runPairModel } from './pair-analytics.mjs';
 import { simulatePairPurchase } from './pair-sensitivity.mjs';
 import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { encodeClaim } from '../shared/claims.mjs';
+import { verifiedLsState } from '../shared/ls-lmsr.mjs';
+import { isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
 
 const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
   'function liquidity() view returns (uint128)',
+  'function depth() view returns (uint256)',
+  'function commissionBps() view returns (uint16)',
   'function eliminationOrder() view returns (uint8[])',
   'function factors() view returns ((uint32 scope,uint128[] values)[])',
   'function quoteBuy(uint32,uint256,uint128) view returns (uint128)',
@@ -97,10 +101,16 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     const head = await readHybridSnapshot(record, market);
     const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
       abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
-    const [liquidity, order, factors] = await Promise.all([
+    const ls = isLsPrepared(record.prepared);
+    const [liquidity, order, factors, depth, commissionBps] = await Promise.all([
       at('liquidity'), at('eliminationOrder'), at('factors'),
+      ...(ls ? [at('depth'), at('commissionBps')] : []),
     ]);
-    const state = { events: count, a: input.a, b: input.b, liquidity: String(liquidity),
+    const committed = { initialDepthAtoms: record.prepared.liquidityAtoms, commissionBps: record.prepared.commissionBps };
+    const verified = ls ? verifiedLsState(committed, { events: count, a: input.a, b: input.b,
+      order: order.map(Number), factors, liquidity, commissionBps, depth }) : null;
+    if (ls && !verified) throw Error('Hybrid comparison unavailable');
+    const state = verified ? verified.state : { events: count, a: input.a, b: input.b, liquidity: String(liquidity),
       order: order.map(Number), factors: factors.map(f => ({ scope: Number(f.scope),
         values: f.values.map(String) })) };
     const encoded = pairInput(state), certified = certifiedPair(state);
@@ -131,7 +141,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     const sensitivity = [];
     if (!closed) for (const answer of ['yes', 'no']) {
       try {
-        const simulated = simulatePairPurchase(state, answer);
+        const simulated = simulatePairPurchase(state, answer, verified?.ls ?? null);
         const cost = String(await at('quoteBuy', [simulated.scope, BigInt(simulated.mask), 1_000_000n]));
         sensitivity.push({ answer, costAtoms: cost, values: certifiedPair(simulated.after).values });
       } catch { sensitivity.push({ answer, costAtoms: null, values: null }); }

@@ -4,6 +4,11 @@ import { decodeFunctionData, parseAbi } from 'viem';
 import { prepareHybridPilot, hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { hybridMarketService } from '../server/hybrid-market-service.mjs';
 import { TEST_AUSD } from '../server/oracle-integration.mjs';
+import { runPairModel } from '../server/pair-analytics.mjs';
+import { certifiedClaim, certifiedPair } from '../server/pair-math.mjs';
+import { simulatePairPurchase } from '../server/pair-sensitivity.mjs';
+import { depthRateWad, lsAnalyticsState } from '../shared/ls-lmsr.mjs';
+import { rustExample } from './rust-example.ts';
 
 const at = 1_800_000_000;
 const account = (digit: string) => `0x${digit.repeat(40)}`;
@@ -139,4 +144,61 @@ test('reality snapshot includes rule URI and the automatic answer', async () => 
   const second = await service.snapshot(`${poolAddress}-1`);
   assert.equal(second.automaticAnswer, null);
   assert.equal(second.ruleAdapter, 'json-api.v1');
+});
+
+function lsMarket(change: Record<string, unknown> = {}) {
+  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v5', chainId: 10143,
+    rulesReviewed: true, creator: account('1'), proposer: account('2'), relay: account('3'),
+    title: 'Liquidity-sensitive test', closesAt: at - 3600, assertionPeriod: 3600,
+    challengePeriod: 3600, reportPeriod: 86400, arbitrationPeriod: 30 * 86400,
+    bondAtoms: '1000000', liquidityAtoms: '10000000', commissionBps: 500,
+    events: ['first', 'second'].map(id => ({ id, question, observationEndsAt: at + 3600,
+      route: 'mechanical', rule: rule(id) })) });
+  const rulesHash = hybridRulesHash(prepared, resolver);
+  const catalog = { schema: 'flurbo.hybrid-catalog.v1', pools: [{ id: 'ls-test', pool,
+    resolver, rulesHash, deploymentBlock: 100, adapter: account('6'), manager: account('7'), prepared }] };
+  const input = { events: 2, a: 0, b: 1, initialDepthAtoms: '10000000', commissionBps: 500, order: [0, 1],
+    factors: [{ scope: 3, values: ['0', '0', '0', '10000000'] }] };
+  const expected = lsAnalyticsState(input);
+  const values: Record<string, unknown> = { rulesHash, draftHash: prepared.draftHash,
+    pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n,
+    eventCount: 2n, resolver, settlementRulesHash: rulesHash, collateral: TEST_AUSD, funded: true,
+    resolved: false, delivered: false, liquidity: 10000000n, commissionBps: 500, depth: expected.depthWad,
+    eliminationOrder: [0, 1], factors: [{ scope: 3, values: [0n, 0n, 0n, 10000000n] }],
+    observationEnds: BigInt(at + 3600), routes: 0n,
+    caseState: { phase: 0n, proposal: 0n, counter: 0n, result: 0n, challengeUntil: 0n, arbitrationUntil: 0n,
+      requestId: `0x${'0'.repeat(64)}`, sourceCaseId: `0x${'0'.repeat(64)}` }, ...change };
+  const market = {
+    getChainId: async () => 10143,
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at - 7200) }),
+    readContract: async ({ address, functionName, args = [] }: any) => {
+      if (functionName === 'protocolVersion') return address.toLowerCase() === pool.toLowerCase() ? values.poolVersion ?? 5n : 4n;
+      if (functionName === 'quoteBuy') return BigInt(args[2]) / 2n;
+      if (functionName === 'eventHashes') return prepared.eventHashes[Number(args[0])];
+      if (!(functionName in values)) throw Error(`Unexpected ${functionName}`);
+      return values[functionName];
+    },
+  };
+  const service = hybridMarketService({ catalog, market, source: {}, evidence: {}, origin: 'https://example.org',
+    pairModel: input => runPairModel(input, { file: rustExample('pair_analytics') }) });
+  return { service, expected, ls: { initialDepthWad: 10n ** 19n, rateWad: depthRateWad(2, 500) } };
+}
+
+test('analysis on a protocol 5 pool uses the on-chain depth and agrees with the formula', async () => {
+  const { service, expected, ls } = lsMarket();
+  const analysis = await service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' });
+  assert.deepEqual(analysis.values, certifiedPair(expected.state).values);
+  assert.deepEqual(analysis.outcomes.map(item => item.probability),
+    [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, b]) => certifiedClaim(expected.state, 3, String(1 << (a + 2 * b))).values.market));
+  for (const item of analysis.sensitivity)
+    assert.deepEqual(item.values, certifiedPair(simulatePairPurchase(expected.state, item.answer, ls).after).values);
+});
+
+test('analysis fails closed when the on-chain depth or commission differs', async () => {
+  for (const change of [{ depth: lsMarket().expected.depthWad + 1n }, { depth: lsMarket().expected.depthWad - 1n }])
+    await assert.rejects(lsMarket(change).service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' }),
+      /Hybrid comparison unavailable/);
+  for (const change of [{ commissionBps: 1000 }, { liquidity: 20000000n }, { poolVersion: 3n }])
+    await assert.rejects(lsMarket(change).service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' }),
+      /Hybrid (comparison unavailable|pool differs from verified catalog)/);
 });

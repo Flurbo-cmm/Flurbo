@@ -1,6 +1,6 @@
 import { createWalletClient, defineChain, getAddress, http, keccak256, parseAbi, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { prepareHybridPilot, hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
+import { prepareHybridPilot, hybridRulesHash, isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
 import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { archiveSettlementProposal, evaluateSettlement, parseSettlementCapture, retrieveSettlementCapture } from './settlement-evidence.mjs';
 import { verifyPublicSettlementEvidence } from './deterministic-evidence.mjs';
@@ -26,7 +26,8 @@ const resolverAbi = parseAbi([
 const poolAbi = parseAbi(['function protocolVersion() pure returns (uint8)',
   'function resolver() view returns (address)', 'function settlementRulesHash() view returns (bytes32)',
   'function collateral() view returns (address)', 'function eventCount() view returns (uint8)',
-  'function funded() view returns (bool)', 'function resolved() view returns (bool)']);
+  'function funded() view returns (bool)', 'function resolved() view returns (bool)',
+  'function liquidity() view returns (uint128)', 'function commissionBps() view returns (uint16)']);
 const cashAbi = parseAbi(['function balanceOf(address) view returns (uint256)',
   'function allowance(address,address) view returns (uint256)', 'function approve(address,uint256) returns (bool)']);
 const realityAbi = parseAbi(['function isFinalized(bytes32) view returns (bool)',
@@ -152,22 +153,27 @@ export async function readHybridSnapshot(record, market) {
   const resolver = getAddress(record.resolver), pool = getAddress(record.pool);
   const readResolver = (functionName, args = []) => market.readContract({ address: resolver, abi: resolverAbi, functionName, args });
   const readPool = functionName => market.readContract({ address: pool, abi: poolAbi, functionName });
+  const ls = isLsPrepared(record.prepared);
   const [head, version, rulesHash, draftHash, linkedPool, proposer, relay, bond, count,
-    poolVersion, poolResolver, poolRulesHash, collateral, poolCount, funded, resolved, delivered] = await Promise.all([
+    poolVersion, poolResolver, poolRulesHash, collateral, poolCount, funded, resolved, delivered,
+    liquidity, commissionBps] = await Promise.all([
     market.getBlock(), readResolver('protocolVersion'), readResolver('rulesHash'), readResolver('draftHash'),
     readResolver('pool'), readResolver('proposer'), readResolver('relay'), readResolver('bond'),
     readResolver('eventCount'), readPool('protocolVersion'), readPool('resolver'),
     readPool('settlementRulesHash'), readPool('collateral'), readPool('eventCount'),
     readPool('funded'), readPool('resolved'), readResolver('delivered'),
+    ...(ls ? [readPool('liquidity'), readPool('commissionBps')] : []),
   ]);
   const prepared = record.prepared, size = prepared.draft.events.length;
   if (!hash32(head?.hash) || typeof head.number !== 'bigint'
-    || Number(version) !== 4 || Number(poolVersion) !== 3 || Number(count) !== size
+    || Number(version) !== 4 || Number(poolVersion) !== (ls ? 5 : 3) || Number(count) !== size
     || Number(poolCount) !== size || !funded || !same(rulesHash, record.rulesHash)
     || !same(poolRulesHash, record.rulesHash) || !same(draftHash, prepared.draftHash)
     || !same(linkedPool, pool) || !same(poolResolver, resolver)
     || !same(proposer, prepared.proposer) || !same(relay, prepared.relay)
     || !same(collateral, TEST_AUSD) || bond !== BigInt(prepared.draft.bondAtoms))
+    throw Error('Hybrid pool differs from verified catalog');
+  if (ls && (BigInt(liquidity) !== BigInt(prepared.liquidityAtoms) || Number(commissionBps) !== prepared.commissionBps))
     throw Error('Hybrid pool differs from verified catalog');
   const states = [];
   for (let event = 0; event < size; event++) {

@@ -1,11 +1,13 @@
 import { validatePairSnapshot } from './pair-math.mjs';
+import { depthWad } from '../shared/ls-lmsr.mjs';
 
 // Read-only reflection of FactoredQuote.updatedFactors, never execution authority.
 // Each scenario starts from the original snapshot, not the preceding scenario.
-export function simulatePairPurchase(state, answer) {
+// With ls = { initialDepthWad, rateWad } the state is in WAD units and the depth is recomputed after the share.
+export function simulatePairPurchase(state, answer, ls = null) {
   validatePairSnapshot(state);
   if (!['yes', 'no'].includes(answer)) throw new Error('Invalid simulated answer');
-  const quantity = 1_000_000n;
+  const quantity = ls ? 10n ** 18n : 1_000_000n;
   if (quantity > BigInt(state.liquidity)) throw new Error('One share exceeds the pool quantity limit');
   const scope = (1 << state.a) | (1 << state.b);
   const bBit = state.b < state.a ? 0 : 1;
@@ -19,6 +21,7 @@ export function simulatePairPurchase(state, answer) {
   }
   values[winningState] += quantity;
   factors.push({ scope, values: values.map(String) });
-  const after = validatePairSnapshot({ ...state, factors });
-  return { scope, mask, quantity: quantity.toString(), after };
+  const liquidity = ls ? depthWad(ls.initialDepthWad, ls.rateWad, factors).toString() : state.liquidity;
+  const after = validatePairSnapshot({ ...state, factors, liquidity });
+  return { scope, mask, quantity: '1000000', after };
 }

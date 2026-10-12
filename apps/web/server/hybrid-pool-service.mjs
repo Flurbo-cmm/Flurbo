@@ -6,6 +6,8 @@ import { settlementRuleHash } from './settlement-rules.mjs';
 import { hybridSettlementCatalog } from './hybrid-settlement-worker.mjs';
 import { pairAnalytics } from './pair-analytics.mjs';
 import { claimAnalytics } from './claim-analytics.mjs';
+import { isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
+import { depthRateWad } from '../shared/ls-lmsr.mjs';
 
 // Hybrid pools with two to four questions, served to agents and SDKs as protocol v1 pools under the namespace
 // practice-<pool address without 0x>. The manifest is synthetic: it keeps the legacy schema and status names the
@@ -58,7 +60,18 @@ export function hybridPoolManifest(record, { verifiedBlockHash, codeHashes }) {
       assertionPeriod:draft.assertionPeriod,challengePeriod:draft.challengePeriod,
       settlementRules:draft.events.map(event=>event.route==='mechanical'?structuredClone(event.rule):null),
       draft:{title:draft.title,closesAt:draft.closesAt,events:draft.events.map(event=>({id:event.id,question:event.question,...hybridEventRules(event),
-        observationStartsAt:null,observationEndsAt:event.observationEndsAt,route:event.route}))}}};
+        observationStartsAt:null,observationEndsAt:event.observationEndsAt,route:event.route}))},
+      ...(isLsPrepared(prepared)?{pricing:{model:'ls-lmsr.v1',initialDepthAtoms:prepared.liquidityAtoms,commissionBps:prepared.commissionBps,
+        depthRateWad:depthRateWad(draft.events.length,prepared.commissionBps).toString()}}:{})}};
+}
+
+// Analytics check the on-chain depth against these committed values, so a malformed block refuses the manifest.
+function validPricing(publication,count) {
+  if(!('pricing' in publication))return true;
+  const p=publication.pricing;
+  if(p?.model!=='ls-lmsr.v1'||typeof p.initialDepthAtoms!=='string'||!/^[1-9]\d{0,30}$/.test(p.initialDepthAtoms)
+    ||!Number.isInteger(p.commissionBps)||p.commissionBps<100||p.commissionBps>2000)return false;
+  return p.depthRateWad===depthRateWad(count,p.commissionBps).toString();
 }
 
 // Trust on first use of the chain, the same assumption hybridPoolIndexes makes for its anchor.
@@ -76,7 +89,8 @@ export function hybridPoolService({ manifest, rpc, now=()=>Math.floor(Date.now()
   if(manifest?.schema!=='flurbo.pilot-manifest.v1' || manifest.status!=='verified_pilot_snapshot' || manifest.chainId!==10143
     || manifest.publication?.mode!=='hybrid-v4' || !Array.isArray(events) || events.length<AGENT_MIN_QUESTIONS || events.length>AGENT_MAX_QUESTIONS
     || !lowerAddress(manifest.pool) || !lowerAddress(manifest.resolver)
-    || !hash32(manifest.codeHashes?.[manifest.pool]) || !hash32(manifest.codeHashes?.[manifest.resolver])) throw new Error('Verified hybrid pool manifest required');
+    || !hash32(manifest.codeHashes?.[manifest.pool]) || !hash32(manifest.codeHashes?.[manifest.resolver])
+    || !validPricing(manifest.publication,events.length)) throw new Error('Verified hybrid pool manifest required');
   const count=events.length, tagFor=s=>'0x'+BigInt(s.blockNumber).toString(16);
   async function read(to,abi,functionName,args=[],tag='latest') {
     const data=encodeFunctionData({abi,functionName,args});

@@ -3,6 +3,7 @@ import {decodeFunctionResult,encodeFunctionData} from 'viem';
 import {pilotPoolAbi,pilotCash} from '../shared/pilot.mjs';
 import {validateClaim} from '../shared/claims.mjs';
 import {certifiedClaim} from './pair-math.mjs';
+import {verifiedLsState} from '../shared/ls-lmsr.mjs';
 
 export function claimAnalytics({service,rpc,now=()=>Math.floor(Date.now()/1000)}){
   const {manifest}=service;
@@ -15,13 +16,16 @@ export function claimAnalytics({service,rpc,now=()=>Math.floor(Date.now()/1000)}
     const work=(async()=>{
       const snapshot=await service.snapshot(),tag='0x'+BigInt(snapshot.blockNumber).toString(16);
       const read=async name=>decodeFunctionResult({abi:pilotPoolAbi,functionName:name,data:await rpc('eth_call',[{to:manifest.pool,data:encodeFunctionData({abi:pilotPoolAbi,functionName:name})},tag])});
-      const [events,liquidity,order,factors,decimals,collateral,funded,resolved,closesAt]=await Promise.all(['eventCount','liquidity','eliminationOrder','factors','collateralDecimals','collateral','funded','resolved','closesAt'].map(read));
+      const pricing=manifest.publication.pricing??null;
+      const [events,liquidity,order,factors,decimals,collateral,funded,resolved,closesAt,depth,commissionBps]=await Promise.all(['eventCount','liquidity','eliminationOrder','factors','collateralDecimals','collateral','funded','resolved','closesAt',...(pricing?['depth','commissionBps']:[])].map(read));
       if(events!==manifest.publication.draft.events.length||decimals!==6||collateral.toLowerCase()!==pilotCash||!funded||resolved||Number(closesAt)!==manifest.publication.draft.closesAt)throw Error('Unsupported analytics pool');
-      const state={events,liquidity:String(liquidity),order,factors:factors.map(f=>({scope:f.scope,values:f.values.map(String)}))};
+      const verified=pricing?verifiedLsState(pricing,{events,a:0,b:1,order,factors,liquidity,commissionBps,depth}):null;
+      if(pricing&&!verified)throw Error('Unsupported analytics pool');
+      const state=verified?verified.state:{events,liquidity:String(liquidity),order,factors:factors.map(f=>({scope:f.scope,values:f.values.map(String)}))};
       const result=certifiedClaim(state,input.scope,input.mask);
       const current=await rpc('eth_getBlockByNumber',[tag,false]);
       if(current?.hash?.toLowerCase()!==snapshot.blockHash||now()-snapshot.timestamp>=60||now()<snapshot.timestamp-15)throw Error('Snapshot expired');
-      return {schema:'flurbo.claim-analytics.v1',model:'bounded-lmsr-enumeration-v1',chainId:10143,pool:manifest.pool,rulesHash:manifest.rulesHash,
+      return {schema:'flurbo.claim-analytics.v1',model:verified?'bounded-ls-lmsr-enumeration-v1':'bounded-lmsr-enumeration-v1',chainId:10143,pool:manifest.pool,rulesHash:manifest.rulesHash,
         ...input,snapshot,expiresAt:snapshot.timestamp+60,stateDigest:createHash('sha256').update(JSON.stringify(state)).digest('hex'),
         unit:'tenths_of_percentage_point',closed:now()>=Number(closesAt),...result};
     })();

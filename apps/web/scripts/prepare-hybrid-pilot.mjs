@@ -11,12 +11,15 @@ const hash = value => /^0x[0-9a-fA-F]{64}$/.test(value || '') && !/^0x0{64}$/i.t
 const duration = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 export const ruleUriPattern = /^https:\/\/[a-z0-9.-]+\/api\/hybrid\/rules\/0x[0-9a-f]{64}$/;
+const LS_PUBLICATION = 'flurbo.hybrid-publication.v5';
+export const LS_PREPARED = 'flurbo.hybrid-prepared.v5';
+export const isLsPrepared = prepared => prepared?.schema === LS_PREPARED;
 export function realityQuestionText(question, ruleURI) {
   return `${question} Resolution rule: ${ruleURI}. Answer Invalid if the rule result is VOID.␟flurbo␟en`;
 }
 
 export function hybridRulesHash(prepared, resolver) {
-  if (prepared?.schema !== 'flurbo.hybrid-prepared.v4' || !address(resolver))
+  if (!['flurbo.hybrid-prepared.v4', LS_PREPARED].includes(prepared?.schema) || !address(resolver))
     throw Error('Invalid hybrid rules hash input');
   const [config] = decodeAbiParameters(hybridConfigAbi, prepared.resolverConfig);
   if (keccak256(prepared.resolverConfig) !== prepared.configHash
@@ -28,7 +31,10 @@ export function hybridRulesHash(prepared, resolver) {
 }
 
 export function prepareHybridPilot(input) {
-  if (input?.schema !== 'flurbo.hybrid-publication.v4' || input.chainId !== 10143
+  const ls = input?.schema === LS_PUBLICATION;
+  if (!['flurbo.hybrid-publication.v4', LS_PUBLICATION].includes(input?.schema) || input.chainId !== 10143
+    || (ls ? !Number.isSafeInteger(input.commissionBps) || input.commissionBps < 100 || input.commissionBps > 2000
+      : 'commissionBps' in input)
     || input.rulesReviewed !== true || ![input.creator, input.proposer, input.relay].every(address)
     || same(input.creator, input.proposer) || same(input.creator, input.relay)
     || same(input.proposer, input.relay) || typeof input.title !== 'string'
@@ -89,7 +95,7 @@ export function prepareHybridPilot(input) {
     title: input.title, closesAt: input.closesAt, assertionPeriod: input.assertionPeriod,
     challengePeriod: input.challengePeriod, reportPeriod: input.reportPeriod,
     arbitrationPeriod: input.arbitrationPeriod, bondAtoms: input.bondAtoms,
-    liquidityAtoms: input.liquidityAtoms, events: input.events };
+    liquidityAtoms: input.liquidityAtoms, ...(ls ? { commissionBps: input.commissionBps } : {}), events: input.events };
   const draftHash = keccak256(toHex(canonical(draft)));
   const eventHashes = input.events.map((event, index) => keccak256(encodeAbiParameters(
     parseAbiParameters('string domain,bytes32 draftHash,uint8 eventIndex,string eventId,string route,bytes32 sourceHash'),
@@ -104,10 +110,10 @@ export function prepareHybridPilot(input) {
     assertionPeriod: input.assertionPeriod, challengePeriod: input.challengePeriod,
     reportPeriod: input.reportPeriod, arbitrationPeriod: input.arbitrationPeriod };
   const resolverConfig = encodeAbiParameters(hybridConfigAbi, [config]);
-  return { schema: 'flurbo.hybrid-prepared.v4', chainId: 10143, creator: input.creator,
+  return { schema: ls ? LS_PREPARED : 'flurbo.hybrid-prepared.v4', chainId: 10143, creator: input.creator,
     proposer: input.proposer, relay: input.relay,
     draft, draftHash, eventHashes, configHash: keccak256(resolverConfig), resolverConfig,
-    liquidityAtoms: input.liquidityAtoms };
+    liquidityAtoms: input.liquidityAtoms, ...(ls ? { commissionBps: input.commissionBps } : {}) };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -90,7 +90,7 @@ export default function Home(){
     <section className="home-idea home-band" id="the-idea" aria-labelledby="idea-title">
       <div className="home-idea-copy">
         <h2 id="idea-title">One pool. Four outcomes.</h2>
-        <p>The example's two questions share one pool. It prices each answer and every way the two can land together, so the four outcomes always add up to 1 test AUSD.</p>
+        <p>The example's two questions share one pool. It prices each answer and every way the two can land together, so the chances of the four outcomes always add up to 1.</p>
         <dl className="leaders home-outcomes">
           <div><dt>A yes, B yes</dt><dd>{cells.yy.toFixed(2)}</dd></div>
           <div><dt>A yes, B no</dt><dd>{cells.yn.toFixed(2)}</dd></div>
@@ -98,7 +98,7 @@ export default function Home(){
           <div><dt>A no, B no</dt><dd>{cells.nn.toFixed(2)}</dd></div>
           <div className="home-outcomes-total"><dt>All four</dt><dd>1.00</dd></div>
         </dl>
-        <p className="home-muted">Together, A and B cost {EXAMPLE.pAB.toFixed(2)}. If the two were unrelated they would cost {(EXAMPLE.pA*EXAMPLE.pB).toFixed(2)}, so the pool expects them to move together. Connected pricing adds context. It does not guarantee accuracy.</p>
+        <p className="home-muted">The pool gives A and B together a chance of {EXAMPLE.pAB.toFixed(2)}. If the two were unrelated it would be {(EXAMPLE.pA*EXAMPLE.pB).toFixed(2)}, so the pool expects them to move together. Connected pricing adds context. It does not guarantee accuracy.</p>
       </div>
       <div className="home-proof">
         <h3>How the example would settle</h3>

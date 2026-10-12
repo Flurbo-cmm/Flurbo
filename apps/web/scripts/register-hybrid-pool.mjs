@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { createPublicClient, getAddress, http, parseAbi } from 'viem';
-import { hybridRulesHash } from './prepare-hybrid-pilot.mjs';
+import { hybridRulesHash, isLsPrepared } from './prepare-hybrid-pilot.mjs';
 import { inspectRealityQuestion } from './inspect-reality-question.mjs';
 import { hybridSettlementCatalog, readHybridSnapshot } from '../server/hybrid-settlement-worker.mjs';
 import { verifyKlerosProxy } from '../server/hybrid-reality.mjs';
@@ -28,8 +28,11 @@ export async function verifyHybridDeployment({ id, prepared, unverified, adapter
     || (answered && [prepared.creator, prepared.proposer, prepared.relay].some(role => same(role, answerer)))
     || (reality && same(keeper, prepared.relay)))
     throw Error('Hybrid deployment roles incomplete');
+  const ls = isLsPrepared(prepared);
   if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)
-    || unverified?.schema !== 'flurbo.hybrid-manifest.v4'
+    || unverified?.schema !== (ls ? 'flurbo.hybrid-manifest.v5' : 'flurbo.hybrid-manifest.v4')
+    || (ls && (unverified.commissionBps !== prepared.commissionBps
+      || String(unverified.initialDepthAtoms) !== prepared.liquidityAtoms))
     || unverified.status !== 'unverified_deployment' || !address(unverified.pool)
     || !address(unverified.resolver) || !same(unverified.creator, prepared?.creator)
     || !same(unverified.proposer, prepared?.proposer)

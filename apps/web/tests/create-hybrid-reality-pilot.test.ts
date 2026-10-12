@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { askCommand, createHybridRealityPilot } from '../scripts/create-hybrid-reality-pilot.mjs';
 import { completeHybridRealityDraft } from '../scripts/complete-hybrid-reality-draft.mjs';
 import { prepareHybridPilot } from '../scripts/prepare-hybrid-pilot.mjs';
+import { createHybridEvmPilot } from '../scripts/create-hybrid-evm-pilot.mjs';
 import { getAddress } from 'viem';
 import { SEPOLIA_KLEROS, SEPOLIA_KLEROS_LIQUID, SEPOLIA_KLEROS_SUBCOURT3 } from '../server/oracle-integration.mjs';
 import { createdTemplate as created, creator, fakeSepolia as fakeClient, origin, proposer, relay,
@@ -59,4 +60,14 @@ test('complete draft rejects a question asked with another arbitrator', async ()
   await assert.rejects(() => completeHybridRealityDraft(template, txHashes,
     fakeClient(template, { arbitrator: SEPOLIA_KLEROS })),
   /Pinned Reality question, title, creator or opening time mismatch/);
+});
+
+test('both creation scripts emit v5 drafts with the default commission', () => {
+  const template = created();
+  assert.equal(template.draft.schema, 'flurbo.hybrid-publication.v5');
+  assert.equal(template.draft.commissionBps, 500);
+  const evm = createHybridEvmPilot({ creator, proposer, relay, closesAt: Math.floor(Date.now() / 1000) + 3 * 3600 });
+  assert.equal(evm.schema, 'flurbo.hybrid-publication.v5');
+  assert.equal(evm.commissionBps, 500);
+  assert.equal(prepareHybridPilot(evm).schema, 'flurbo.hybrid-prepared.v5');
 });
