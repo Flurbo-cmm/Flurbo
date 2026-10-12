@@ -255,11 +255,12 @@ pub fn evaluate_policy(inp: &PolicyInput) -> PolicyResult {
             found.push("WORST_CASE_LOSS_LIMIT");
         }
     }
-    let fee = c.gas_limit * c.max_fee_per_gas;
-    if fee > p.gas.max_fee_wei {
+    // A fee past the signed 128-bit range exceeds every representable maximum and balance.
+    let fee = if c.gas_limit < 0 || c.max_fee_per_gas < 0 { None } else { c.gas_limit.checked_mul(c.max_fee_per_gas) };
+    if fee.is_none_or(|f| f > p.gas.max_fee_wei) {
         found.push("GAS_FEE_LIMIT");
     }
-    if wallet.native_balance_wei - fee < p.gas.reserve_wei {
+    if fee.and_then(|f| wallet.native_balance_wei.checked_sub(f)).is_none_or(|left| left < p.gas.reserve_wei) {
         found.push("GAS_RESERVE");
     }
     if journal.iter().filter(|e| unfinished(&e.status)).count() >= p.max_pending {

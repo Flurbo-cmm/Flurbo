@@ -3254,6 +3254,120 @@
       ]
     },
     {
+      "name": "a fee past the 128-bit range exceeds the maximum and the reserve",
+      "input": {
+        "policy": {
+          "markets": [
+            "pilot"
+          ],
+          "maxQuantityAtoms": "5000000",
+          "maxTradeCostAtoms": "3000000",
+          "maxSlippageBps": 50,
+          "spend": {
+            "totalAtoms": "10000000",
+            "windows": [
+              {
+                "seconds": 3600,
+                "atoms": "4000000"
+              }
+            ]
+          },
+          "maxPositionAtoms": "8000000",
+          "maxWorstCaseLossAtoms": "6000000",
+          "gas": {
+            "maxFeeWei": "50000000000000000",
+            "reserveWei": "100000000000000000"
+          },
+          "quoteMaxAgeSeconds": 30,
+          "minSecondsBeforeClose": 900,
+          "maxPending": 2,
+          "allowSell": false,
+          "allowRedeem": false
+        },
+        "now": 1790000000,
+        "market": {
+          "namespace": "pilot",
+          "pool": "0x28d5ee02b1eda6959ac3ee5a4f834237c84dee02",
+          "eventCount": 2,
+          "closesAt": 1790726400,
+          "open": true,
+          "resolved": false
+        },
+        "wallet": {
+          "nativeBalanceWei": "1000000000000000000",
+          "holdings": [
+            {
+              "scope": 3,
+              "mask": "8",
+              "quantityAtoms": "1000000"
+            }
+          ]
+        },
+        "journal": [
+          {
+            "id": "j1",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "8"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "520000",
+            "costAtoms": "500000",
+            "status": "confirmed",
+            "plannedAt": 1789990000
+          },
+          {
+            "id": "j2",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 1,
+              "mask": "2"
+            },
+            "quantityAtoms": "2000000",
+            "limitAtoms": "1300000",
+            "costAtoms": null,
+            "status": "broadcast",
+            "plannedAt": 1789999000
+          },
+          {
+            "id": "j3",
+            "action": "buy",
+            "namespace": "pilot",
+            "claim": {
+              "scope": 3,
+              "mask": "1"
+            },
+            "quantityAtoms": "1000000",
+            "limitAtoms": "900000",
+            "costAtoms": null,
+            "status": "reverted",
+            "plannedAt": 1789999500
+          }
+        ],
+        "candidate": {
+          "action": "buy",
+          "namespace": "pilot",
+          "claim": {
+            "scope": 3,
+            "mask": "8"
+          },
+          "quantityAtoms": "1000000",
+          "limitAtoms": "510000",
+          "slippageBps": 50,
+          "quoteBlockTimestamp": 1789999990,
+          "gasLimit": "250000",
+          "maxFeePerGas": "1134274556403128211544582024772562"
+        }
+      },
+      "expect": [
+        "GAS_FEE_LIMIT",
+        "GAS_RESERVE"
+      ]
+    },
+    {
       "name": "pending entries at the maximum",
       "input": {
         "policy": {

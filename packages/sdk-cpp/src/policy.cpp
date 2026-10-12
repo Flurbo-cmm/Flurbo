@@ -174,9 +174,11 @@ std::vector<std::string> evaluate_policy(const PolicyInput& in) {
     if (held + pending_same + c.quantity_atoms > p.max_position_atoms) found.insert("POSITION_LIMIT");
     if (worst_case_loss(in) > p.max_worst_case_loss_atoms) found.insert("WORST_CASE_LOSS_LIMIT");
   }
-  i128 fee = c.gas_limit * c.max_fee_per_gas;
-  if (fee > p.max_fee_wei) found.insert("GAS_FEE_LIMIT");
-  if (in.native_balance_wei - fee < p.reserve_wei) found.insert("GAS_RESERVE");
+  // A fee past the signed 128-bit range exceeds every representable maximum and balance.
+  i128 fee = 0, left = 0;
+  bool overflow = c.gas_limit < 0 || c.max_fee_per_gas < 0 || __builtin_mul_overflow(c.gas_limit, c.max_fee_per_gas, &fee);
+  if (overflow || fee > p.max_fee_wei) found.insert("GAS_FEE_LIMIT");
+  if (overflow || __builtin_sub_overflow(in.native_balance_wei, fee, &left) || left < p.reserve_wei) found.insert("GAS_RESERVE");
   size_t pending = std::count_if(in.journal.begin(), in.journal.end(), [](const PolicyEntry& e) { return unfinished(e.status); });
   if (pending >= p.max_pending) found.insert("PENDING_LIMIT");
   std::vector<std::string> out;

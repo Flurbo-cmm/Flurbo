@@ -10,7 +10,7 @@ import { runtimeClient, RuntimeApiError } from '../src/node/headless.ts';
 import { FileJournal } from '../src/node/journal.ts';
 import { localKeySigner, signerFromEnv } from '../src/node/signer.ts';
 import { main } from '../src/node/cli.ts';
-import { parseConfig, defaultConfig } from '../src/node/runner.ts';
+import { parseConfig, defaultConfig, listedEventsMatch } from '../src/node/runner.ts';
 import { MODEL_SCHEMA } from '../src/research.ts';
 import { evidenceFixture } from './evidence-fixture.ts';
 
@@ -147,4 +147,15 @@ test('the default configuration names no market, so init needs --markets', async
     assert.match(err.at(-1)!, /practice- followed by the pool address without 0x/);
     assert.ok(!err.at(-1)!.includes('pilot'));
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a market detail must list exactly the deployed events', () => {
+  const ev = (index: unknown) => ({ index, question: 'q' });
+  assert.equal(listedEventsMatch([ev(0), ev(1)], 2), true);
+  assert.equal(listedEventsMatch([ev(0), ev(1), ev(2)], 2), false);
+  assert.equal(listedEventsMatch([ev(0)], 2), false);
+  assert.equal(listedEventsMatch([ev(1), ev(0)], 2), false);
+  assert.equal(listedEventsMatch([ev(0), ev('1')], 2), false);
+  assert.equal(listedEventsMatch(Array.from({ length: 5000 }, (_, i) => ev(i)), 4), false);
+  assert.equal(listedEventsMatch(undefined, 2), false);
 });

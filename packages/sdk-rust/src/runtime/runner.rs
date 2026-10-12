@@ -138,6 +138,11 @@ type LogFn = dyn Fn(&str, Value) + Send + Sync;
 type ClockFn = dyn Fn() -> i64 + Send + Sync;
 
 /// Runner state the executor consults: Flurbo's policy, the stop request and any stop code from Flurbo.
+/// The market detail lists exactly the deployment's events, with indices 0..event_count in order.
+pub fn listed_events_match(listed: &[Value], event_count: u32) -> bool {
+    listed.len() == event_count as usize && listed.iter().enumerate().all(|(i, e)| e["index"].as_u64() == Some(i as u64))
+}
+
 pub struct Shared {
     pub config: AgentConfig,
     pub stop_file: PathBuf,
@@ -499,6 +504,10 @@ impl AgentRunner {
         }
         let listed = detail["events"].as_array().cloned().unwrap_or_default();
         let events: Vec<PromptEvent> = listed.iter().filter_map(|e| serde_json::from_value(e.clone()).ok()).collect();
+        if !listed_events_match(&listed, d.event_count) || events.len() != listed.len() {
+            self.log("market_detail_mismatch", json!({"namespace": d.namespace}));
+            return Ok(());
+        }
         for a in 0..events.len() {
             for b in a + 1..events.len() {
                 if self.blocked_by().is_some() || self.stop_requested() {

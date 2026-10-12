@@ -28,7 +28,7 @@ All amounts are atoms, all times Unix seconds, all comparisons exact integers. T
 | `spend.windows` | List of `{seconds, atoms}`: for each, the same sum restricted to buys with `plannedAt >= now - seconds`. Local and Flurbo windows all apply. |
 | `maxPositionAtoms` | Per claim: shares held (read on-chain) plus quantities of unfinished buys. |
 | `maxWorstCaseLossAtoms` | Per pool: agent cost basis (confirmed buy cost plus unfinished buy limits) minus the lowest total payout over every Yes/No outcome of the pool's events for all agent claims. VOID payouts lie between outcome payouts, so the bound holds under VOID. |
-| `gas.maxFeeWei` | `gasLimit * maxFeePerGas` of one transaction. |
+| `gas.maxFeeWei` | `gasLimit * maxFeePerGas` of one transaction, computed exactly. A product past the signed 128-bit range exceeds this limit and the reserve. |
 | `gas.reserveWei` | Native balance that must remain after the maximum fee. |
 | `quoteMaxAgeSeconds` | `now - quote block timestamp`. |
 | `minSecondsBeforeClose` | `closesAt - now` at planning time. |

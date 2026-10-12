@@ -472,6 +472,72 @@ TEST(default_config_names_no_market_and_init_requires_markets) {
   std::filesystem::remove_all(d);
 }
 
+struct FixedNode : Rpc {
+  std::map<std::string, Value> replies;
+  Value call(const std::string& method, const Value&) override {
+    auto it = replies.find(method);
+    return it == replies.end() ? Value() : it->second;
+  }
+};
+
+TEST(hostile_rpc_values_are_refused_not_wrapped) {
+  auto node = std::make_shared<FixedNode>();
+  node->replies["eth_gasPrice"] = Value(hex_of(~u128(0) / 100));
+  CHECK_THROWS(ChainReader(node).fees());
+  node->replies["eth_gasPrice"] = Value(std::string("0xba43b7400"));
+  node->replies["eth_maxPriorityFeePerGas"] = Value(std::string("0x3b9aca00"));
+  Fees fees = ChainReader(node).fees();
+  CHECK(fees.max_fee_per_gas == u128(60'000'000'000ULL));
+  CHECK(fees.max_priority_fee_per_gas == u128(1'000'000'000ULL));
+
+  CHECK(gas_with_margin(250'000) == std::optional<u128>(300'000));
+  CHECK(gas_with_margin(MAX_GAS * 100 / 120) == std::optional<u128>(MAX_GAS));
+  CHECK(!gas_with_margin(MAX_GAS * 100 / 120 + 1));
+  CHECK(!gas_with_margin(0));
+  CHECK(!gas_with_margin(~u128(0) / 120 * 2 + 3));
+  CHECK(!gas_with_margin(~u128(0)));
+
+  CHECK(fee_wei(300'000, 60'000'000'000ULL) == std::optional<i128>(i128(18'000'000'000'000'000LL)));
+  CHECK(!fee_wei(300'000, (u128(1) << 127) / 300'000 + 1));
+  CHECK(!fee_wei(1, ~u128(0)));
+  CHECK(fee_wei(0, ~u128(0)) == std::optional<i128>(0));
+}
+
+TEST(http_dates_outside_the_imf_fixdate_form_are_rejected) {
+  CHECK(parse_http_date("Sun, 06 Nov 1994 08:49:37 GMT") == std::optional<int64_t>(784'111'777));
+  CHECK(parse_http_date("Fri, 31 Dec 9999 23:59:59 GMT") == std::optional<int64_t>(253'402'300'799LL));
+  for (const char* s : {"Sun, 06 Nov 99999999999 08:49:37 GMT", "Sun, 06 Nov 19940 08:49:37 GMT", "Sun, 06 Nov -994 08:49:37 GMT",
+                        "Sun, 06 Nov 1994 -1:49:37 GMT", "Sun, 06 Nov 1994 08:-1:37 GMT", "Sun, 06 Nov 1994 08:49:-1 GMT"})
+    CHECK(!parse_http_date(s));
+}
+
+TEST(market_detail_must_list_exactly_the_deployed_events) {
+  auto ev = [](int64_t i) {
+    Value e = Value::object();
+    e.set("index", Value(i));
+    e.set("question", Value(std::string("q")));
+    return e;
+  };
+  auto list = [&](std::initializer_list<int64_t> ids) {
+    Value a = Value::array();
+    for (int64_t i : ids) a.push(ev(i));
+    return a;
+  };
+  CHECK(listed_events_match(list({0, 1}), 2));
+  CHECK(!listed_events_match(list({0, 1, 2}), 2));
+  CHECK(!listed_events_match(list({0}), 2));
+  CHECK(!listed_events_match(list({1, 0}), 2));
+  Value text = list({0});
+  Value bad = Value::object();
+  bad.set("index", Value(std::string("1")));
+  text.push(bad);
+  CHECK(!listed_events_match(text, 2));
+  Value many = Value::array();
+  for (int64_t i = 0; i < 5000; ++i) many.push(ev(i));
+  CHECK(!listed_events_match(many, 4));
+  CHECK(!listed_events_match(Value(), 2));
+}
+
 int main(int argc, char** argv) {
   self_path = utf8(std::filesystem::absolute(argv[0]));
   return check::run(argc, argv);

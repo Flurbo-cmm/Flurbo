@@ -14,6 +14,15 @@ namespace flurbo {
 
 using json::Value;
 
+bool listed_events_match(const Value& listed, size_t event_count) {
+  if (!listed.is_array() || listed.size() != event_count) return false;
+  for (size_t i = 0; i < event_count; ++i) {
+    const Value& index = listed[i]["index"];
+    if (!index.is_integer() || index.as_int() != static_cast<int64_t>(i)) return false;
+  }
+  return true;
+}
+
 // ---- configuration ----
 Value default_config() {
   return json::parse(R"({
@@ -395,6 +404,7 @@ void AgentRunner::market_cycle(const Deployment& d) {
         events.push_back(PromptEvent::from_json(e));
       } catch (const Error&) {
       }
+  if (!listed_events_match((*detail)["events"], d.event_count) || events.size() != d.event_count) return shared_->log("market_detail_mismatch", ns);
   for (size_t a = 0; a < events.size(); ++a)
     for (size_t b = a + 1; b < events.size(); ++b) {
       if (blocked_by() || stop_requested()) return;

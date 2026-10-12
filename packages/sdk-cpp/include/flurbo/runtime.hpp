@@ -74,6 +74,14 @@ class JsonRpc : public Rpc {
 u128 hex_u128(const json::Value& v);
 std::string hex_of(u128 n);
 
+constexpr u128 MAX_GAS = 15'000'000;
+// The estimate plus 20%, or nothing when it is zero or above the service limit.
+std::optional<u128> gas_with_margin(u128 estimate);
+// gas x maxFeePerGas in wei, or nothing past the signed 128-bit range.
+std::optional<i128> fee_wei(u128 gas, u128 max_fee_per_gas);
+// The market detail lists exactly the deployment's events, with indices 0..event_count in order.
+bool listed_events_match(const json::Value& listed, size_t event_count);
+
 struct Block {
   uint64_t number = 0;
   std::string hash;

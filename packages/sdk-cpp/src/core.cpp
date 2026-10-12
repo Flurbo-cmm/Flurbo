@@ -628,9 +628,12 @@ std::string iso(int64_t seconds) {
 }
 
 std::optional<int64_t> parse_http_date(const std::string& s) {
-  char wd[8] = {0}, mon[8] = {0}, zone[8] = {0};
-  int day, year, h, mi, se;
-  if (std::sscanf(s.c_str(), "%3s, %d %3s %d %d:%d:%d %3s", wd, &day, mon, &year, &h, &mi, &se, zone) != 8 || std::string(zone) != "GMT") return std::nullopt;
+  char wd[8] = {0}, mon[8] = {0}, year_text[8] = {0}, zone[8] = {0};
+  int day, h, mi, se;
+  if (std::sscanf(s.c_str(), "%3s, %d %3s %7s %d:%d:%d %3s", wd, &day, mon, year_text, &h, &mi, &se, zone) != 8 || std::string(zone) != "GMT") return std::nullopt;
+  std::string y(year_text);
+  if (y.size() != 4 || y.find_first_not_of("0123456789") != std::string::npos || h < 0 || mi < 0 || se < 0) return std::nullopt;
+  int year = std::stoi(y);
   static const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
   for (unsigned k = 0; k < 12; ++k)
     if (std::string(mon) == months[k]) {
