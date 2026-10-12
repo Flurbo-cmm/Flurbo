@@ -39,8 +39,11 @@ test('every screenshot is imported, sized and present, and none is left unused',
 test('the guide describes the current pools only', () => {
   for (const retired of [/reviewer panel/i, /activity pool/i, /at least two/i, /settlement bot/i, /100 shares per trade/i, /collect(?:ion)? (?:in|from) portfolio/i])
     assert.doesNotMatch(docs, retired);
-  for (const current of ['Reality.eth', 'Kleros', 'Exactly one', 'Nothing was sent', 'Collect on market page', '20 shares'])
+  for (const current of ['Reality.eth', 'Kleros', 'Exactly one', 'Nothing was sent', 'Collect on market page', '20 shares',
+    'commission', 'Yes and No together cost at most 1 plus the commission'])
     assert.ok(docs.includes(current), `expected "${current}"`);
+  assert.doesNotMatch(docs, /add up to 1 before price impact/);
+  assert.doesNotMatch(docs, /slightly more than 1/);
 });
 
 test('the guide explains use, not how Flurbo is built', () => {

@@ -8,7 +8,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 // Local development stack for agent tests and the acceptance demonstration. Everything runs on this machine:
 //   an anvil chain with chain id 10143, local test AUSD (6 decimals) at the canonical test AUSD address,
-//   a Multicall3 stand-in at the canonical address, a funded hybrid pool (WidePilotPool with a HybridPilotResolver and two
+//   a Multicall3 stand-in at the canonical address, a funded hybrid pool (LsPilotPool with a HybridPilotResolver and two
 //   mechanical questions) served as an agent pool, and the real Flurbo API (and built dashboard, when present) using it.
 // Never points at a public network. The keys below are anvil's public development keys.
 const repo = resolve(fileURLToPath(new URL('../../../', import.meta.url)));
@@ -70,18 +70,18 @@ export async function startLocalStack(o: { rpcPort?: number; apiPort?: number; c
     { id: 'local-release-a', question: 'Will local project A publish release 1.0 before the observation deadline?' },
     { id: 'local-release-b', question: 'Will local project B publish release 2.0 before the observation deadline?' },
   ].map(e => ({ ...e, observationEndsAt, route: 'mechanical', rule: rule(e.id, e.question) }));
-  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v4', chainId: 10143, rulesReviewed: true, creator: creator.address,
+  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v5', chainId: 10143, rulesReviewed: true, creator: creator.address,
     proposer: REVIEWERS[1], relay: REVIEWERS[2], title: 'Local agent test market (anvil, test assets)', closesAt,
-    assertionPeriod: 3600, challengePeriod: 3600, reportPeriod: 3600, arbitrationPeriod: 30 * 86_400, bondAtoms: '1000000', liquidityAtoms: '10000000', events });
+    assertionPeriod: 3600, challengePeriod: 3600, reportPeriod: 3600, arbitrationPeriod: 30 * 86_400, bondAtoms: '1000000', liquidityAtoms: '10000000', commissionBps: 500, events });
   const config = decodeAbiParameters(hybridConfigAbi, prepared.resolverConfig)[0];
   const resolverArtifact = artifact('HybridPilotResolver.sol', 'HybridPilotResolver');
   const resolver = await deploy('HybridPilotResolver.sol', 'HybridPilotResolver', [config]);
   const rulesHash = (await pub.readContract({ address: resolver as Hex, abi: resolverArtifact.abi, functionName: 'rulesHash' }) as Hex).toLowerCase();
   // The commitment the server computes must be the one the contract stores.
   if (rulesHash !== hybridRulesHash(prepared, resolver).toLowerCase()) throw new Error('local hybrid rules hash differs from the contract');
-  const pool = await deploy('WidePilotPool.sol', 'WidePilotPool', [AUSD, events.length, 10_000_000n, BigInt(closesAt), events.map((_, i) => i), resolver, rulesHash]);
+  const pool = await deploy('LsPilotPool.sol', 'LsPilotPool', [AUSD, events.length, 10_000_000n, 500, BigInt(closesAt), events.map((_, i) => i), resolver, rulesHash]);
   await send(resolver, resolverArtifact.abi, 'bindPool', [pool]);
-  const poolAbi = artifact('WidePilotPool.sol', 'WidePilotPool').abi;
+  const poolAbi = artifact('LsPilotPool.sol', 'LsPilotPool').abi;
   const funding = await pub.readContract({ address: pool as Hex, abi: poolAbi, functionName: 'requiredFunding' }) as bigint;
   await send(AUSD, erc20, 'mint', [creator.address, funding]);
   await send(AUSD, erc20, 'approve', [pool, funding]);

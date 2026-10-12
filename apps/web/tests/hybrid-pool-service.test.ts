@@ -9,6 +9,7 @@ import { settlementSources } from '../shared/settlement-sources.mjs';
 import { pilotCall, pilotCash, pilotCashAbi, pilotPoolAbi, COMBINATION_LIMIT_MESSAGE } from '../shared/pilot.mjs';
 import { rpcInteger, submitPilot, validatePilotReview } from '../src/pilot.ts';
 import { account, hybridRecord, realityCatalog, ruleFor } from './hybrid-catalog-fixture.ts';
+import { depthRateWad } from '../shared/ls-lmsr.mjs';
 import { code, hash, owner, pool, poolFixture, resolver, rules } from './pool-fixture.ts';
 
 const mechanicalYes = 'YES if the valid source record selected by the committed rule satisfies number gte "4". Missing or ambiguous evidence does not mean NO.';
@@ -320,4 +321,35 @@ test('agent pools: only 2 to 4 question pools are served, unreadable anchors sta
   const plain = await hybridAgentPools({ catalog, rpc: async () => { throw Error('no chain'); }, readAnchor: async ({ record }: any) => anchorFor(record), analytics: false });
   assert.equal((plain.services.get(agentNamespace(addr('a'))) as any).analytics, undefined);
   await assert.rejects(hybridAgentPools({ catalog: { schema: 'flurbo.hybrid-catalog.v1', pools: [{ ...records[0], rulesHash: rules }] }, rpc: async () => null }), /commitment/);
+});
+
+test('v5 manifests carry the pricing model, initial depth, commission and rate', () => {
+  const record: any = hybridRecord({ count: 3, commissionBps: 500 });
+  const manifest: any = hybridPoolManifest(record, anchorFor(record));
+  assert.equal(manifest.publication.mode, 'hybrid-v4');
+  assert.deepEqual(manifest.publication.pricing, { model: 'ls-lmsr.v1', initialDepthAtoms: '10000000', commissionBps: 500,
+    depthRateWad: depthRateWad(3, 500).toString() });
+  assert.equal(manifest.publication.pricing.depthRateWad, '24044917348149390');
+  const fixed: any = hybridPoolManifest(hybridRecord({ count: 3 }), anchorFor(record));
+  assert.equal('pricing' in fixed.publication, false);
+  const { pricing, ...rest } = manifest.publication;
+  assert.deepEqual(Object.keys(rest), Object.keys(fixed.publication));
+  assert.doesNotThrow(() => hybridPoolService({ manifest: hybridPoolManifest(hybridRecord({ commissionBps: 500 }),
+    anchorFor(hybridRecord({ commissionBps: 500 }))), rpc: async () => null }));
+});
+
+test('the service refuses a manifest with an invalid pricing block', () => {
+  const record: any = hybridRecord({ commissionBps: 500 });
+  const manifest: any = hybridPoolManifest(record, anchorFor(record));
+  const bad = (change: (p: any) => void) => {
+    const m = structuredClone(manifest); change(m.publication.pricing); return () => hybridPoolService({ manifest: m, rpc: async () => null });
+  };
+  assert.doesNotThrow(bad(() => {}));
+  for (const change of [
+    (p: any) => { p.model = 'lmsr.v1'; }, (p: any) => { p.initialDepthAtoms = '0'; }, (p: any) => { p.initialDepthAtoms = 10000000; },
+    (p: any) => { p.commissionBps = 99; }, (p: any) => { p.commissionBps = 2001; }, (p: any) => { p.commissionBps = '500'; },
+    (p: any) => { p.depthRateWad = '1'; }, (p: any) => { p.depthRateWad = depthRateWad(3, 500).toString(); },
+  ]) assert.throws(bad(change), /^Error: Verified hybrid pool manifest required$/);
+  const m = structuredClone(manifest); m.publication.pricing = null;
+  assert.throws(() => hybridPoolService({ manifest: m, rpc: async () => null }), /^Error: Verified hybrid pool manifest required$/);
 });

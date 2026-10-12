@@ -5,6 +5,7 @@ import { decodeFunctionData, encodeFunctionResult } from 'viem';
 import { pairAnalytics, runPairModel } from '../server/pair-analytics.mjs';
 import { certifiedPair, pairInput } from '../server/pair-math.mjs';
 import { simulatePairPurchase } from '../server/pair-sensitivity.mjs';
+import { ATOM_TO_WAD, depthRateWad, lsAnalyticsState } from '../shared/ls-lmsr.mjs';
 import { pilotPoolAbi, pilotCash } from '../shared/pilot.mjs';
 import { poolFixture, hash } from './pool-fixture.ts';
 import { rustExample } from './rust-example.ts';
@@ -123,4 +124,34 @@ test('sensitivity quotes both independent scenarios at the original block and re
   closed.f.manifest.publication.draft.closesAt=closed.now;
   const historical=await closed.create()({a:0,b:1});
   assert.ok(historical.sensitivity.scenarios.every((s:any)=>s.reason==='market_closed'));
+});
+
+function lsSetup(){
+  const f=setup();
+  const input={events:4,a:0,b:1,initialDepthAtoms:'10000000',commissionBps:500,order:[0,1,2,3],factors:[{scope:3,values:['0','0','0','10000000']}]};
+  const expected=lsAnalyticsState(input);
+  f.f.manifest.publication.pricing={model:'ls-lmsr.v1',initialDepthAtoms:'10000000',commissionBps:500,depthRateWad:depthRateWad(4,500).toString()};
+  Object.assign(f.values,{depth:expected.depthWad,commissionBps:500});
+  return {...f,expected,ls:{initialDepthWad:10_000_000n*ATOM_TO_WAD,rateWad:depthRateWad(4,500)}};
+}
+test('LS pools: pair analytics reads depth, cross-checks it and reports the LS model',async()=>{
+  const f=lsSetup(),result=await f.create()({a:0,b:1});
+  assert.equal(result.model,'factored-ls-lmsr-pair-v1');
+  assert.deepEqual(result.values,certifiedPair(f.expected.state).values);
+  assert.equal(f.expected.state.liquidity,f.expected.depthWad.toString());
+  const names=f.calls.filter(([m]:any)=>m==='eth_call').map(([,p]:any)=>decodeFunctionData({abi:pilotPoolAbi,data:p[0].data}).functionName);
+  assert.ok(names.includes('depth')&&names.includes('commissionBps'));
+  for(const s of result.sensitivity.scenarios){
+    assert.equal(s.status,'available');
+    assert.deepEqual(s.values,certifiedPair(simulatePairPurchase(f.expected.state,s.answer,f.ls).after).values);
+  }
+  const fixed=await setup().create()({a:0,b:1});
+  assert.equal(fixed.model,'factored-lmsr-pair-v1');
+});
+test('LS pools: a depth that differs from the formula fails closed',async()=>{
+  for(const change of [{depth:-1n},{depth:1n},{commissionBps:1000},{liquidity:20_000_000n}]){
+    const f=lsSetup();
+    for(const [key,value] of Object.entries(change))f.values[key]=key==='depth'?f.values.depth+(value as bigint):value;
+    await assert.rejects(f.create()({a:0,b:1}),/Unsupported analytics pool/);
+  }
 });

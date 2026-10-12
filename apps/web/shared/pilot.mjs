@@ -8,6 +8,7 @@ export const pilotPoolAbi = parseAbi([
   'function eliminationOrder() view returns (uint8[])',
   'function factors() view returns ((uint32 scope,uint128[] values)[])',
   ...['liquidity','requiredFunding','requiredCollateral'].map(n => `function ${n}() view returns (uint128)`),
+  'function depth() view returns (uint256)', 'function commissionBps() view returns (uint16)',
   'function funded() view returns (bool)', 'function resolved() view returns (bool)',
   'function resolvedState() view returns (uint32)', 'function voidMask() view returns (uint32)',
   'function baseTokens(uint32,uint8) view returns (address)',

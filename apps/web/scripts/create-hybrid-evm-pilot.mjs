@@ -39,12 +39,12 @@ export function createHybridEvmPilot({ creator, proposer, relay, closesAt }) {
     throw Error('Choose three distinct wallets and a close time 2 hours to 14 days away');
   const [deployer, proposerWallet, relayWallet] = addresses;
   const events = evmBlockEvents({ closesAt }).map(item => ({ ...item, route: 'mechanical' }));
-  const draft = { schema: 'flurbo.hybrid-publication.v4', chainId: 10143,
+  const draft = { schema: 'flurbo.hybrid-publication.v5', chainId: 10143,
     rulesReviewed: true, creator: deployer, proposer: proposerWallet, relay: relayWallet,
     title: 'Monad testnet source reader pool', closesAt,
     assertionPeriod: 3600, challengePeriod: 3600, reportPeriod: 90 * 86400,
     arbitrationPeriod: 90 * 86400, bondAtoms: '1000000',
-    liquidityAtoms: '10000000', events };
+    liquidityAtoms: '10000000', commissionBps: 500, events };
   prepareHybridPilot(draft);
   return draft;
 }

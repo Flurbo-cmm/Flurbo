@@ -5,6 +5,7 @@ import { decodeFunctionResult, encodeFunctionData } from 'viem';
 import { pilotCash, pilotPoolAbi } from '../shared/pilot.mjs';
 import { certifiedPair, pairInput } from './pair-math.mjs';
 import { simulatePairPurchase } from './pair-sensitivity.mjs';
+import { verifiedLsState } from '../shared/ls-lmsr.mjs';
 
 const binary=fileURLToPath(new URL('../../../bin/flurbo-pair-analytics'+(process.platform==='win32'?'.exe':''),import.meta.url));
 export function runPairModel(input,{file=binary}={}) {
@@ -22,14 +23,18 @@ export function pairAnalytics({service,rpc,model=runPairModel,now=()=>Math.floor
   const {manifest}=service;
   let active=null;
   async function calculate({a,b}){
+    const pricing=manifest.publication.pricing??null;
     const snapshot=await service.snapshot(),tag='0x'+BigInt(snapshot.blockNumber).toString(16);
     const read=async (name,args=[])=>decodeFunctionResult({abi:pilotPoolAbi,functionName:name,
       data:await rpc('eth_call',[{to:manifest.pool,data:encodeFunctionData({abi:pilotPoolAbi,functionName:name,args})},tag])});
-    const [events,liquidity,order,factors,decimals,collateral,funded,resolved,closesAt]=await Promise.all(
-      ['eventCount','liquidity','eliminationOrder','factors','collateralDecimals','collateral','funded','resolved','closesAt'].map(name=>read(name)));
+    const [events,liquidity,order,factors,decimals,collateral,funded,resolved,closesAt,depth,commissionBps]=await Promise.all(
+      ['eventCount','liquidity','eliminationOrder','factors','collateralDecimals','collateral','funded','resolved','closesAt',
+        ...(pricing?['depth','commissionBps']:[])].map(name=>read(name)));
     if(events!==manifest.publication.draft.events.length||decimals!==6||collateral.toLowerCase()!==pilotCash
       ||!funded||resolved||BigInt(manifest.publication.draft.closesAt)!==closesAt)throw new Error('Unsupported analytics pool');
-    const state={events,a,b,liquidity:liquidity.toString(),order,factors:factors.map(f=>({scope:f.scope,values:f.values.map(String)}))};
+    const verified=pricing?verifiedLsState(pricing,{events,a,b,order,factors,liquidity,commissionBps,depth}):null;
+    if(pricing&&!verified)throw new Error('Unsupported analytics pool');
+    const state=verified?verified.state:{events,a,b,liquidity:liquidity.toString(),order,factors:factors.map(f=>({scope:f.scope,values:f.values.map(String)}))};
     async function certify(inputState){
       const input=pairInput(inputState),certified=certifiedPair(inputState),reference=await model(input);
       for(const [key,value] of Object.entries(certified.values)){
@@ -46,7 +51,7 @@ export function pairAnalytics({service,rpc,model=runPairModel,now=()=>Math.floor
       const unavailable=reason=>({answer,status:'unavailable',reason});
       if(closed){scenarios.push(unavailable('market_closed'));continue;}
       let simulated;
-      try{simulated=simulatePairPurchase(state,answer);}
+      try{simulated=simulatePairPurchase(state,answer,verified?.ls??null);}
       catch{scenarios.push(unavailable('unsupported_simulation'));continue;}
       let cost;
       try{
@@ -61,7 +66,7 @@ export function pairAnalytics({service,rpc,model=runPairModel,now=()=>Math.floor
     const current=await rpc('eth_getBlockByNumber',[tag,false]);
     if(current?.hash?.toLowerCase()!==snapshot.blockHash||now()-snapshot.timestamp>=60||now()<snapshot.timestamp-15)throw new Error('Analytics snapshot expired');
     if(!closed&&now()>=Number(closesAt))throw new Error('Market closed during calculation');
-    return {schema:'flurbo.pair-analytics.v1',model:'factored-lmsr-pair-v1',chainId:10143,pool:manifest.pool,rulesHash:manifest.rulesHash,
+    return {schema:'flurbo.pair-analytics.v1',model:verified?'factored-ls-lmsr-pair-v1':'factored-lmsr-pair-v1',chainId:10143,pool:manifest.pool,rulesHash:manifest.rulesHash,
       snapshot,expiresAt:snapshot.timestamp+60,stateDigest:createHash('sha256').update(input).digest('hex'),
       a,b,unit:'tenths_of_percentage_point',...certified,closed,
       sensitivity:{schema:'flurbo.pair-sensitivity.v1',scenarios}};

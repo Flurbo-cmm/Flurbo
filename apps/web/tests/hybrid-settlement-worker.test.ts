@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRealityObservation, hybridCaptureStep, hybridRealityOutcome, hybridSettlementCatalog, hybridSettlementWorker,
-  nextHybridAction, nextHybridActions, planRealityAnswer, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
+  nextHybridAction, nextHybridActions, planRealityAnswer, readHybridSnapshot, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
 import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { evidenceArchive } from '../server/evidence-archive.mjs';
@@ -9,7 +9,7 @@ import { digest } from '../server/settlement-rules.mjs';
 import { keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
-import { at, account, catalog, pool, realityCatalog, resolver } from './hybrid-catalog-fixture.ts';
+import { at, account, catalog, hybridRecord, pool, realityCatalog, resolver } from './hybrid-catalog-fixture.ts';
 import { proofRule } from './proof-fixture.ts';
 const state = (phase: number, challengeUntil = 0, arbitrationUntil = 0,
   sourceCaseId = `0x${'0'.repeat(64)}`) =>
@@ -282,4 +282,44 @@ test('credentialed rules wait for an uploaded proof', () => {
   assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt + 1, false), 'fetch');
   assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt + 1, true), 'retained');
   assert.equal(hybridCaptureStep(chain, chain.timing.scheduledAt - 1, false), 'outside-window');
+});
+
+function snapshotMarket(record: any, pool_: Record<string, unknown> = {}) {
+  const prepared = record.prepared;
+  return { getChainId: async () => 10143,
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at + 3700) }),
+    readContract: async ({ address, functionName, args = [] }: any) => {
+      const isPool = address.toLowerCase() === record.pool.toLowerCase();
+      const values: Record<string, unknown> = { protocolVersion: isPool ? 3 : 4, rulesHash: record.rulesHash,
+        draftHash: prepared.draftHash, pool: record.pool, proposer: prepared.proposer, relay: prepared.relay,
+        bond: 1000000n, eventCount: prepared.draft.events.length, resolver: record.resolver,
+        settlementRulesHash: record.rulesHash, funded: true, resolved: false, delivered: false,
+        collateral: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc', routes: 0,
+        eventHashes: prepared.eventHashes[Number(args[0])],
+        observationEnds: BigInt(prepared.draft.events[Number(args[0])]?.observationEndsAt ?? 0),
+        caseState: { phase: 0n, challengeUntil: 0n, arbitrationUntil: 0n, sourceCaseId: `0x${'0'.repeat(64)}` },
+        ...(isPool ? pool_ : {}) };
+      if (!(functionName in values)) throw Error(`Unexpected ${functionName}`);
+      return values[functionName];
+    } };
+}
+
+test('v5 records require pool protocol 5 and the committed depth and commission', async () => {
+  const record = hybridRecord({ commissionBps: 500 });
+  assert.equal(record.prepared.schema, 'flurbo.hybrid-prepared.v5');
+  const good = { protocolVersion: 5, liquidity: 10000000n, commissionBps: 500 };
+  const snapshot = await readHybridSnapshot(record, snapshotMarket(record, good));
+  assert.equal(snapshot.states.length, 2);
+  assert.equal(snapshot.blockNumber, 200n);
+  for (const change of [{ protocolVersion: 3 }, { liquidity: 10000001n }, { commissionBps: 1000 }])
+    await assert.rejects(() => readHybridSnapshot(record, snapshotMarket(record, { ...good, ...change })),
+      /Hybrid pool differs from verified catalog/);
+});
+
+test('v4 records still require pool protocol 3', async () => {
+  const record = hybridRecord();
+  assert.equal(record.prepared.schema, 'flurbo.hybrid-prepared.v4');
+  assert.equal((await readHybridSnapshot(record, snapshotMarket(record))).states.length, 2);
+  await assert.rejects(() => readHybridSnapshot(record, snapshotMarket(record, { protocolVersion: 5 })),
+    /Hybrid pool differs from verified catalog/);
 });

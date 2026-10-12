@@ -44,10 +44,13 @@ export function catalog(routes: string[] = ['mechanical', 'mechanical'], actors:
 export const realityCatalog = () => catalog(['reality', 'reality']);
 
 // One catalog pool record with `count` mechanical questions, for pool-level tests.
-export function hybridRecord({ count = 2, pool: poolAddress = pool, resolver: resolverAddress = resolver, closesAt = at - 3600 }:
-  { count?: number; pool?: string; resolver?: string; closesAt?: number } = {}) {
+export function hybridRecord({ count = 2, pool: poolAddress = pool, resolver: resolverAddress = resolver, closesAt = at - 3600,
+  commissionBps = null }:
+  { count?: number; pool?: string; resolver?: string; closesAt?: number; commissionBps?: number | null } = {}) {
   const observationEndsAt = closesAt + 3600;
-  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v4', chainId: 10143,
+  const pricing = commissionBps === null ? { schema: 'flurbo.hybrid-publication.v4' }
+    : { schema: 'flurbo.hybrid-publication.v5', commissionBps };
+  const prepared = prepareHybridPilot({ ...pricing, chainId: 10143,
     rulesReviewed: true, creator: account('1'), proposer: account('2'), relay: account('3'),
     title: 'Explicit test fixtures', closesAt, assertionPeriod: 3600,
     challengePeriod: 3600, reportPeriod: 86400, arbitrationPeriod: 30 * 86400,

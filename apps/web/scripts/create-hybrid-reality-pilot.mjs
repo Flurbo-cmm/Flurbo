@@ -45,11 +45,11 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
     source: { kind: 'reality-sepolia', chainId: 11155111, reality: SEPOLIA_REALITY,
       arbitrator: getAddress(arbitrator), ruleURI: item.ruleURI, questionText: item.questionText,
       minTimeout: timeout, minBond: minBondWei, openingAt: item.observationEndsAt } }));
-  const draft = { schema: 'flurbo.hybrid-publication.v4', chainId: 10143, rulesReviewed: true,
+  const draft = { schema: 'flurbo.hybrid-publication.v5', chainId: 10143, rulesReviewed: true,
     creator: deployer, proposer: proposerWallet, relay: relayWallet,
     title, closesAt, assertionPeriod: 3600,
     challengePeriod: 3600, reportPeriod: 90 * 86400, arbitrationPeriod: 90 * 86400,
-    bondAtoms: '1000000', liquidityAtoms: '10000000', events };
+    bondAtoms: '1000000', liquidityAtoms: '10000000', commissionBps: 500, events };
   return { schema: 'flurbo.hybrid-reality-template.v1', draft,
     questions: items.map((item, eventIndex) => ({ eventIndex, questionText: item.questionText,
       opening: item.observationEndsAt, timeout, minBondWei, nonce: 0 })) };
