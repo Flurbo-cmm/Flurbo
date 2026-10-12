@@ -78,6 +78,12 @@ def parse_config(c: dict) -> dict:
     return c
 
 
+def listed_events_match(listed, event_count: int) -> bool:
+    """The market detail lists exactly the deployment's events, with indices 0..event_count in order."""
+    return isinstance(listed, list) and len(listed) == event_count and all(
+        isinstance(e, dict) and type(e.get("index")) is int and e["index"] == i for i, e in enumerate(listed))
+
+
 class JointEdgeStrategy:
     """The reference strategy. A custom strategy is any object with id, version and decide(ctx)."""
     id, version = STRATEGY["id"], STRATEGY["version"]
@@ -243,6 +249,9 @@ class AgentRunner:
             self.verified.add(d["namespace"] + d["codeHashes"]["pool"])
         detail = self._api(lambda: self.client.market(d["namespace"]))
         if not detail:
+            return
+        if not listed_events_match(detail.get("events"), d["eventCount"]):
+            self.log("market_detail_mismatch", {"namespace": d["namespace"]})
             return
         head, resolved = self.chain.block(), self.chain.resolved(d["pool"])
         market = {"pool": d["pool"], "eventCount": d["eventCount"], "open": not resolved and head["timestamp"] < d["closesAt"], "resolved": resolved, "closesAt": d["closesAt"], "snapshotBlockHash": head["hash"]}

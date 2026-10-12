@@ -21,7 +21,7 @@ from flurbo_sdk.runtime.cli import main
 from flurbo_sdk.runtime.headless import RuntimeApiError, RuntimeClient
 from flurbo_sdk.runtime.journal import FileJournal
 from flurbo_sdk.runtime.research import AnthropicMessages, FixtureForecaster, FixtureRetriever, HttpRetriever, OpenAICompatible, ProviderError, Researcher, extract_text
-from flurbo_sdk.runtime.runner import default_config, parse_config
+from flurbo_sdk.runtime.runner import default_config, listed_events_match, parse_config
 from flurbo_sdk.runtime.signer import LocalKeySigner, signer_from_env
 
 TOKEN = "fla1_0123456789abcdef_" + "A" * 43
@@ -226,6 +226,19 @@ class DefaultConfigTest(unittest.TestCase):
             written = json.loads(Path(config).read_text())
             self.assertEqual(written["markets"], [NS])
             self.assertEqual(written["policy"]["markets"], [NS])
+
+
+class MarketDetailTest(unittest.TestCase):
+    def test_a_market_detail_must_list_exactly_the_deployed_events(self):
+        ev = lambda i: {"index": i, "question": "q"}
+        self.assertTrue(listed_events_match([ev(0), ev(1)], 2))
+        self.assertFalse(listed_events_match([ev(0), ev(1), ev(2)], 2))
+        self.assertFalse(listed_events_match([ev(0)], 2))
+        self.assertFalse(listed_events_match([ev(1), ev(0)], 2))
+        self.assertFalse(listed_events_match([ev(0), ev("1")], 2))
+        self.assertFalse(listed_events_match([ev(0), ev(True)], 2))
+        self.assertFalse(listed_events_match([ev(i) for i in range(5000)], 4))
+        self.assertFalse(listed_events_match(None, 2))
 
 
 if __name__ == "__main__":

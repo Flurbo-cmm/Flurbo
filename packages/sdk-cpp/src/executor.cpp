@@ -13,9 +13,22 @@ namespace flurbo {
 
 using json::Value;
 
+std::optional<u128> gas_with_margin(u128 estimate) {
+  if (estimate > ~u128(0) / 120) return std::nullopt;
+  u128 gas = estimate * 120 / 100;
+  if (gas == 0 || gas > MAX_GAS) return std::nullopt;
+  return gas;
+}
+
+std::optional<i128> fee_wei(u128 gas, u128 max_fee_per_gas) {
+  constexpr u128 signed_max = ~u128(0) >> 1;
+  if (gas != 0 && max_fee_per_gas > signed_max / gas) return std::nullopt;
+  return static_cast<i128>(gas * max_fee_per_gas);
+}
+
 namespace {
 
-constexpr u128 MAX_GAS = 15'000'000;
+i128 signed_wei(u128 v) { return v > (~u128(0) >> 1) ? static_cast<i128>(~u128(0) >> 1) : static_cast<i128>(v); }
 
 Value* find_entry(Value& j, const std::string& id) {
   for (auto& e : j.get_or_add("entries").as_array())
@@ -81,13 +94,15 @@ Planned Executor::plan(const Deployment& d, const Intent& intent, const std::str
   } catch (const Error&) {
     return {"simulation_failed", {}, {}, "The transaction would revert at the latest block."};
   }
-  u128 gas;
+  u128 estimate;
   try {
-    gas = chain_->estimate_gas(wallet, tx.to, tx.data) * 120 / 100;
+    estimate = chain_->estimate_gas(wallet, tx.to, tx.data);
   } catch (const Error&) {
     return {"simulation_failed", {}, {}, "Gas could not be estimated."};
   }
-  if (gas == 0 || gas > MAX_GAS) return {"simulation_failed", {}, {}, "Gas is outside the service limit."};
+  std::optional<u128> margin = gas_with_margin(estimate);
+  if (!margin) return {"simulation_failed", {}, {}, "Gas is outside the service limit."};
+  u128 gas = *margin;
   Fees fees = chain_->fees();
   u128 native = chain_->native_balance(wallet);
   Block head = chain_->block();
@@ -106,13 +121,13 @@ Planned Executor::plan(const Deployment& d, const Intent& intent, const std::str
   int64_t now = controls_->now();
   PolicyMarket market{d.namespace_, d.pool, d.event_count, static_cast<int64_t>(d.closes_at), !resolved && head.timestamp < static_cast<int64_t>(d.closes_at), resolved};
   return journal_->locked([&](Value& j) -> Planned {
-    i128 fee = static_cast<i128>(gas * fees.max_fee_per_gas);
+    std::optional<i128> fee = fee_wei(gas, fees.max_fee_per_gas);
     std::vector<std::string> violations;
     if (intent.action == "approve") {
       if (intent.limit_atoms < 1 || intent.limit_atoms > SERVICE_MAX_ATOMS) violations.push_back("SERVICE_LIMIT");
       if (std::find(policy.markets.begin(), policy.markets.end(), d.namespace_) == policy.markets.end()) violations.push_back("MARKET_NOT_ALLOWED");
-      if (fee > policy.max_fee_wei) violations.push_back("GAS_FEE_LIMIT");
-      if (static_cast<i128>(native) - fee < policy.reserve_wei) violations.push_back("GAS_RESERVE");
+      if (!fee || *fee > policy.max_fee_wei) violations.push_back("GAS_FEE_LIMIT");
+      if (!fee || signed_wei(native) - *fee < policy.reserve_wei) violations.push_back("GAS_RESERVE");
       size_t pending = 0;
       for (const auto& e : j["entries"].as_array()) pending += !is_final(e);
       if (pending >= policy.max_pending) violations.push_back("PENDING_LIMIT");
@@ -121,12 +136,12 @@ Planned Executor::plan(const Deployment& d, const Intent& intent, const std::str
       in.policy = policy;
       in.now = now;
       in.market = market;
-      in.native_balance_wei = static_cast<i128>(native);
+      in.native_balance_wei = signed_wei(native);
       in.holdings = holdings;
       in.journal = policy_entries(j);
       in.candidate = {intent.action, d.namespace_, ClaimRef::of(intent.claim.scope, intent.claim.mask), intent.quantity_atoms,
-                      intent.action == "redeem" ? 0 : intent.limit_atoms, slippage_bps, quote_block ? quote_block->timestamp : now, static_cast<i128>(gas),
-                      static_cast<i128>(fees.max_fee_per_gas)};
+                      intent.action == "redeem" ? 0 : intent.limit_atoms, slippage_bps, quote_block ? quote_block->timestamp : now, signed_wei(gas),
+                      signed_wei(fees.max_fee_per_gas)};
       violations = evaluate_policy(in);
     }
     if (!violations.empty()) return {"rejected_by_policy", {}, violations, ""};

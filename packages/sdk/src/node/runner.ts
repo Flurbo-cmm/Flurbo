@@ -97,6 +97,11 @@ export interface Strategy { readonly id: string; readonly version: string; decid
 
 // The reference strategy: compare the joint forecast with executable quotes for single answers and
 // combinations of each pair, including the full slippage allowance.
+/** The market detail lists exactly the deployment's events, with indices 0..eventCount in order. */
+export function listedEventsMatch(listed: unknown, eventCount: number): boolean {
+  return Array.isArray(listed) && listed.length === eventCount && listed.every((e, i) => e?.index === i);
+}
+
 export function jointEdgeStrategy(config: StrategyConfig): Strategy {
   return {
     id: STRATEGY.id, version: STRATEGY.version,
@@ -225,6 +230,7 @@ export function agentRunner(o: RunnerOptions) {
     if (!verified.has(d.namespace + d.codeHashes.pool)) { await chain.verifyDeployment(d); verified.add(d.namespace + d.codeHashes.pool); }
     const detail = await api(() => client!.market(d.namespace));
     if (!detail) return;
+    if (!listedEventsMatch(detail.events, d.eventCount)) { log('market_detail_mismatch', { namespace: d.namespace }); return; }
     const head = await chain.block(), resolved = await chain.resolved(d.pool), market = toMarket(d.namespace, d, detail, head, resolved);
     if (!market.open) { log('market_closed', { namespace: d.namespace }); return; }
     if (d.closesAt - now() < config.policy.minSecondsBeforeClose) { log('too_close_to_close', { namespace: d.namespace }); return; }

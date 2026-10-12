@@ -26,6 +26,9 @@ pub fn from_hex(s: &str) -> Result<Vec<u8>> {
     if h.len() % 2 != 0 {
         return Err(FlurboError::invalid("Expected an even number of hex digits."));
     }
+    if !h.bytes().all(|c| c.is_ascii_hexdigit()) {
+        return Err(FlurboError::invalid("Invalid hex."));
+    }
     (0..h.len()).step_by(2).map(|i| u8::from_str_radix(&h[i..i + 2], 16).map_err(|_| FlurboError::invalid("Invalid hex."))).collect()
 }
 

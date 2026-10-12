@@ -138,7 +138,7 @@ impl ChainReader {
     pub fn fees(&self) -> Result<Fees> {
         let price = hex_u128(&self.rpc.call("eth_gasPrice", json!([]))?)?;
         let priority = self.rpc.call("eth_maxPriorityFeePerGas", json!([])).and_then(|v| hex_u128(&v)).unwrap_or(0);
-        let max_fee = price * 120 / 100;
+        let max_fee = price.checked_mul(120).ok_or_else(|| unexpected("an out-of-range gas price"))? / 100;
         Ok(Fees { max_fee_per_gas: max_fee, max_priority_fee_per_gas: priority.min(max_fee) })
     }
 

@@ -24,6 +24,21 @@ use crate::signer::{transaction_hash, Signer, Tx1559};
 use crate::transaction::{build_transaction, validate_transaction, Claim, Intent, UnsignedCall};
 
 pub const MAX_GAS: u128 = 15_000_000;
+
+/// The estimate plus 20%, or None when it is zero or above the service limit.
+pub fn gas_with_margin(estimate: u128) -> Option<u128> {
+    estimate.checked_mul(120).map(|g| g / 100).filter(|g| *g != 0 && *g <= MAX_GAS)
+}
+
+/// gas x maxFeePerGas in wei, or None past the signed 128-bit range.
+pub fn fee_wei(gas: u128, max_fee_per_gas: u128) -> Option<i128> {
+    gas.checked_mul(max_fee_per_gas).and_then(|f| i128::try_from(f).ok())
+}
+
+fn signed(v: u128) -> i128 {
+    i128::try_from(v).unwrap_or(i128::MAX)
+}
+
 pub const SDK_LANGUAGE: &str = "rust";
 pub const SDK_VERSION: &str = "0.2.0";
 
@@ -157,10 +172,9 @@ impl Executor {
         let Ok(estimate) = self.chain.estimate_gas(&self.wallet, &tx.to, &tx.data) else {
             return Ok(Planned::SimulationFailed("Gas could not be estimated.".into()));
         };
-        let gas = estimate * 120 / 100;
-        if gas == 0 || gas > MAX_GAS {
+        let Some(gas) = gas_with_margin(estimate) else {
             return Ok(Planned::SimulationFailed("Gas is outside the service limit.".into()));
-        }
+        };
         let (fees, native, head, resolved) = (self.chain.fees()?, self.chain.native_balance(&self.wallet)?, self.chain.block(None)?, self.chain.resolved(&d.pool)?);
         let (policy, snapshot) = (self.controls.policy(), self.journal.read()?);
         let mut claims: Vec<ClaimRef> = Vec::new();
@@ -191,7 +205,7 @@ impl Executor {
             resolved,
         };
         self.journal.locked(|j| {
-            let fee = (gas * fees.max_fee_per_gas) as i128;
+            let fee = fee_wei(gas, fees.max_fee_per_gas);
             let violations = match intent {
                 Intent::Approve { amount_atoms } => {
                     let mut v = Vec::new();
@@ -201,10 +215,10 @@ impl Executor {
                     if !policy.markets.contains(&d.namespace) {
                         v.push("MARKET_NOT_ALLOWED");
                     }
-                    if fee > policy.gas.max_fee_wei {
+                    if fee.is_none_or(|f| f > policy.gas.max_fee_wei) {
                         v.push("GAS_FEE_LIMIT");
                     }
-                    if native as i128 - fee < policy.gas.reserve_wei {
+                    if fee.and_then(|f| signed(native).checked_sub(f)).is_none_or(|left| left < policy.gas.reserve_wei) {
                         v.push("GAS_RESERVE");
                     }
                     if j.entries.iter().filter(|e| !e.is_final()).count() >= policy.max_pending {
@@ -223,7 +237,7 @@ impl Executor {
                         policy: policy.clone(),
                         now,
                         market: market.clone(),
-                        wallet: PolicyWallet { native_balance_wei: native as i128, holdings: holdings.clone() },
+                        wallet: PolicyWallet { native_balance_wei: signed(native), holdings: holdings.clone() },
                         journal: policy_entries(j),
                         candidate: Candidate {
                             action: intent.action().into(),
@@ -233,8 +247,8 @@ impl Executor {
                             limit_atoms: limit,
                             slippage_bps,
                             quote_block_timestamp: quote_block.map(|b| b.timestamp).unwrap_or(now),
-                            gas_limit: gas as i128,
-                            max_fee_per_gas: fees.max_fee_per_gas as i128,
+                            gas_limit: signed(gas),
+                            max_fee_per_gas: signed(fees.max_fee_per_gas),
                         },
                     };
                     evaluate_policy(&input).violations

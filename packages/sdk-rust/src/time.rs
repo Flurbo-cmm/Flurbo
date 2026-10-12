@@ -46,9 +46,12 @@ pub fn parse_http_date(s: &str) -> Option<i64> {
     }
     let day: u32 = parts[1].parse().ok()?;
     let month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].iter().position(|m| *m == parts[2])? as u32 + 1;
+    if parts[3].len() != 4 || !parts[3].bytes().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
     let year: i64 = parts[3].parse().ok()?;
     let hms: Vec<i64> = parts[4].split(':').map(|x| x.parse().ok()).collect::<Option<_>>()?;
-    if hms.len() != 3 || !(1..=31).contains(&day) || hms[0] > 23 || hms[1] > 59 || hms[2] > 60 {
+    if hms.len() != 3 || !(1..=31).contains(&day) || hms.iter().any(|v| *v < 0) || hms[0] > 23 || hms[1] > 59 || hms[2] > 60 {
         return None;
     }
     Some(days_from_civil(year, month, day) * 86_400 + hms[0] * 3600 + hms[1] * 60 + hms[2])

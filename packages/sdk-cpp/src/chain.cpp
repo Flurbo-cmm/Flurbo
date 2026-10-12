@@ -159,6 +159,7 @@ Fees ChainReader::fees() {
     priority = hex_u128(rpc_->call("eth_maxPriorityFeePerGas", Value::array()));
   } catch (const Error&) {
   }
+  if (price > ~u128(0) / 120) throw Error("invalid_response", "The chain returned an out-of-range gas price.");
   u128 max_fee = price * 120 / 100;
   return {max_fee, std::min(priority, max_fee)};
 }

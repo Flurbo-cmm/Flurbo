@@ -66,6 +66,8 @@ const policyCases = [
   ['fee one wei over', { candidate: { maxFeePerGas: '200000000001' } }, ['GAS_FEE_LIMIT']],
   ['reserve exactly kept', { wallet: { nativeBalanceWei: '125000000000000000' } }, []],
   ['reserve one wei short', { wallet: { nativeBalanceWei: '124999999999999999' } }, ['GAS_RESERVE']],
+  // 250,000 x 1,134,274,556,403,128,211,544,582,024,772,562 wei is about 2.8e38, past the signed 128-bit range.
+  ['a fee past the 128-bit range exceeds the maximum and the reserve', { candidate: { maxFeePerGas: '1134274556403128211544582024772562' } }, ['GAS_FEE_LIMIT', 'GAS_RESERVE']],
   ['pending entries at the maximum', { policy: { maxPending: 1 } }, ['PENDING_LIMIT']],
   ['redeem disabled by default', { market: { resolved: true, open: false }, candidate: { action: 'redeem', limitAtoms: '0', slippageBps: 0 } }, ['ACTION_DISABLED']],
   ['redeem before resolution', { policy: { allowRedeem: true }, candidate: { action: 'redeem', limitAtoms: '0', slippageBps: 0 } }, ['MARKET_NOT_RESOLVED']],
