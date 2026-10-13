@@ -15,11 +15,14 @@ export const ruleFor = (id: string, observationEndsAt: number, question: string)
     correctionCutoff: observationEndsAt, observationEndsAt,
     assertionPeriod: 3600, challengePeriod: 3600, votingPeriod: 3600 },
   vintage: 'first-observed-snapshot', missingPolicy: 'resolver-timeout-void' });
-export function catalog(routes: string[] = ['mechanical', 'mechanical'], actors: Record<string, string> = {}) {
+export function catalog(routes: string[] = ['mechanical', 'mechanical'], actors: Record<string, string> = {},
+  { commissionBps = null }: { commissionBps?: number | null } = {}) {
   const who = { proposer: account('2'), relay: account('3'), keeper: account('8'), answerer: account('9'), ...actors };
   const question = 'Will the official value be at least four?';
   const rule = (id: string) => ruleFor(id, at + 3600, question);
-  const prepared = prepareHybridPilot({ schema: 'flurbo.hybrid-publication.v4', chainId: 10143,
+  const pricing = commissionBps === null ? { schema: 'flurbo.hybrid-publication.v4' }
+    : { schema: 'flurbo.hybrid-publication.v5', commissionBps };
+  const prepared = prepareHybridPilot({ ...pricing, chainId: 10143,
     rulesReviewed: true, creator: account('1'), proposer: who.proposer, relay: who.relay,
     title: 'Objective source test pool', closesAt: at - 3600, assertionPeriod: 3600,
     challengePeriod: 3600, reportPeriod: 86400, arbitrationPeriod: 30 * 86400,

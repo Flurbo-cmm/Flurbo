@@ -27,7 +27,9 @@ const poolAbi = parseAbi(['function protocolVersion() pure returns (uint8)',
   'function resolver() view returns (address)', 'function settlementRulesHash() view returns (bytes32)',
   'function collateral() view returns (address)', 'function eventCount() view returns (uint8)',
   'function funded() view returns (bool)', 'function resolved() view returns (bool)',
-  'function liquidity() view returns (uint128)', 'function commissionBps() view returns (uint16)']);
+  'function liquidity() view returns (uint128)', 'function commissionBps() view returns (uint16)',
+  'function sponsor() view returns (address)', 'function surplus() view returns (uint128)',
+  'function withdrawSurplus() returns (uint128)']);
 const cashAbi = parseAbi(['function balanceOf(address) view returns (uint256)',
   'function allowance(address,address) view returns (uint256)', 'function approve(address,uint256) returns (bool)']);
 const realityAbi = parseAbi(['function isFinalized(bytes32) view returns (bool)',
@@ -156,13 +158,13 @@ export async function readHybridSnapshot(record, market) {
   const ls = isLsPrepared(record.prepared);
   const [head, version, rulesHash, draftHash, linkedPool, proposer, relay, bond, count,
     poolVersion, poolResolver, poolRulesHash, collateral, poolCount, funded, resolved, delivered,
-    liquidity, commissionBps] = await Promise.all([
+    liquidity, commissionBps, sponsor] = await Promise.all([
     market.getBlock(), readResolver('protocolVersion'), readResolver('rulesHash'), readResolver('draftHash'),
     readResolver('pool'), readResolver('proposer'), readResolver('relay'), readResolver('bond'),
     readResolver('eventCount'), readPool('protocolVersion'), readPool('resolver'),
     readPool('settlementRulesHash'), readPool('collateral'), readPool('eventCount'),
     readPool('funded'), readPool('resolved'), readResolver('delivered'),
-    ...(ls ? [readPool('liquidity'), readPool('commissionBps')] : []),
+    ...(ls ? [readPool('liquidity'), readPool('commissionBps'), readPool('sponsor')] : []),
   ]);
   const prepared = record.prepared, size = prepared.draft.events.length;
   if (!hash32(head?.hash) || typeof head.number !== 'bigint'
@@ -173,7 +175,8 @@ export async function readHybridSnapshot(record, market) {
     || !same(proposer, prepared.proposer) || !same(relay, prepared.relay)
     || !same(collateral, TEST_AUSD) || bond !== BigInt(prepared.draft.bondAtoms))
     throw Error('Hybrid pool differs from verified catalog');
-  if (ls && (BigInt(liquidity) !== BigInt(prepared.liquidityAtoms) || Number(commissionBps) !== prepared.commissionBps))
+  if (ls && (BigInt(liquidity) !== BigInt(prepared.liquidityAtoms) || Number(commissionBps) !== prepared.commissionBps
+    || !same(sponsor, prepared.creator)))
     throw Error('Hybrid pool differs from verified catalog');
   const states = [];
   for (let event = 0; event < size; event++) {
@@ -195,6 +198,7 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   packetStore, oracleEvidence, origin, marketRpcUrl, proposerPrivateKey, relayPrivateKey,
   proposerWallet = null, relayWallet = null, relaySend = task => task(), request = fetch,
   answererPrivateKey = null, answererWallet = null, sourceRpcUrl = null, minWithdrawWei = 100_000_000_000_000n,
+  minSweepAtoms = 1_000_000n,
   now = () => Math.floor(Date.now() / 1000),
   intervalMs = 120_000 }) {
   hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools });
@@ -224,7 +228,7 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   }
   const answererClient = answerer ? answererWallet || createWalletClient({ account: answerer, chain: sepolia,
     transport: http(sourceRpcUrl, { timeout: 20_000 }) }) : null;
-  const answers = new Map(), errors = new Map();
+  const answers = new Map(), errors = new Map(), sweeps = new Map();
   const proposerClient = proposerWallet || createWalletClient({ account: proposer, chain: monad,
     transport: http(marketRpcUrl, { timeout: 20_000 }) });
   const relayClient = relayWallet || createWalletClient({ account: relay, chain: monad,
@@ -454,6 +458,11 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
               if (result === 'submitted' || result === 'pending') break;
             }
           }
+          if (isLsPrepared(record.prepared) && snapshot.now >= record.prepared.draft.closesAt) {
+            const surplus = await market.readContract({ address: getAddress(record.pool), abi: poolAbi, functionName: 'surplus' });
+            sweeps.set(record.id, surplus < minSweepAtoms ? 'idle' : await send(record, 'sweep',
+              snapshot.resolved ? 'settled' : 'closed', relayClient, relay, record.pool, poolAbi, 'withdrawSurplus', []));
+          }
           errors.delete(record.id);
         } catch (error) {
           const message = safeError(error);
@@ -477,6 +486,6 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     stop() { if (timer) clearInterval(timer); timer = null; },
     status() { return { enabled: Boolean(timer), running, cycles, pools: pools.length,
       proposer: proposer.address, relay: relay.address, answerer: answerer?.address ?? null,
-      answers: Object.fromEntries(answers), lastError, lastFinishedAt }; },
+      answers: Object.fromEntries(answers), sweeps: Object.fromEntries(sweeps), lastError, lastFinishedAt }; },
   };
 }
