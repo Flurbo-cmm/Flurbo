@@ -1,6 +1,6 @@
 // Historical indexer data is useful for activity displays; current quotes and
 // balances always come from the pool through a fresh chain read.
-export const DEFAULT_ENVIO_ENDPOINT = '/envio';
+export const DEFAULT_ENVIO_ENDPOINT = '/api/envio';
 
 export type EnvioTrade = {
   id: string;

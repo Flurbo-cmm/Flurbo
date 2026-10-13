@@ -21,7 +21,8 @@ import { loadSemanticConfig, semanticDiagnostics } from './semantic-validation.m
 import { createSettlementStores } from './settlement-persistence.mjs';
 import { starterConfig, starterFunds } from './starter-funds.mjs';
 import { fundingAlerts } from './funding-alerts.mjs';
-import { envioProxy } from './envio-proxy.mjs';
+import { clientAddressReader } from './client-address.mjs';
+import { publicStatus } from './redact.mjs';
 import { oracleCatalog, oracleClients, oracleEvidence, oracleService } from './oracle-integration.mjs';
 import { oracleRelayWorker } from './oracle-relay-worker.mjs';
 import { oracleAnswerWorker } from './oracle-answer-worker.mjs';
@@ -41,12 +42,19 @@ const root = fileURLToPath(new URL('../../../', import.meta.url));
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const security = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'same-origin',
-  'Strict-Transport-Security': 'max-age=31536000', 'X-Frame-Options': 'DENY',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains', 'X-Frame-Options': 'DENY',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=()',
   'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
 };
 
 export function productionServer(config, store, staticRoot = dist) {
+  const clientAddress = clientAddressReader(config.clientAddressHeader || 'x-forwarded-for');
+  // The first requests after a start log how the hosting proxy forwards addresses (counts only, never addresses),
+  // which shows whether FLURBO_CLIENT_IP_HEADER needs to change.
+  let forwardingLogs = 0;
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
+    envioUrl: config.envioGraphqlUrl || null, clientAddress,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
     learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures });
   config.metrics = api.metrics;
@@ -54,9 +62,14 @@ export function productionServer(config, store, staticRoot = dist) {
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled' })); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(publicStatus({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled' }))); return; }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
-    if (req.url === '/envio') { await envioProxy(req, res, config.envioGraphqlUrl); return; }
+    if (forwardingLogs < 20 && req.url?.startsWith('/api/')) {
+      forwardingLogs++;
+      const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',').filter(x => x.trim()).length;
+      console.log(JSON.stringify({ status: 'client_address_headers', forwarded_entries: forwarded,
+        cf_connecting_ip: Boolean(req.headers['cf-connecting-ip']), true_client_ip: Boolean(req.headers['true-client-ip']) }));
+    }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
       const body = config.androidAssetLinks;
       res.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -79,7 +92,7 @@ export function productionServer(config, store, staticRoot = dist) {
         const pathname = new URL(req.url, config.origin).pathname;
         const operatorPage = testingPages.has(pathname);
         if (operatorPage) {
-          const session = await store.read(cookieValue(req.headers.cookie, 'flurbo_tools'), config.origin);
+          const session = await store.read(cookieValue(req.headers.cookie, '__Host-flurbo_tools') ?? cookieValue(req.headers.cookie, 'flurbo_tools'), config.origin);
           res.setHeader('Cache-Control','no-store');
           if (!isTestingOperator(session, config.testingOperatorAccount)) { await notFound(pathname); return; }
         }
@@ -104,6 +117,8 @@ async function main() {
   const config = hostedConfig();
   const companySite = config.origin === 'https://flurbopm.singu.online';
   config.envioGraphqlUrl = process.env.FLURBO_ENVIO_GRAPHQL_URL || null;
+  // Which forwarded header carries the visitor address for per-client rate limits (client-address.mjs).
+  config.clientAddressHeader = process.env.FLURBO_CLIENT_IP_HEADER || 'x-forwarded-for';
   config.applications = configureApplications();
   config.androidAssetLinks = config.origin === 'https://flurbo.singu.online' ? androidAssetLinks() : null;
   // With FLURBO_SUPABASE_KV=true, price history, the trade history and payout indexes and operator metrics live
@@ -272,13 +287,18 @@ async function main() {
   const schedulerOn = process.env.FLURBO_SCHEDULER === 'true' || process.env.FLURBO_SETTLEMENT_BOT === 'true';
   if (process.env.FLURBO_SETTLEMENT_BOT === 'true' && process.env.FLURBO_SCHEDULER !== 'true') console.warn('FLURBO_SETTLEMENT_BOT is a legacy name; set FLURBO_SCHEDULER=true');
   if (schedulerOn) {
+    let lastNoticeLine = null;
     config.scheduler = periodicTasks({ log: console.log, tasks: {
       agentPools: config.agentPools ? () => config.agentPools.refresh() : null,
       metrics: config.metrics ? () => config.metrics.tick() : null,
       funds: config.fundingAlerts ? () => config.fundingAlerts.tick() : null,
+      // Member counts go to the log only; the public health check says no notices were sent.
       notices: config.notices ? async () => {
         const result = await config.notices.tick(), d = config.notices.diagnostics?.();
-        return d && d.stages && !d.emailed ? `${result} (stages ${d.stages}, wallets ${d.wallets}, unlinked ${d.unlinked}, no verified email ${d.withoutEmail})` : result;
+        if (!(d && d.stages && !d.emailed)) return result;
+        const line = `[notices] stages ${d.stages}, wallets ${d.wallets}, unlinked ${d.unlinked}, no verified email ${d.withoutEmail}`;
+        if (line !== lastNoticeLine) console.log(lastNoticeLine = line);
+        return `${result} (none sent; see logs)`;
       } : null } });
     config.scheduler.start();
     console.log('Scheduler enabled: agent pools, metrics, funding alerts and notices every 2 minutes');

@@ -33,8 +33,10 @@ export function configureApplications(env = process.env, request = fetch) {
       return result;
     } catch (e) { if (e instanceof ApplicationError) throw e; throw unavailable(); }
   };
-  const send = async ({to, subject, text, id, account}) => {
-    await db('email_budget', account, {limit: dailyLimit});
+  // The daily budget covers verification codes, which any signed-in account can request. Approval notices are
+  // sent only by the operator, so a flood of code requests can never hold them back.
+  const send = async ({to, subject, text, id, account, notice = false}) => {
+    if (!notice) await db('email_budget', account, {limit: dailyLimit});
     const response = await request('https://api.resend.com/emails', {
       method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
       headers: {'Content-Type': 'application/json', Authorization: `Bearer ${emailKey}`, 'Idempotency-Key': id},
@@ -87,7 +89,7 @@ export function applicationService({db, send, secret, origin = 'https://flurbo.s
     if (!notification.id) return {notification: 'none'};
     if (notification.expired) return {notification: 'needs_review'};
     try {
-      await send({account,to: notification.email, id: notification.id, subject: 'Your Flurbo invitation is ready',
+      await send({account, notice: true, to: notification.email, id: notification.id, subject: 'Your Flurbo invitation is ready',
         text: `Your Flurbo account has been approved for the Monad testnet preview. Test assets only.\n\nSign in with your Flurbo passkey at ${origin}/access\n\nThis email does not sign you in or authorize a transaction.`});
       await db('notified', account, {id: notification.id});
       return {notification: 'sent'};

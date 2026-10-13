@@ -6,15 +6,21 @@ export class CapacityError extends Error {
 const hash = value => createHash('sha256').update(value).digest('hex');
 const increment = "local n=redis.call('INCRBY',KEYS[1],ARGV[2]); if n==tonumber(ARGV[2]) then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n";
 
-// Separate buckets, shared through Redis on hosted servers. Caller identities must
-// come from verified authentication, never a request body or forwarded IP header.
+// Separate buckets, shared through Redis on hosted servers. Account identities come from verified
+// authentication. Client addresses from a forwarded header are a best-effort identity: they only ever add
+// a narrower bucket in front of the site-wide ones, never replace them.
+const LOCAL_KEYS = 20_000, EVICT = 2_000;
 export function requestLimits({command,now=Date.now}={}) {
-  const local=new Map();
+  // Keys with a colon are per caller and may be evicted when the window is full; keys without one are
+  // site-wide and are never evicted, so filling the window resets caller counters instead of refusing everyone.
+  let local=new Map(),window=null;
+  const current=()=>{const minute=Math.floor(now()/60000);if(minute!==window){local=new Map();window=minute;}return minute;};
+  function evict(){let dropped=0;for(const key of local.keys()){if(key.includes(':')){local.delete(key);if(++dropped>=EVICT)break;}}}
+  function localCount(key){current();return local.get(key)||0;}
   function localTake(key,limit,cost=1) {
-    const minute=Math.floor(now()/60000), id=key+':'+minute;
-    for(const [k,v] of local)if(v.minute!==minute)local.delete(k);
-    if(!local.has(id)&&local.size>=4096)throw new CapacityError(60-now()/1000%60);
-    const value=(local.get(id)?.value||0)+cost;local.set(id,{value,minute});
+    current();
+    if(!local.has(key)&&local.size>=LOCAL_KEYS)evict();
+    const value=(local.get(key)||0)+cost;local.set(key,value);
     if(value>limit)throw new CapacityError(60-now()/1000%60);
   }
   async function take(key,limit,cost=1) {
@@ -24,7 +30,20 @@ export function requestLimits({command,now=Date.now}={}) {
     if(!Number.isSafeInteger(value)||value<1)throw Error('Capacity storage unavailable');
     if(value>limit)throw new CapacityError(60-now()/1000%60);
   }
-  return {take,localTake};
+  return {take,localTake,localCount};
+}
+
+// Runs at most `concurrency` calls at once and queues at most `queued` more; anything beyond is refused.
+export function limitConcurrency(run,{concurrency=2,queued=16}={}) {
+  let active=0;const waiting=[];
+  const next=()=>{active--;const resume=waiting.shift();if(resume){active++;resume();}};
+  return async(...args)=>{
+    if(active>=concurrency){
+      if(waiting.length>=queued)throw Error('Calculation busy');
+      await new Promise(resolve=>waiting.push(resolve));
+    } else active++;
+    try{return await run(...args);}finally{next();}
+  };
 }
 
 // INCR-with-expiry counter kept in this process, for rate windows that do not need to be shared (one server).
@@ -39,4 +58,4 @@ export function memoryWindow(now = Date.now) {
   };
 }
 
-export const expensivePath = path => /\/(?:rpc|analytics|claim-analytics|thesis|thesis-analytics|what-if|quote|prepare|positions|history|redemptions|account|status|markets|performance)(?:\/|$)/.test(path);
+export const expensivePath = path => /\/(?:rpc|analytics|analysis|claim-analytics|thesis|thesis-analytics|what-if|quote|prepare|action|positions|history|redemptions|account|status|markets|performance|envio)(?:\/|$)/.test(path);

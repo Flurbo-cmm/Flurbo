@@ -12,3 +12,4 @@ resources
 **/.venv
 packages/sdk-rust/target
 packages/sdk-cpp/build
+secrets

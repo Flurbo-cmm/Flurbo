@@ -22,6 +22,8 @@ COPY --from=learning-build /app/target/release/examples/parlay_testnet_model bin
 RUN node --input-type=module -e "import {runComparison} from './apps/web/server/learning-comparison.mjs'; await runComparison();"
 RUN node --input-type=module -e "import {loadLearningModel} from './apps/web/server/learning-pool.mjs'; await loadLearningModel();"
 RUN npm --prefix apps/web run build
+# The runtime image carries production dependencies only; the server needs none of the build tools.
+RUN npm --prefix apps/web prune --omit=dev
 
 FROM node:24-bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends python3 ca-certificates && rm -rf /var/lib/apt/lists/*
