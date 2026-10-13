@@ -22,10 +22,10 @@ export function proofCaptureService({ rules, captureStore, token, now = () => Ma
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(token)) throw Error('Proof submission token must be 32 to 128 URL-safe characters');
   if (!(rules instanceof Map) || typeof captureStore?.put !== 'function') throw Error('Proof capture service configuration incomplete');
   const expected = sha(token);
-  return { size: rules.size,
+  const authorized = authorization => timingSafeEqual(sha(/^Bearer (\S{1,256})$/.exec(authorization ?? '')?.[1] ?? ''), expected);
+  return { size: rules.size, authorized,
     async submit({ authorization, body }) {
-      const given = /^Bearer (\S{1,256})$/.exec(authorization ?? '')?.[1] ?? '';
-      if (!timingSafeEqual(sha(given), expected)) return reply(401, { error: 'Proof submission unauthorized' });
+      if (!authorized(authorization)) return reply(401, { error: 'Proof submission unauthorized' });
       if (typeof body !== 'string' || Buffer.byteLength(body) > MAX_PROOF_SUBMISSION_BYTES) return reply(413, { error: 'Payload too large' });
       let parsed;
       try { parsed = JSON.parse(body); } catch { return reply(400, { error: 'Invalid proof submission' }); }

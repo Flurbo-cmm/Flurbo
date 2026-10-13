@@ -59,5 +59,12 @@ export class RedisSessionStore {
     }
     return value.method === 'passkey' && value.origin === origin && value.expiresAt > this.now() ? value : null;
   }
+  // A session this process read recently, without a storage request; null when it would need one.
+  peek(id, origin) {
+    const cached = id ? this.cache.get(this.key('session', id)) : null;
+    if (!cached || cached.until <= this.now()) return null;
+    const value = cached.value;
+    return value.method === 'passkey' && value.origin === origin && value.expiresAt > this.now() ? value : null;
+  }
   async revoke(id) { if (id) { const key = this.key('session', id); this.cache.delete(key); await this.command('DEL', key); } }
 }

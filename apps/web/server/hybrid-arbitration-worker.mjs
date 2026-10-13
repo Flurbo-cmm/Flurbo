@@ -1,5 +1,6 @@
 import { createWalletClient, defineChain, getAddress, http, keccak256, parseAbi, parseAbiItem, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { redactUrls } from './redact.mjs';
 
 const monad = defineChain({ id: 10143, name: 'Monad Testnet', nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
   rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } } });
@@ -106,6 +107,15 @@ async function caseEvidence(route, snapshot, market, evidence) {
     proposalEvidenceURI: proposal.args.evidenceURI, counterEvidenceURI: challenge.args.evidenceURI });
 }
 
+const publicErrors = new Set(['Finalized Sepolia block unavailable', 'Hybrid arbitration route differs from deployed contracts',
+  'Hybrid arbitration transaction hash invalid', 'Hybrid arbitration transaction reverted', 'Hybrid case manager differs from catalog',
+  'Hybrid dispute request missing', 'Invalid Kleros ruling', 'Invalid source case ID', 'Kleros source case differs from Monad question',
+  'Linked source case differs from Kleros', 'Sepolia case manager needs arbitration fee and gas', 'Invalid hybrid case evidence',
+  'Hybrid case evidence too large', 'Hybrid case evidence persistence failed', 'Invalid hybrid ruling evidence',
+  'Hybrid ruling evidence persistence failed']);
+const safeError = error => publicErrors.has(error?.message) ? error.message
+  : 'Hybrid arbitration source or transaction request failed';
+
 const journalKey = (route, action, requestId) =>
   `flurbo:hybrid-arbitration:v1:${route.resolver.toLowerCase()}:${route.eventIndex}:${requestId.toLowerCase()}:${action}`;
 
@@ -185,8 +195,8 @@ export function hybridArbitrationWorker({ routes, market, source, command, evide
       }
       lastError = null;
     } catch (error) {
-      lastError = error instanceof Error ? error.message : 'Hybrid arbitration cycle failed';
-      console.error(lastError);
+      lastError = safeError(error);
+      console.error(`Hybrid arbitration cycle failed: ${redactUrls(error instanceof Error ? error.message : String(error))}`);
     } finally { running = false; lastFinishedAt = new Date().toISOString(); }
   }
 

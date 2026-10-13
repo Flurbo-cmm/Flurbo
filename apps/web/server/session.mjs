@@ -34,5 +34,6 @@ export class SessionStore {
     return { sessionId, ...session };
   }
   read(id, origin) { this.prune(); const value = this.sessions.get(digest(id || '')); return value?.origin === origin && value.method === 'passkey' ? value : null; }
+  peek(id, origin) { return this.read(id, origin); }
   revoke(id) { this.sessions.delete(digest(id || '')); }
 }

@@ -6,18 +6,19 @@ import { pilotCash, pilotPoolAbi } from '../shared/pilot.mjs';
 import { certifiedPair, pairInput } from './pair-math.mjs';
 import { simulatePairPurchase } from './pair-sensitivity.mjs';
 import { verifiedLsState } from '../shared/ls-lmsr.mjs';
+import { limitConcurrency } from './request-limits.mjs';
 
 const binary=fileURLToPath(new URL('../../../bin/flurbo-pair-analytics'+(process.platform==='win32'?'.exe':''),import.meta.url));
-export function runPairModel(input,{file=binary}={}) {
-  return new Promise((resolve,reject)=>{
+// Each calculation is a child process; a small shared gate keeps a burst of requests from exhausting the host.
+export const runPairModel=limitConcurrency((input,{file=binary}={})=>
+  new Promise((resolve,reject)=>{
     const child=execFile(file,[],{timeout:5000,maxBuffer:8192,windowsHide:true,encoding:'utf8',
       env:process.platform==='win32'?{SystemRoot:process.env.SystemRoot}:{}},(error,stdout)=>{
       if(error)return reject(new Error('Pair calculation unavailable'));
       try{resolve(JSON.parse(stdout));}catch{reject(new Error('Invalid pair calculation'));}
     });
     child.stdin.on('error',()=>{});child.stdin.end(input);
-  });
-}
+  }));
 
 export function pairAnalytics({service,rpc,model=runPairModel,now=()=>Math.floor(Date.now()/1000)}) {
   const {manifest}=service;

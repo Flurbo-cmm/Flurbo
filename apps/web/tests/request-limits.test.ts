@@ -15,13 +15,14 @@ test('account budgets are shared across instances and isolated from other accoun
   await assert.rejects(requestLimits({command:async()=>{throw Error('offline')}}).take('account:a',3),/offline/);
 });
 
-test('anonymous preview saturation does not block authenticated traffic or login session reads',async()=>{
+test('anonymous preview saturation does not block other visitors, authenticated traffic or login session reads',async()=>{
   const {command}=fakeRedis();const store={command,read:async(sid:string)=>sid==='owner'?{address:alice,method:'passkey'}:null};
   const api=localApi({publicOrigin:'https://flurbo.singu.online',rpcUrl:'https://testnet-rpc.monad.xyz',store});
-  const call=async(path:string,cookie?:string)=>{let status=0;await api({url:path,method:'GET',headers:{host:'flurbo.singu.online',cookie}},
+  const call=async(path:string,cookie?:string,ip='198.51.100.1')=>{let status=0;await api({url:path,method:'GET',headers:{host:'flurbo.singu.online',cookie,'x-forwarded-for':ip}},
     {setHeader(){},writeHead(s:number){status=s},end(){}},()=>{});return status;};
-  for(let i=0;i<600;i++)assert.equal(await call('/api/preview'),200);
+  for(let i=0;i<120;i++)assert.equal(await call('/api/preview'),200);
   assert.equal(await call('/api/preview'),429);
+  assert.equal(await call('/api/preview',undefined,'198.51.100.2'),200);
   assert.equal(await call('/api/network','flurbo_session=owner'),200);
   assert.equal(await call('/api/auth/session'),200);
 });
