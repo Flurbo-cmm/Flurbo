@@ -163,7 +163,7 @@ function lsMarket(change: Record<string, unknown> = {}) {
   const values: Record<string, unknown> = { rulesHash, draftHash: prepared.draftHash,
     pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n,
     eventCount: 2n, resolver, settlementRulesHash: rulesHash, collateral: TEST_AUSD, funded: true,
-    resolved: false, delivered: false, liquidity: 10000000n, commissionBps: 500, depth: expected.depthWad,
+    resolved: false, delivered: false, liquidity: 10000000n, commissionBps: 500, sponsor: prepared.creator, depth: expected.depthWad,
     eliminationOrder: [0, 1], factors: [{ scope: 3, values: [0n, 0n, 0n, 10000000n] }],
     observationEnds: BigInt(at + 3600), routes: 0n,
     caseState: { phase: 0n, proposal: 0n, counter: 0n, result: 0n, challengeUntil: 0n, arbitrationUntil: 0n,

@@ -40,7 +40,7 @@ function market(prepared: any, rulesHash: string, pool_: Record<string, unknown>
       const isPool = address.toLowerCase() === pool.toLowerCase();
       const values: Record<string, unknown> = {
         protocolVersion: isPool ? (isLsPrepared(prepared) ? 5 : 3) : 4, rulesHash, draftHash: prepared.draftHash, pool,
-        liquidity: BigInt(prepared.liquidityAtoms), commissionBps: prepared.commissionBps,
+        liquidity: BigInt(prepared.liquidityAtoms), commissionBps: prepared.commissionBps, sponsor: prepared.creator,
         proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n, eventCount: 2n,
         resolver, settlementRulesHash: rulesHash, collateral: TEST_AUSD, funded: true,
         resolved: false, delivered: false, routes: 1n,
@@ -133,4 +133,10 @@ test('v5 registration rejects a pool whose on-chain commission differs', async (
   for (const change of [{ commissionBps: 1000 }, { liquidity: 20000000n }, { protocolVersion: 3 }])
     await assert.rejects(() => verifyHybridDeployment({ ...roles, prepared, unverified,
       market: market(prepared, rulesHash, change), source }), /Hybrid pool differs from verified catalog/);
+});
+
+test('v5 registration rejects a pool whose sponsor is not the creator', async () => {
+  const { prepared, rulesHash, unverified, source, roles } = await lsFixture();
+  await assert.rejects(() => verifyHybridDeployment({ ...roles, prepared, unverified,
+    market: market(prepared, rulesHash, { sponsor: account('2') }), source }), /Hybrid pool differs from verified catalog/);
 });

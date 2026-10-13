@@ -19,7 +19,11 @@ A linked Kleros case can hold up every payout in its shared pool if the court ne
 
 ### Pricing of new pools
 
-Drafts use schema `flurbo.hybrid-publication.v5` with `liquidityAtoms` (the initial depth) and `commissionBps` (100 to 2000; the creation scripts use 500). `DeployHybridPilot` deploys `LsPilotPool` (protocol 5), which `HybridPilotResolver` requires. Funding is `liquidityAtoms * n * ln 2`, the same as before. After deployment check `protocolVersion()` is 5, `commissionBps()` matches the draft, `depth()` equals `liquidityAtoms * 1e12`, and `requiredFunding()` matches a two-question pool's 13862944 atoms for `liquidityAtoms` 10000000. Registration and the catalog check the same values. The three earlier pools are protocol 3 and keep their fixed depth.
+Drafts use schema `flurbo.hybrid-publication.v5` with `liquidityAtoms` (the initial depth) and `commissionBps` (100 to 2000; the creation scripts use 500). `DeployHybridPilot` deploys `LsPilotPool` (protocol 5), which `HybridPilotResolver` requires. Funding is `liquidityAtoms * n * ln 2`, the same as before. After deployment check `protocolVersion()` is 5, `commissionBps()` matches the draft, `depth()` equals `liquidityAtoms * 1e12`, and `requiredFunding()` matches a two-question pool's 13862944 atoms for `liquidityAtoms` 10000000. Registration and the catalog check the same values. Also check that `sponsor()` returns the deployer; the deployment script and registration refuse any other value. `surplus()` is 0 while trading is open. The three earlier pools are protocol 3 and keep their fixed depth.
+
+### Returning the pool surplus
+
+After trading closes, the settlement worker sends `withdrawSurplus()` from the relay wallet whenever `surplus()` is at least 1 test AUSD: once at close (everything above the worst-case liability) and once after settlement (everything above the unredeemed winnings). The test AUSD goes to the deployer, never to the caller. `/healthz` shows `hybrid_settlement.sweeps.<pool id>` as `submitted` or `pending` while a return is in flight and `idle` when nothing is left. Winning claims stay redeemable without a deadline. If the worker is off, run `cast call $POOL "surplus()(uint128)"` and then `cast send $POOL "withdrawSurplus()" --account flurbo-testnet` with your RPC. Protocol 3 pools and older have no such function; their leftover funding stays in the pool.
 
 ## Source coverage
 
@@ -245,7 +249,7 @@ node apps/web/scripts/inspect-kleros-dispute.mjs <Q2_ID> $JUROR
 
 Once the period is `Vote`, `/healthz` shows `jurorVoteIds` for the case and the `ACTION` email carries the ready-to-run `castVote` command (set `FLURBO_HYBRID_JUROR_ADDRESS` first). If `jurorVoteIds` is empty, the juror was not drawn: do not vote, and repeat on a new pool after re-checking readiness. Otherwise run the command with the right choice: 2 for Yes, 1 for No, 0 for Void. The keeper passes the vote and appeal periods, executes the ruling and reports it, then executes the court round and processes the Reality bonds. Reality finalizes, the relay reports to Monad, and the relay delivers when both questions are final.
 
-8. Redeem from the market page. The keeper and the answerer process bonds and withdraw their credit automatically. The challenger claims on the market page under "Reality.eth answer bonds" if its wallet posted a winning answer. Check the Resend logs for the closing, observation, challenge, arbitration, ruling and payout notices. Store the transaction hashes, the dispute ID and the addresses in `secrets/COMPANY_OPERATIONS.md`.
+8. Redeem from the market page. The keeper and the answerer process bonds and withdraw their credit automatically. The challenger claims on the market page under "Reality.eth answer bonds" if its wallet posted a winning answer. Check the Resend logs for the closing, observation, challenge, arbitration, ruling and payout notices. Store the transaction hashes, the dispute ID and the addresses in `secrets/COMPANY_OPERATIONS.md`. For a protocol 5 pool, `hybrid_settlement.sweeps` for the pool returns to `idle` once the worker has returned the surplus to the deployer.
 
 ### Kleros proxy copy
 

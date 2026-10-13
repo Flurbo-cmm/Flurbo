@@ -136,18 +136,19 @@ const keys = { proposer: `0x${'11'.repeat(32)}`, relay: `0x${'22'.repeat(32)}`, 
 const actor = (name: keyof typeof keys) => privateKeyToAccount(keys[name] as `0x${string}`).address;
 
 function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = false, finalAtBlock = false,
-  finalAnswer = `0x${'0'.repeat(64)}`, realityBalance = 0n, secondPool = false, failFirstPool = false } = {}) {
+  finalAnswer = `0x${'0'.repeat(64)}`, realityBalance = 0n, secondPool = false, failFirstPool = false,
+  ls = false, resolved = false, surplus = 0n, blockTime = at + 3700 } = {}) {
   const first = catalog(['reality', 'reality'], { proposer: actor('proposer'), relay: actor('relay'),
-    answerer: actor('answerer') }).pools[0];
+    answerer: actor('answerer') }, ls ? { commissionBps: 500 } : {}).pools[0];
   const pools = secondPool ? [first, { ...first, id: 'objective-test-2', pool: account('6'), resolver: account('7'),
     rulesHash: hybridRulesHash(first.prepared, account('7')) }] : [first];
   const events: any[] = pools[0].prepared.draft.events;
   const redis = memory();
   const archive = evidenceArchive(redis.command, origin);
-  const writes: any[] = [];
+  const writes: any[] = [], reads: string[] = [];
   const market = {
     getChainId: async () => 10143,
-    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at + 3700) }),
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(blockTime) }),
     simulateContract: async (request: any) => ({ request }),
     getTransactionReceipt: async () => null,
     readContract: async ({ address, functionName, args = [] }: any) => {
@@ -156,10 +157,12 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
         throw Error('request to https://secret.example/abc failed');
       const isPool = address.toLowerCase() === record.pool.toLowerCase();
       const prepared = record.prepared;
+      reads.push(functionName);
       const values: Record<string, unknown> = {
-        protocolVersion: isPool ? 3n : 4n, rulesHash: record.rulesHash, draftHash: prepared.draftHash,
+        protocolVersion: isPool ? (ls ? 5n : 3n) : 4n, liquidity: 10000000n, commissionBps: 500,
+        sponsor: prepared.creator, surplus, rulesHash: record.rulesHash, draftHash: prepared.draftHash,
         pool: record.pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n, eventCount: 2n,
-        resolver: record.resolver, settlementRulesHash: record.rulesHash, funded: true, resolved: false, delivered: false,
+        resolver: record.resolver, settlementRulesHash: record.rulesHash, funded: true, resolved, delivered: resolved,
         collateral: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc', routes: 1n,
         eventHashes: prepared.eventHashes[Number(args[0])], observationEnds: BigInt(at + 3600),
         caseState: { phase: 0n, challengeUntil: 0n, arbitrationUntil: 0n, sourceCaseId: `0x${'0'.repeat(64)}` } };
@@ -199,7 +202,7 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
     answererWallet, proposerWallet: {}, request: publicRequest(archive),
     relayWallet: { writeContract: async (request: any) => { writes.push(request); return `0x${String(writes.length).repeat(64)}`; } },
     now: () => at + 3700 });
-  return { build, writes, redis, bond };
+  return { build, writes, reads, redis, bond, pool: first.pool };
 }
 
 test('answer is submitted once across restarts', async () => {
@@ -307,7 +310,7 @@ function snapshotMarket(record: any, pool_: Record<string, unknown> = {}) {
 test('v5 records require pool protocol 5 and the committed depth and commission', async () => {
   const record = hybridRecord({ commissionBps: 500 });
   assert.equal(record.prepared.schema, 'flurbo.hybrid-prepared.v5');
-  const good = { protocolVersion: 5, liquidity: 10000000n, commissionBps: 500 };
+  const good = { protocolVersion: 5, liquidity: 10000000n, commissionBps: 500, sponsor: record.prepared.creator };
   const snapshot = await readHybridSnapshot(record, snapshotMarket(record, good));
   assert.equal(snapshot.states.length, 2);
   assert.equal(snapshot.blockNumber, 200n);
@@ -322,4 +325,60 @@ test('v4 records still require pool protocol 3', async () => {
   assert.equal((await readHybridSnapshot(record, snapshotMarket(record))).states.length, 2);
   await assert.rejects(() => readHybridSnapshot(record, snapshotMarket(record, { protocolVersion: 5 })),
     /Hybrid pool differs from verified catalog/);
+});
+
+test('v5 records require the pool sponsor to be the creator', async () => {
+  const record = hybridRecord({ commissionBps: 500 });
+  const good = { protocolVersion: 5, liquidity: 10000000n, commissionBps: 500, sponsor: record.prepared.creator };
+  assert.equal((await readHybridSnapshot(record, snapshotMarket(record, good))).states.length, 2);
+  for (const sponsor of [account('2'), `0x${'0'.repeat(40)}`, undefined])
+    await assert.rejects(() => readHybridSnapshot(record, snapshotMarket(record, { ...good, sponsor })),
+      /Hybrid pool differs from verified catalog/);
+});
+
+test('closed protocol 5 pool returns its surplus to the sponsor once', async () => {
+  const fixture = workerFixture({ ls: true, surplus: 2_000_000n });
+  const journal = `flurbo:hybrid-settlement:v1:${fixture.pool.toLowerCase()}:sweep:closed`;
+  const worker = fixture.build();
+  await worker.tick();
+  const sweeps = fixture.writes.filter(call => call.functionName === 'withdrawSurplus');
+  assert.equal(sweeps.length, 1);
+  assert.equal(sweeps[0].address.toLowerCase(), fixture.pool.toLowerCase());
+  assert.deepEqual(sweeps[0].args, []);
+  assert.equal(sweeps[0].account.address, actor('relay'));
+  assert.equal(worker.status().sweeps['objective-test'], 'submitted');
+  assert.match(fixture.redis.values.get(journal) || '', /^0x[0-9a-f]{64}$/);
+  const again = fixture.build();
+  await again.tick();
+  assert.equal(fixture.writes.filter(call => call.functionName === 'withdrawSurplus').length, 1);
+  assert.equal(again.status().sweeps['objective-test'], 'pending');
+  assert.equal(again.status().lastError, null);
+});
+
+test('settled protocol 5 pool returns the rest under its own journal', async () => {
+  const fixture = workerFixture({ ls: true, resolved: true, surplus: 1_500_000n });
+  const base = `flurbo:hybrid-settlement:v1:${fixture.pool.toLowerCase()}:sweep`;
+  fixture.redis.values.set(`${base}:closed`, `0x${'e'.repeat(64)}`);
+  const worker = fixture.build();
+  await worker.tick();
+  assert.equal(fixture.writes.filter(call => call.functionName === 'withdrawSurplus').length, 1);
+  assert.equal(fixture.writes.some(call => ['finalize', 'deliver', 'reportReality'].includes(call.functionName)), false);
+  assert.match(fixture.redis.values.get(`${base}:settled`) || '', /^0x[0-9a-f]{64}$/);
+  assert.equal(worker.status().lastError, null);
+});
+
+test('no sweep below the minimum, before close or on a protocol 3 pool', async () => {
+  const dust = workerFixture({ ls: true, surplus: 999_999n });
+  const idle = dust.build();
+  await idle.tick();
+  assert.equal(dust.writes.some(call => call.functionName === 'withdrawSurplus'), false);
+  assert.equal(idle.status().sweeps['objective-test'], 'idle');
+  const open = workerFixture({ ls: true, surplus: 5_000_000n, blockTime: at - 7200 });
+  await open.build().tick();
+  assert.equal(open.reads.includes('surplus'), false);
+  assert.equal(open.writes.some(call => call.functionName === 'withdrawSurplus'), false);
+  const fixed = workerFixture({ surplus: 5_000_000n });
+  await fixed.build().tick();
+  assert.equal(fixed.reads.includes('surplus'), false);
+  assert.equal(fixed.writes.some(call => call.functionName === 'withdrawSurplus'), false);
 });
