@@ -269,7 +269,7 @@ export default function OracleMarketDetail({ id, markets }: { id: string; market
   const statusKind: StatusKind = snapshot?.resolved ? 'collect' : snapshot?.pendingArbitration ? 'disputed'
     : canArbitrate ? 'challenge' : snapshot?.finalized || snapshot?.phase === 1 || canAnswer ? 'waiting'
       : closed ? 'closed' : 'open';
-  const statusLabel = snapshot?.resolved ? 'Ready to collect' : snapshot?.pendingArbitration ? 'Kleros review'
+  const statusLabel = snapshot?.resolved ? 'Collect' : snapshot?.pendingArbitration ? 'Kleros review'
     : canArbitrate ? 'Answer open for challenge' : snapshot?.finalized ? 'Final answer, awaiting relay'
       : snapshot?.phase === 1 ? 'Result received, preparing payouts'
         : canAnswer && !hasAnswer ? 'Awaiting bonded answer' : closed ? 'Trading closed' : 'Open for predictions';

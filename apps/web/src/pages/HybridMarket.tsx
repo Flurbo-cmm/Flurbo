@@ -389,7 +389,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const status: StatusKind = snapshot?.resolved ? 'collect' : reality?.pendingArbitration ? 'disputed'
     : canArbitrate ? 'challenge' : snapshot?.phase === 2 ? 'disputed'
     : snapshot?.phase === 1 ? 'challenge' : closed ? 'closed' : 'open';
-  const statusText = snapshot?.resolved ? 'Ready to collect' : reality?.pendingArbitration ? 'Kleros review'
+  const statusText = snapshot?.resolved ? 'Collect' : reality?.pendingArbitration ? 'Kleros review'
     : canArbitrate ? 'Answer open for challenge' : reality?.finalized ? 'Final answer, awaiting relay'
     : reality && !hasRealityAnswer && reality.sourceNow >= reality.opensAt ? 'Awaiting bonded answer'
     : snapshot?.phase === 2 ? 'Kleros review'
