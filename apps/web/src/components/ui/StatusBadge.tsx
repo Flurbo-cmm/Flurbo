@@ -1,7 +1,7 @@
-import { Ban, CircleCheck, CircleDot, CircleSlash2, Clock, Hourglass, Lock, Scale, Flag, type LucideIcon } from 'lucide-react';
+import { Ban, CircleCheck, CircleDot, Clock, Hourglass, Lock, Scale, Flag, type LucideIcon } from 'lucide-react';
 
 export type StatusKind = 'open' | 'closing' | 'closed' | 'settled' | 'unavailable' | 'waiting' | 'challenge' | 'disputed' | 'void' | 'collect' | 'nopayout';
-const ICONS: Partial<Record<StatusKind, LucideIcon>> = { open: CircleDot, closing: Clock, closed: Lock, settled: CircleCheck, unavailable: Ban, waiting: Hourglass, challenge: Flag, disputed: Scale, void: Ban, nopayout: CircleSlash2 };
+const ICONS: Partial<Record<StatusKind, LucideIcon>> = { open: CircleDot, closing: Clock, closed: Lock, settled: CircleCheck, unavailable: Ban, waiting: Hourglass, challenge: Flag, disputed: Scale, void: Ban };
 const ATTENTION = new Set<StatusKind>(['closing', 'challenge', 'collect']);
 
 // Status always pairs a shape with a word, so it never relies on color alone.
