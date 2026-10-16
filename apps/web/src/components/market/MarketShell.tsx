@@ -35,13 +35,13 @@ export default function MarketShell({ kind, question, lead, status, closes, resu
     window.history.replaceState(window.history.state, '', url);
   };
   const [watched, setWatched] = useState(() => !!watchKey && !!auth.address && readWatchlist(auth.address).has(watchKey));
-  // The ticket column stays in view only while it fits; a taller column scrolls with the page.
+  // On wide screens the ticket column stays in view; a column taller than the window scrolls inside itself.
   const [stick, setStick] = useState(false);
   const observer = useRef<ResizeObserver | null>(null), recheck = useRef<() => void>(() => {});
   const sidebar = useCallback((node: HTMLElement | null) => {
     observer.current?.disconnect(); observer.current = null;
     if (!node || typeof ResizeObserver === 'undefined') return;
-    const check = () => setStick(window.innerWidth >= 1024 && node.scrollHeight < window.innerHeight - 96); recheck.current = check;
+    const check = () => setStick(window.innerWidth >= 1024); recheck.current = check;
     observer.current = new ResizeObserver(check); observer.current.observe(node); check();
   }, []);
   useEffect(() => { const onResize = () => recheck.current(); window.addEventListener('resize', onResize); return () => { window.removeEventListener('resize', onResize); observer.current?.disconnect(); }; }, []);
