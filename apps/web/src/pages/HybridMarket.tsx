@@ -20,6 +20,8 @@ import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
 import { boardPrice } from '../board-cache';
+import { fetchLinkedPrices } from '../linked-prices';
+import { APPROVAL_LABEL, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { credentialedReader, readerName } from '../reader-names';
@@ -129,6 +131,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [combinationLink] = useState(() => new URLSearchParams(location.search).has('other'));
   const [approvalReady, setApprovalReady] = useState<string | null>(null);
   const [completed, setCompleted] = useState('');
+  const [tradeText, setTradeText] = useState('');
+  const [linkedPrices, setLinkedPrices] = useState<Record<string, string | null>>({});
+  const [comboOpen, setComboOpen] = useState(() => new URLSearchParams(location.search).has('other'));
   const pollCount = useRef(0);
   const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(location.search).get('answer') === 'no' ? 'no' : 'yes');
   const [mode, setMode] = useState<'buy' | 'sell'>(() =>
@@ -202,6 +207,15 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     const timer = setInterval(() => { if (!document.hidden && !busy) setRefresh(value => value + 1); }, 30_000);
     return () => clearInterval(timer);
   }, [busy]);
+  const othersKey = others.map(item => item.id).join(',');
+  useEffect(() => {
+    if (!othersKey) { setLinkedPrices({}); return; }
+    const stop = new AbortController();
+    void fetchLinkedPrices(othersKey.split(','), other => request<{ prices: { yes: string | null } }>(other, '/market'),
+      other => boardPrice(auth.address, `hybrid:${other}`), 4, stop.signal)
+      .then(value => { if (!stop.signal.aborted) setLinkedPrices(old => ({ ...old, ...value })); });
+    return () => stop.abort();
+  }, [othersKey, refresh]);
   useEffect(() => { setChallengeEvidence(null); }, [id]);
   useEffect(() => { if (snapshot?.reality) setBondEth(formatEther(BigInt(snapshot.reality.nextBondWei)));
   }, [snapshot?.reality?.nextBondWei, snapshot?.reality?.questionId]);
@@ -254,7 +268,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       void request<Quote>(id, '/action', { action: 'quote', owner,
         input: { side, rule: combinationRule, quantity: parseUnits(shares, 6).toString(), claim } })
         .then(value => { if (live) setQuote({ key: quoteKey, value }); })
-        .catch(() => { if (live) setQuoteError('A current quote is unavailable. Refresh and try again.'); });
+        .catch(() => { if (live) setQuoteError(quoteErrorMessage(!!extra1)); });
     }, 300);
     return () => { live = false; clearTimeout(timer); };
   }, [id, market, owner, marketOpen, side, shares,
@@ -287,6 +301,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       setNotice('Wallet connected. Review each transaction before signing.');
     } finally { setBusy(false); }
   }
+  const summaryText = () => tradeSummary(shares, combinationRule, claim.map(item => ({ side: item.side,
+    question: markets.find(question => market && question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question' })));
   async function prepare(action: string, input: Record<string, unknown> = {}) {
     if (!owner) throw Error('Connect MetaMask first.');
     if (pending) throw Error('Check the pending transaction first.');
@@ -313,6 +329,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         const { args } = decodeFunctionData({ abi: tradeAbi, data: transaction.data as `0x${string}` });
         claim = { scope: Number(args[0]), mask: String(args[1]) };
       } catch { claim = undefined; }
+      if (['buy', 'sell'].includes(plan.action)) setTradeText(summaryText());
       const intent: Pending = { hash: null, owner, id, action: plan.action,
         chainId: transaction.chainId, ...(claim ? { claim } : {}),
         ...(plan.action === 'approve' ? { approvalSelection: selectionKey } : {}) };
@@ -565,7 +582,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         { label: 'Question ID', value: reality.questionId }] : []),
     ]}/>
   </div> : <p role="status" className="sr-only">Reading this market...</p>;
-  const linked = others.length > 0 ? <LinkedQuestions current={{ yes: summary?.prices.yes ?? null }} items={others.map(item => ({ key: item.id, question: item.question, href: `/markets/hybrid/${item.pool}/${item.eventIndex}`, yes: boardPrice(auth.address, `hybrid:${item.id}`) }))}>
+  const linked = others.length > 0 ? <LinkedQuestions current={{ yes: summary?.prices.yes ?? null }} items={others.map(item => ({ key: item.id, question: item.question, href: `/markets/hybrid/${item.pool}/${item.eventIndex}`, yes: linkedPrices[item.id] ?? boardPrice(auth.address, `hybrid:${item.id}`) }))}>
     <HybridConnections market={market} markets={markets}/>
     <p className="linked-thesis"><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Build your thesis</Link><span className="market-caption">Put your estimates beside the pool's joint outcomes and current combined-share quotes.</span></p>
   </LinkedQuestions> : undefined;
@@ -578,8 +595,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }} block/>
         <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>
         <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
-        {others.length > 0 && <details className="oracle-combination"><summary>Combine with another prediction</summary><ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
-        {extra1 && <SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/>}
+        {others.length > 0 && <details className="oracle-combination" open={comboOpen || !!extra1} onToggle={event => setComboOpen(event.currentTarget.open)}><summary>Combine with another prediction</summary><ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
+        {extra1 && <><SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/><p className="field-help">{ruleHelp(combinationRule)}</p></>}
         {owner && <div className="ticket-quote-state" aria-live="polite">
           {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
           <button type="button" className="text-link ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
@@ -596,9 +613,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           </dl>}
           <p className="market-caption">0.5% price tolerance. A fresh quote is checked when you review the transaction. A correct share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
           {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
-          {mode === 'sell' && !canSell && <p role="status">This wallet does not hold enough shares of the selected prediction to sell.</p>}
+          {mode === 'sell' && !canSell && <p role="status">{sellBlockedMessage(currentQuote.holdingsAtoms)}</p>}
           <button className="btn btn-primary btn-block" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
-            { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? 'Review AUSD approval' : 'Review purchase'}</button>
+            { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? APPROVAL_LABEL : 'Review purchase'}</button>
         </div>}</>}
       <TransactionSheet phase={tradePhase} hash={tradePending?.hash}
         title={tradePending ? 'Waiting for confirmation' : tradePlan ? (tradePlan.action === 'approve' ? 'Step 1 of 2: allow this payment' : tradePlan.action === 'buy' ? 'Review your purchase' : tradePlan.action === 'sell' ? 'Review your sale' : 'Review your payout') : completed === 'buy' ? 'Purchase complete' : completed === 'sell' ? 'Sale complete' : 'Payout collected'}
@@ -619,7 +636,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
             {tradePlan.expiresAt && <p className="market-caption">Review expires {date(tradePlan.expiresAt)}.</p>}
             <details><summary>Transaction details</summary><p>Network: {tradePlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</p><p>Destination: <span className="mono-break">{tradePlan.transaction.to}</span></p></details>
           </section>
-          : completed ? <section className="ticket-done"><p>Your transaction is confirmed. The position is refreshing.</p><p className="market-caption"><a className="text-link" href="/access#notices">Email me when this settles</a></p></section> : null}
+          : completed ? <section className="ticket-done"><p>Your transaction is confirmed. The position is refreshing.</p>{tradeText && <p className="review-claim">{completed === 'sell' ? 'Sold' : 'Bought'}: {tradeText}</p>}<p className="market-caption"><a className="text-link" href="/access#notices">Email me when this settles</a></p></section> : null}
       </TransactionSheet>
       {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
         {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n

@@ -163,6 +163,7 @@ main input[type="checkbox"]:disabled, main input[type="radio"]:disabled { opacit
   border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); max-width: 100%;
 }
 .segmented-block { display: grid; width: 100%; }
+.segmented-block button { white-space: normal; text-align: center; line-height: 1.2; padding-inline: var(--s-2); }
 .segmented button, .segmented [role="radio"] {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: calc(var(--control-md) - 6px);
   padding: 4px var(--s-3); border-radius: 2px; color: var(--ink-2); font-size: 14px; font-weight: 500; white-space: nowrap;
