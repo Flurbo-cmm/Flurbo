@@ -61,48 +61,36 @@ function useAnalysis(market: HybridMarket, other: HybridMarket, quantity: string
   return { result, error, loading, refresh: () => setRevision(n => n + 1) };
 }
 
-export function HybridConnections({ market, markets }: { market: HybridMarket; markets: HybridMarket[] }) {
-  const others = markets.filter(item => item.pool.toLowerCase() === market.pool.toLowerCase() && item.id !== market.id);
-  const [otherId, setOtherId] = useState(others[0]?.id || '');
-  const other = others.find(item => item.id === otherId) || others[0];
-  if (!other) return null;
-  return <HybridComparison market={market} other={other} others={others} onOther={setOtherId}/>;
-}
-
-function HybridComparison({ market, other, others, onOther }: { market: HybridMarket; other: HybridMarket;
-  others: HybridMarket[]; onOther: (id: string) => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const { result, error, loading, refresh } = useAnalysis(market, other, '1000000', 'AND', expanded);
-  return <details className="detail-panel detail-connect hybrid-connect" onToggle={event => setExpanded(event.currentTarget.open)}><summary>Explore how these markets connect</summary>
-    <div className="hybrid-analysis-body">
-      <div className="hybrid-analysis-head"><div><h3>What if?</h3><p>How does the pool price this question when another answer is assumed?</p></div><span className="chip">Read-only</span></div>
-      <ChoiceList label="Suppose this question resolves" value={other.id} options={others.map(item => ({ value: item.id, label: item.question, text: item.question }))} onChange={onOther} className="hybrid-analysis-select"/>
-      <button className="btn btn-secondary btn-sm" disabled={loading} onClick={refresh}><RefreshCw size={15}/>Refresh comparison</button>
-      {loading && <p role="status">Reading the shared pool...</p>}{error && <p role="alert" className="state-inline error">{error}</p>}
-      {result && <>
-        <div className="hybrid-conditional"><div><span>{market.question}</span><strong>Yes, without an assumption: {pct(result.values.a)}</strong></div>
-          <div><span>If the other answer is Yes</span><strong>{pct(result.values.givenYes)}</strong></div>
-          <div><span>If the other answer is No</span><strong>{pct(result.values.givenNo)}</strong></div></div>
-        <p>Both Yes: <strong>{pct(result.values.joint)}</strong> in this pool, compared with <strong>{pct(result.values.independent)}</strong> if the answers were independent.</p>
-        <div className="hybrid-outcomes"><h4>All four combinations</h4><div>{result.outcomes.map(outcome => <div key={`${outcome.a}-${outcome.b}`}>
-          <span>{outcome.a === 'yes' ? 'Yes' : 'No'} + {outcome.b === 'yes' ? 'Yes' : 'No'}</span>
-          <strong>{pct(outcome.scenarioProbability)}</strong><small>{outcome.costAtoms === null ? 'Trading closed or quote unavailable' : `${money(outcome.costAtoms)} test AUSD to buy one combined share`}</small>
+export function WhatIfPanel({ market, other, fallback = null }: { market: HybridMarket; other: HybridMarket; fallback?: string | null }) {
+  const { result, error, loading, refresh } = useAnalysis(market, other, '1000000', 'AND', true);
+  return <div className="hybrid-analysis-body">
+    <div className="hybrid-analysis-head"><div><h3>What if?</h3><p>How does the pool price this question when {other.question} is assumed to resolve a certain way?</p></div><span className="chip">Read-only</span></div>
+    <button className="btn btn-secondary btn-sm" disabled={loading} onClick={refresh}><RefreshCw size={15}/>Refresh comparison</button>
+    {loading && <p role="status">Reading the shared pool...</p>}{error && <p role="alert" className="state-inline error">{error}</p>}
+    {error && fallback && <p>{fallback}</p>}
+    {result && <>
+      <div className="hybrid-conditional"><div><span>{market.question}</span><strong>Yes, without an assumption: {pct(result.values.a)}</strong></div>
+        <div><span>If the other answer is Yes</span><strong>{pct(result.values.givenYes)}</strong></div>
+        <div><span>If the other answer is No</span><strong>{pct(result.values.givenNo)}</strong></div></div>
+      <p>Both Yes: <strong>{pct(result.values.joint)}</strong> in this pool, compared with <strong>{pct(result.values.independent)}</strong> if the answers were independent.</p>
+      <div className="hybrid-outcomes"><h4>All four combinations</h4><div>{result.outcomes.map(outcome => <div key={`${outcome.a}-${outcome.b}`}>
+        <span>{outcome.a === 'yes' ? 'Yes' : 'No'} + {outcome.b === 'yes' ? 'Yes' : 'No'}</span>
+        <strong>{pct(outcome.scenarioProbability)}</strong><small>{outcome.costAtoms === null ? 'Trading closed or quote unavailable' : `${money(outcome.costAtoms)} test AUSD to buy one combined share`}</small>
+      </div>)}</div></div>
+      {result.sensitivity.length > 0 && <details className="disclosure"><summary>What could one combined trade change?</summary>
+        <p>Each example buys one combined share from the same snapshot. Neither trade is placed.</p>
+        <div className="hybrid-outcomes"><div>{result.sensitivity.map(scenario => <div key={scenario.answer}>
+          <strong>Buy {market.question}: {scenario.answer === 'yes' ? 'Yes' : 'No'} + other: Yes</strong>
+          <small>{scenario.costAtoms === null ? 'Quote unavailable' : `${money(scenario.costAtoms)} test AUSD at this snapshot`}</small>
+          {scenario.values && <><span>Chance of this question: {pct(result.values.a)} → {pct(scenario.values.a)}</span>
+            <span>If other is Yes: {pct(result.values.givenYes)} → {pct(scenario.values.givenYes)}</span></>}
         </div>)}</div></div>
-        {result.sensitivity.length > 0 && <details className="disclosure"><summary>What could one combined trade change?</summary>
-          <p>Each example buys one combined share from the same snapshot. Neither trade is placed.</p>
-          <div className="hybrid-outcomes"><div>{result.sensitivity.map(scenario => <div key={scenario.answer}>
-            <strong>Buy {market.question}: {scenario.answer === 'yes' ? 'Yes' : 'No'} + other: Yes</strong>
-            <small>{scenario.costAtoms === null ? 'Quote unavailable' : `${money(scenario.costAtoms)} test AUSD at this snapshot`}</small>
-            {scenario.values && <><span>Chance of this question: {pct(result.values.a)} → {pct(scenario.values.a)}</span>
-              <span>If other is Yes: {pct(result.values.givenYes)} → {pct(scenario.values.givenYes)}</span></>}
-          </div>)}</div></div>
-          <p className="market-caption">This holds liquidity and all other trades fixed. It shows model price sensitivity, not evidence that either outcome is more likely.</p>
-        </details>}
-        <p className="market-caption">Pool estimates reflect pricing state at block {result.blockNumber}. Buy costs include price impact. Conditioning does not show that one event causes the other.</p>
-      </>}
-      <Link href={`${href(market)}/thesis`} className="btn btn-secondary">Build your thesis</Link>
-    </div>
-  </details>;
+        <p className="market-caption">This holds liquidity and all other trades fixed. It shows model price sensitivity, not evidence that either outcome is more likely.</p>
+      </details>}
+      <p className="market-caption">Pool estimates reflect pricing state at block {result.blockNumber}. Buy costs include price impact. Conditioning does not show that one event causes the other.</p>
+    </>}
+    <Link href={`${href(market)}/thesis`} className="btn btn-secondary">Build your thesis</Link>
+  </div>;
 }
 
 export function HybridThesis({ market, markets }: { market: HybridMarket; markets: HybridMarket[] }) {

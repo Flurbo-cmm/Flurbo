@@ -144,3 +144,15 @@
 .market-list-skeleton { display: grid; gap: var(--s-3); }
 .market-row-skeleton { display: grid; grid-template-columns: minmax(0, 1fr) 150px 104px 104px; gap: var(--s-4); align-items: center; min-height: 64px; border-bottom: 1px solid var(--rule); }
 @media (max-width: 1023px) { .market-row-skeleton { grid-template-columns: 1fr 1fr; } .market-row-skeleton > :first-child { grid-column: 1 / -1; } }
+
+.pool-list { display: grid; gap: 12px; margin: 0; padding: 0 0 var(--s-5); list-style: none; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); align-content: start; }
+.pool-card { display: grid; gap: var(--s-3); align-content: start; height: 100%; padding: var(--s-4); border: 1px solid var(--rule-strong); border-radius: var(--r-tile); background: var(--surface); }
+.pool-card h2 { margin: 0; font-size: 18px; line-height: 1.3; }
+.pool-card h2 a { color: var(--ink); text-decoration: none; }
+.pool-card h2 a:hover { text-decoration: underline; }
+.pool-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0; color: var(--ink-2); font-size: 14px; }
+.pool-card-movers { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.pool-card-movers li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); padding-top: var(--s-2); border-top: 1px solid var(--rule); }
+.pool-card-action { margin: 0; }
+.board-page .board-view { flex: none; }
+.board-page:not(.board-list) .pool-list { height: 100%; overflow-y: auto; }

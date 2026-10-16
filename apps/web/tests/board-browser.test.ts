@@ -109,3 +109,24 @@ test('a short window falls back to a scrolling list without a pager', { skip }, 
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
+
+test('the Pools view groups the board by pool and remembers the choice', { skip }, async () => {
+  const { browser, page, errors } = await setup({ width: 1440, height: 900 });
+  try {
+    await page.goto(ORIGIN + '/markets');
+    await ready(page);
+    assert.equal(await page.locator('.pool-card').count(), 0);
+    await page.getByRole('group', { name: 'Board view' }).getByRole('button', { name: 'Pools' }).click();
+    await page.getByRole('list', { name: 'Pools' }).waitFor();
+    assert.equal(await page.locator('.pool-card').count(), 14);
+    const card = page.locator('.pool-card', { hasText: 'Collection 1' }).first();
+    assert.match(await card.innerText(), /4 questions/);
+    assert.equal(await card.getByRole('link', { name: 'See how they connect' }).getAttribute('href'), '/markets/hybrid/0x2020202020202020202020202020202020202020/web');
+    await page.reload();
+    await ready(page);
+    await page.getByRole('list', { name: 'Pools' }).waitFor();
+    await page.getByRole('group', { name: 'Board view' }).getByRole('button', { name: 'Questions' }).click();
+    await page.locator('.market-card').first().waitFor();
+    assert.deepEqual(errors, []);
+  } finally { await browser.close(); }
+});

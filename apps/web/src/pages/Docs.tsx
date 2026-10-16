@@ -189,7 +189,7 @@ export default function Docs() {
           <ul>
             <li><strong>The head</strong> shows the question, its status, when trading closes and when results are expected, with the current cost of one Yes and one No share.</li>
             <li><strong>Price history</strong> charts the one-share cost over the last 24 hours or all recorded samples. Shaded, dotted spans have no samples, so movement inside them is unknown. View exact observations lists every sample.</li>
-            <li><strong>Linked</strong> lists the other questions in the pool, with <a href="#what-if">What if</a> and <a href="#thesis">Build your thesis</a>.</li>
+            <li><strong>Linked</strong> shows which questions the pool prices together, with a link to the connections map (<a href="#what-if">What if</a>) and <a href="#thesis">Build your thesis</a>.</li>
             <li><strong>Timeline</strong> follows the question from trading to payout and holds any settlement action you can take. See <a href="#settlement">Settlement and payouts</a>.</li>
             <li><strong>Proof</strong> shows what decides the answer: the source, the reader that checks it, the publisher, the evidence once it exists, and the public addresses of the pool and its rules.</li>
             <li><strong>The ticket</strong> on the right is where you buy, sell and collect. Your position in this question is shown under it.</li>
@@ -237,7 +237,7 @@ export default function Docs() {
 
         <section id="what-if" aria-labelledby="what-if-title">
           <h2 id="what-if-title">What if</h2>
-          <p>On the Linked tab, Explore how these markets connect asks the pool how it prices this question when another answer is assumed. It is read-only: nothing is traded or saved.</p>
+          <p>On the Linked tab, Open connections shows a map of the questions in the pool. Select a line between two questions to ask the pool how it prices one when the other answer is assumed. It is read-only: nothing is traded or saved.</p>
           <Shot name="what-if" src={whatIfShot} alt="What if panel showing the chance of this question without an assumption, if the other answer is Yes and if it is No, both Yes against the independent baseline, all four combinations and the effect of one combined trade" caption="What if, for two linked example questions. Example values."/>
           <dl className="docs-definitions">
             <div><dt>Without an assumption</dt><dd>The pool's chance of this question's Yes, on its own.</dd></div>

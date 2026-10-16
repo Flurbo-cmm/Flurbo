@@ -116,6 +116,12 @@
 .linked-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .linked-lines line { stroke: var(--ink); stroke-width: 1; opacity: 0.55; }
 .linked-lines .sq { fill: var(--lime); stroke: var(--ink); stroke-width: 1; }
+.linked-summary { display: grid; gap: var(--s-4); }
+.linked-summary h2 { font-size: 18px; margin: 0; }
+.linked-summary h3 { font-size: 15px; margin: 0; }
+.linked-summary-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.linked-summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: var(--r-tile); background: var(--surface); font-size: 14px; line-height: 1.35; }
+.linked-summary-row:hover { border-color: var(--ink); }
 .linked-thesis { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
 
 /* Contracts and records in the Proof tab. */

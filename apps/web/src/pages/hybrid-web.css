@@ -1,0 +1,53 @@
+.hybrid-web { gap: var(--s-5); }
+.hybrid-web-heading { display: grid; gap: var(--s-2); }
+.hybrid-web-heading h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 3vw, 42px); line-height: 1.05; font-kerning: none; }
+.hybrid-web-heading p { color: var(--ink-2); max-width: 62ch; }
+.hybrid-web-grid { display: grid; gap: var(--s-5); align-items: start; }
+.hybrid-web-stage { display: grid; gap: var(--s-4); min-width: 0; }
+.web-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.web-ring { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 6; }
+.web-edge line { stroke: var(--ink); opacity: 0.7; transition: opacity 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.web-edge.is-dim line { opacity: 0.12; }
+.web-edge.is-chosen line { opacity: 1; }
+.web-edge .web-hit { stroke: transparent; stroke-width: 16; opacity: 1; cursor: pointer; }
+.web-edge.is-dim .web-hit { opacity: 1; }
+.web-node { cursor: pointer; outline: none; }
+.web-hit-node { fill: transparent; }
+.web-square { fill: var(--surface); stroke: var(--ink); stroke-width: 1; transition: fill 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.web-node.is-linked .web-square, .web-key .web-square { fill: var(--lime); }
+.web-key .web-square { stroke: var(--ink); }
+.web-node:hover .web-square, .web-node.is-chosen .web-square { fill: var(--ink); }
+.web-node:focus-visible .web-hit-node { stroke: var(--ink); stroke-width: 2; }
+.web-label { font: 500 19px/1 var(--font-body, inherit); fill: var(--ink); paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; pointer-events: none; }
+.web-node:not(.is-linked) .web-label { fill: var(--ink-2); }
+.web-node.is-chosen .web-label { font-weight: 700; }
+.web-key { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin: 0; padding: 0; list-style: none; color: var(--ink-3); font-size: 13px; }
+.web-key li { display: inline-flex; align-items: center; gap: var(--s-2); }
+.web-key line { stroke: var(--ink); stroke-width: 1.5; }
+.web-empty { color: var(--ink-2); max-width: 52ch; }
+.hybrid-web-panel { display: grid; gap: var(--s-4); min-width: 0; align-content: start; }
+.web-panel-title { font-size: 18px; line-height: 1.3; margin: 0; }
+.web-versus { color: var(--ink-2); margin: 0; }
+.web-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin: 0; }
+.web-facts div { display: grid; gap: 2px; padding-top: var(--s-2); border-top: 1px solid var(--rule); }
+.web-facts dt { color: var(--ink-3); font-size: 13px; }
+.web-facts dd { margin: 0; font-weight: 500; }
+.web-links, .web-list { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.web-link-row, .web-list-edge { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: var(--r-tile); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.35; cursor: pointer; }
+.web-link-row:hover, .web-list-edge:hover { border-color: var(--ink); }
+.web-list-edge { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+.web-list-edge.is-plain { grid-template-columns: minmax(0, 1fr); }
+.web-clear, .web-sheet-close { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.web-label { font-size: 19px; }
+.web-clear:hover, .web-sheet-close:hover { color: var(--ink); }
+.hybrid-web-panel .btn { justify-self: start; }
+@media (min-width: 768px) {
+  .hybrid-web-grid { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
+  .hybrid-web-panel { position: sticky; top: calc(var(--header-h, 64px) + var(--s-4)); max-height: calc(100vh - var(--header-h, 64px) - 2 * var(--s-4)); overflow-y: auto; }
+}
+@media (max-width: 767px) {
+  .hybrid-web-panel { display: none; }
+  .web-clear.is-node { display: none; }
+  .has-selection .hybrid-web-panel { display: grid; position: fixed; inset: auto 0 0 0; z-index: 30; max-height: 72vh; overflow-y: auto; border-radius: var(--r-tile) var(--r-tile) 0 0; box-shadow: 0 -8px 24px rgba(20, 39, 29, 0.14); padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .web-edge line, .web-square { transition: none; } }

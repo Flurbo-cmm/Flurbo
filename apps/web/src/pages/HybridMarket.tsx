@@ -14,20 +14,17 @@ import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
 import Stepper, { type Step } from '../components/ui/Stepper';
 import TransactionSheet from '../components/ui/TransactionSheet';
 import MarketShell, { type MarketTab } from '../components/market/MarketShell';
-import LinkedQuestions from '../components/market/LinkedQuestions';
 import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
-import { boardPrice } from '../board-cache';
-import { fetchLinkedPrices } from '../linked-prices';
 import { APPROVAL_LABEL, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { credentialedReader, readerName } from '../reader-names';
 import { hybridNamespace } from '../portfolio-groups';
 import PriceHistory from './PriceHistory';
-import { HybridConnections } from './HybridAnalysis';
+import LinkedSummary from '../components/market/LinkedSummary';
 import './market-detail.css';
 import './pilot.css';
 import './oracle.css';
@@ -132,7 +129,6 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [approvalReady, setApprovalReady] = useState<string | null>(null);
   const [completed, setCompleted] = useState('');
   const [tradeText, setTradeText] = useState('');
-  const [linkedPrices, setLinkedPrices] = useState<Record<string, string | null>>({});
   const [comboOpen, setComboOpen] = useState(() => new URLSearchParams(location.search).has('other'));
   const pollCount = useRef(0);
   const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(location.search).get('answer') === 'no' ? 'no' : 'yes');
@@ -207,15 +203,6 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     const timer = setInterval(() => { if (!document.hidden && !busy) setRefresh(value => value + 1); }, 30_000);
     return () => clearInterval(timer);
   }, [busy]);
-  const othersKey = others.map(item => item.id).join(',');
-  useEffect(() => {
-    if (!othersKey) { setLinkedPrices({}); return; }
-    const stop = new AbortController();
-    void fetchLinkedPrices(othersKey.split(','), other => request<{ prices: { yes: string | null } }>(other, '/market'),
-      other => boardPrice(auth.address, `hybrid:${other}`), 4, stop.signal)
-      .then(value => { if (!stop.signal.aborted) setLinkedPrices(old => ({ ...old, ...value })); });
-    return () => stop.abort();
-  }, [othersKey, refresh]);
   useEffect(() => { setChallengeEvidence(null); }, [id]);
   useEffect(() => { if (snapshot?.reality) setBondEth(formatEther(BigInt(snapshot.reality.nextBondWei)));
   }, [snapshot?.reality?.nextBondWei, snapshot?.reality?.questionId]);
@@ -582,10 +569,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         { label: 'Question ID', value: reality.questionId }] : []),
     ]}/>
   </div> : <p role="status" className="sr-only">Reading this market...</p>;
-  const linked = others.length > 0 ? <LinkedQuestions current={{ yes: summary?.prices.yes ?? null }} items={others.map(item => ({ key: item.id, question: item.question, href: `/markets/hybrid/${item.pool}/${item.eventIndex}`, yes: linkedPrices[item.id] ?? boardPrice(auth.address, `hybrid:${item.id}`) }))}>
-    <HybridConnections market={market} markets={markets}/>
-    <p className="linked-thesis"><Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}/thesis`} className="btn btn-secondary">Build your thesis</Link><span className="market-caption">Put your estimates beside the pool's joint outcomes and current combined-share quotes.</span></p>
-  </LinkedQuestions> : undefined;
+  const linked = others.length > 0 ? <LinkedSummary marketId={market.id} pool={market.pool} event={market.eventIndex}
+    questions={Array.from({ length: others.length + 1 }, (_, i) => markets.find(item => item.pool.toLowerCase() === market.pool.toLowerCase() && item.eventIndex === i)?.question ?? `Question ${i + 1}`)}/> : undefined;
   const ticket = <>
     <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each correct share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
       {!sheetOpen && errorAlert}
