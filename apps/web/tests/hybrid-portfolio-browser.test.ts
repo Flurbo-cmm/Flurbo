@@ -58,7 +58,7 @@ test('hybrid pool holdings, trades and collection links appear in the unified po
       const link = combined.getByRole('link', { name: 'Collect on market page' });
       assert.equal(await link.getAttribute('href'), `/markets/hybrid/${pool}/0?answer=yes&other=1&otherAnswer=yes&rule=AND`);
       assert.match(await combined.innerText(), /0x1111\.\.\.1111/);
-      assert.match(await rows.filter({ hasText: 'No payout' }).innerText(), /No payout/);
+      assert.match(await rows.filter({ hasText: 'Lost' }).innerText(), /Lost/);
       assert.match(await page.locator('.portfolio-summary-grid').innerText(), /Ready to collect\s*2/);
       assert.ok(paths.every(path => !path.startsWith('/api/hybrid-0x') && !path.startsWith('/api/pilot/')), paths.join(', '));
       await page.getByRole('button', { name: 'Activity', exact: true }).click();
