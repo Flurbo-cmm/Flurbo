@@ -24,3 +24,9 @@ export const sellBlockedMessage = (holdingsAtoms: string) => {
 export const tradeSummary = (shares: string, rule: Rule, legs: { question: string; side: 'yes' | 'no' }[]) =>
   [`${shares} ${Number(shares) === 1 ? 'share' : 'shares'}`, ...(legs.length > 1 ? [rule.replace('_', ' ')] : []),
     ...legs.map(leg => `${leg.question}: ${leg.side === 'yes' ? 'Yes' : 'No'}`)].join(' · ');
+
+// The wallet line of the ticket: what to say while the balance is read, when it cannot be read, and once it is known.
+export const balanceLabel = ({ owner, snapshotLoaded, cashAtoms, error }: { owner: string | null; snapshotLoaded: boolean; cashAtoms: string | null; error: boolean }) =>
+  !owner ? 'MetaMask signs each trade and bond you review'
+    : snapshotLoaded && cashAtoms !== null ? `${shareText(BigInt(cashAtoms))} test AUSD`
+      : error ? 'Balance unavailable. Refresh.' : 'Reading balance...';

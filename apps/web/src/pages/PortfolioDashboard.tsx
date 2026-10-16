@@ -1,3 +1,4 @@
+import {portfolioGatePending} from '../portfolio-gate';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {Link} from 'wouter';
 import {amount,describeClaimAnswers} from '../portfolio';
@@ -66,7 +67,7 @@ export default function PortfolioDashboard({account,wallets,groups,manualWallets
     const timer=setTimeout(()=>{if(document.hidden)return;lastProgress.current=progress;automaticScans.current++;setHistoryOnly(true);setRevision(x=>x+1);},3000);
     return()=>clearTimeout(timer);
   },[busy,allHistory,data,groups]);
-  useLoadGate('portfolio',{pending:busy&&!rows.length&&!Object.values(data).some(d=>d.holdingsComplete||d.error),label:'Loading your holdings'});
+  useLoadGate('portfolio',{pending:portfolioGatePending({busy,rowCount:rows.length,saved:Object.keys(savedHistory).length>0,anyDone:Object.values(data).some(d=>d.holdingsComplete||d.error)}),label:'Loading your holdings'});
   const allPayouts=groups.every(g=>data[g.namespace]?.payouts?.complete&&!data[g.namespace]?.payoutError);
   const payoutReadFailed=Object.values(data).some(d=>d.payoutError);
   const trades=useMemo(()=>mergeAgentActivity(groups.flatMap(g=>accountActivity(g.namespace,g.pool,[...(fresher(data[g.namespace]?.history,savedHistory[g.namespace]?.history)?.logs||[]),...(fresher(data[g.namespace]?.payouts,savedHistory[g.namespace]?.payouts)?.logs||[])],identity.split(','))),agentExecutions.filter(e=>groups.some(g=>g.pool===e.pool))),[data,groups,identity,agentExecutions,savedHistory]);
