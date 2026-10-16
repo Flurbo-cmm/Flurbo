@@ -18,6 +18,9 @@ import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
+import { useCostBasis } from '../position-basis-client';
+import { positionKey, sellOutcome } from '../position-basis';
+import { encodeClaim } from '../../shared/claims.mjs';
 import { APPROVAL_LABEL, balanceLabel, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
@@ -442,6 +445,16 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const quantityAtoms = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) ? parseUnits(shares, 6) : 0n;
   const canBuy = !!currentQuote && BigInt(currentQuote.cashAtoms) >= BigInt(currentQuote.maxCostAtoms);
   const canSell = !!currentQuote?.sellAtoms && BigInt(currentQuote.holdingsAtoms) >= quantityAtoms;
+  const sellOpen = mode === 'sell' && !!currentQuote?.sellAtoms && !!owner;
+  const costBasis = useCostBasis(market?.pool ?? '', owner || null, sellOpen);
+  const saleBasis = (() => {
+    if (!sellOpen || !currentQuote?.sellAtoms || !market || costBasis.status !== 'ready' || claim.some(item => item.eventIndex < 0)) return null;
+    try {
+      const { scope, mask } = extra1 ? encodeClaim({ events: others.length + 1, rule: combinationRule, legs: claim.map(item => ({ event: item.eventIndex, yes: item.side === 'yes' })) })
+        : { scope: 1 << market.eventIndex, mask: side === 'yes' ? 2 : 1 };
+      return sellOutcome(costBasis.trades, positionKey(market.pool, owner, Number(scope), String(mask)), quantityAtoms, BigInt(currentQuote.sellAtoms), BigInt(currentQuote.holdingsAtoms));
+    } catch { return null; }
+  })();
   const quotedAtoms = mode === 'buy' ? currentQuote?.buyAtoms : currentQuote?.sellAtoms;
   const perShare = quotedAtoms && quantityAtoms > 0n ? formatUnits(BigInt(quotedAtoms) * 1_000_000n / quantityAtoms, 6) : null;
   if (!market) return <main id="main" tabIndex={-1} className="market-page">
@@ -597,6 +610,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
             <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
             <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
           </dl>}
+          {mode === 'sell' && quotedAtoms && (costBasis.status === 'loading' ? <p role="status" className="market-caption">Reading your cost...</p>
+            : saleBasis ? <dl className="review-figures leaders" aria-label="Profit or loss on this sale">
+              <div><dt>You paid</dt><dd>{cash(saleBasis.paid.toString())} test AUSD</dd></div>
+              <div><dt>You receive about</dt><dd>{cash(saleBasis.proceeds.toString())} test AUSD</dd></div>
+              <div className="review-cost"><dt>{saleBasis.difference >= 0n ? 'Profit' : 'Loss'}</dt><dd>{saleBasis.difference >= 0n ? '+' : '-'}{cash((saleBasis.difference >= 0n ? saleBasis.difference : -saleBasis.difference).toString())} test AUSD</dd></div>
+            </dl> : <p className="market-caption">Cost unavailable. Your trade history for this prediction is incomplete.</p>)}
           <p className="market-caption">0.5% price tolerance. A fresh quote is checked when you review the transaction. A correct share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
           {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
           {mode === 'sell' && !canSell && <p role="status">{sellBlockedMessage(currentQuote.holdingsAtoms)}</p>}
