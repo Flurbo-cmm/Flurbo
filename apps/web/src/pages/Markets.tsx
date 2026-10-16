@@ -97,10 +97,10 @@ function MarketDirectory({directory,snapshot}:{directory:MarketDirectoryData|nul
   useEffect(()=>{
     if(!directory)return;
     const c=new AbortController(),queue:[string,OracleMarket|HybridMarket][]= [...oracleMarkets.map(m=>['oracle',m] as [string,OracleMarket]),...hybridMarkets.map(m=>['hybrid',m] as [string,HybridMarket])];setLoading(true);setFailed([]);
-    // The active category's pools load first; still two at a time.
+    // The active category's pools load first; four at a time.
     queue.sort((a,b)=>Number(poolCategory(b[0],b[1])===categoryRef.current)-Number(poolCategory(a[0],a[1])===categoryRef.current));
-    // Two pools at a time. One unavailable pool never hides the others.
-    void Promise.all(Array.from({length:Math.min(2,queue.length)},async()=>{
+    // Four questions at a time. One unavailable pool never hides the others.
+    void Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{
       while(queue.length&&!c.signal.aborted){const [kind,item]=queue.shift()!,key=kind==='oracle'?`oracle:${(item as OracleMarket).id}`:`hybrid:${(item as HybridMarket).id}`;
         try{
           if(kind==='oracle'){

@@ -69,24 +69,42 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     observationEndsAt: event.observationEndsAt }));
   const read = (address_, abi, functionName, args = []) => market.readContract({
     address: getAddress(address_), abi, functionName, args });
+  const summaryHeads = new Map();
+  async function poolSummaries(record) {
+    const key = record.pool.toLowerCase(), now = Date.now(), cached = summaryHeads.get(key);
+    if (cached && cached.until > now) return cached.promise;
+    const promise = (async () => {
+      const snapshot = await readHybridSnapshot(record, market, { includeStates: false });
+      const open = !snapshot.resolved && snapshot.now < record.prepared.draft.closesAt;
+      const count = record.prepared.draft.events.length;
+      const prices = open
+        ? await Promise.all(Array.from({ length: count }, async (_, index) => {
+          const scope = 1n << BigInt(index);
+          const quotes = await Promise.allSettled([
+            read(record.pool, poolAbi, 'quoteBuy', [scope, 2n, 1_000_000n]),
+            read(record.pool, poolAbi, 'quoteBuy', [scope, 1n, 1_000_000n]),
+          ]);
+          return {
+            yes: quotes[0].status === 'fulfilled' ? BigInt(quotes[0].value).toString() : null,
+            no: quotes[1].status === 'fulfilled' ? BigInt(quotes[1].value).toString() : null,
+          };
+        }))
+        : Array.from({ length: count }, () => ({ yes: null, no: null }));
+      return { snapshot, prices };
+    })().catch(err => {
+      summaryHeads.delete(key);
+      throw err;
+    });
+    summaryHeads.set(key, { promise, until: now + 6_000 });
+    return promise;
+  }
   async function marketSummary(id) {
     const route = routeFor(id);
-    const snapshot = await readHybridSnapshot(route.record, market);
-    const open = !snapshot.resolved && snapshot.now < route.record.prepared.draft.closesAt;
-    let yes = null, no = null;
-    if (open) {
-      const scope = 1n << BigInt(route.eventIndex);
-      const quotes = await Promise.allSettled([
-        read(route.pool, poolAbi, 'quoteBuy', [scope, 2n, 1_000_000n]),
-        read(route.pool, poolAbi, 'quoteBuy', [scope, 1n, 1_000_000n]),
-      ]);
-      if (quotes[0].status === 'fulfilled') yes = BigInt(quotes[0].value).toString();
-      if (quotes[1].status === 'fulfilled') no = BigInt(quotes[1].value).toString();
-    }
+    const { snapshot, prices } = await poolSummaries(route.record);
     return { schema: 'flurbo.hybrid-market.v1', id: route.id, pool: route.pool,
       marketNow: snapshot.now, blockNumber: snapshot.blockNumber.toString(),
       blockHash: snapshot.blockHash, funded: true, resolved: snapshot.resolved,
-      prices: { yes, no } };
+      prices: prices[route.eventIndex] ?? { yes: null, no: null } };
   }
   async function analysis(id, input) {
     const route = routeFor(id), record = route.record;
@@ -98,7 +116,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       || input.rule !== undefined && !['AND', 'OR', 'EXACTLY_ONE'].includes(input.rule)
       || BigInt(input.quantity) > 20_000_000n) throw Error('Choose two questions and up to twenty shares');
     const rule = input.rule || 'AND';
-    const head = await readHybridSnapshot(record, market);
+    const head = await readHybridSnapshot(record, market, { includeStates: false });
     const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
       abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
     const ls = isLsPrepared(record.prepared);
@@ -123,8 +141,8 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
         throw Error('Hybrid comparison unavailable');
     }
     const closed = head.resolved || head.now >= record.prepared.draft.closesAt;
-    const outcomes = [];
-    for (const a of ['no', 'yes']) for (const b of ['no', 'yes']) {
+    const pairs = [['no', 'no'], ['no', 'yes'], ['yes', 'no'], ['yes', 'yes']];
+    const outcomes = await Promise.all(pairs.map(async ([a, b]) => {
       const { scope, mask } = claimFor(record, input.a, { side: a, rule, claim: [
         { eventIndex: input.a, side: a }, { eventIndex: input.b, side: b },
       ] });
@@ -134,18 +152,17 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       let costAtoms = null;
       if (!closed) try { costAtoms = String(await at('quoteBuy', [scope, mask, BigInt(input.quantity)])); }
       catch { costAtoms = null; }
-      outcomes.push({ a, b, costAtoms,
+      return { a, b, costAtoms,
         probability: certifiedClaim(state, Number(scope), String(mask)).values.market,
-        scenarioProbability: certifiedClaim(state, Number(joint.scope), String(joint.mask)).values.market });
-    }
-    const sensitivity = [];
-    if (!closed) for (const answer of ['yes', 'no']) {
+        scenarioProbability: certifiedClaim(state, Number(joint.scope), String(joint.mask)).values.market };
+    }));
+    const sensitivity = closed ? [] : await Promise.all(['yes', 'no'].map(async answer => {
       try {
         const simulated = simulatePairPurchase(state, answer, verified?.ls ?? null);
         const cost = String(await at('quoteBuy', [simulated.scope, BigInt(simulated.mask), 1_000_000n]));
-        sensitivity.push({ answer, costAtoms: cost, values: certifiedPair(simulated.after).values });
-      } catch { sensitivity.push({ answer, costAtoms: null, values: null }); }
-    }
+        return { answer, costAtoms: cost, values: certifiedPair(simulated.after).values };
+      } catch { return { answer, costAtoms: null, values: null }; }
+    }));
     const confirmed = await market.getBlock({ blockNumber: head.blockNumber });
     if (!same(confirmed?.hash, head.blockHash)) throw Error('Hybrid comparison expired');
     return { schema: 'flurbo.hybrid-analysis.v1', pool: route.pool, a: input.a, b: input.b, rule,
@@ -156,28 +173,29 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
   async function snapshot(id, owner = null) {
     const route = routeFor(id);
     if (owner !== null && !address(owner)) throw Error('Invalid wallet address');
-    const chain = await readHybridSnapshot(route.record, market);
+    const chain = await readHybridSnapshot(route.record, market, { eventIndex: route.eventIndex });
     const state = chain.states[route.eventIndex];
-    const reality = route.event.route === 'reality'
-      ? await hybridRealitySnapshot(source, route.event, owner) : null;
-    const user = owner === null ? null : await Promise.all([
-      read(route.pool, poolAbi, 'holdings', [getAddress(owner), 1n << BigInt(route.eventIndex), 1n]),
-      read(route.pool, poolAbi, 'holdings', [getAddress(owner), 1n << BigInt(route.eventIndex), 2n]),
-      read(TEST_AUSD, cashAbi, 'balanceOf', [getAddress(owner)]),
-      read(TEST_AUSD, cashAbi, 'allowance', [getAddress(owner), getAddress(route.pool)]),
-      read(TEST_AUSD, cashAbi, 'allowance', [getAddress(owner), getAddress(route.resolver)]),
-      read(route.resolver, resolverAbi, 'credits', [getAddress(owner)]),
-    ]).then(([no, yes, cash, tradeAllowance, bondAllowance, credits]) => ({
-      wallet: getAddress(owner), noShares: no.toString(), yesShares: yes.toString(),
-      cashAtoms: cash.toString(), allowanceAtoms: tradeAllowance.toString(),
-      bondAllowanceAtoms: bondAllowance.toString(), bondCreditsAtoms: credits.toString() }));
+    const [reality, user, saved] = await Promise.all([
+      route.event.route === 'reality' ? hybridRealitySnapshot(source, route.event, owner) : null,
+      owner === null ? null : Promise.all([
+        read(route.pool, poolAbi, 'holdings', [getAddress(owner), 1n << BigInt(route.eventIndex), 1n]),
+        read(route.pool, poolAbi, 'holdings', [getAddress(owner), 1n << BigInt(route.eventIndex), 2n]),
+        read(TEST_AUSD, cashAbi, 'balanceOf', [getAddress(owner)]),
+        read(TEST_AUSD, cashAbi, 'allowance', [getAddress(owner), getAddress(route.pool)]),
+        read(TEST_AUSD, cashAbi, 'allowance', [getAddress(owner), getAddress(route.resolver)]),
+        read(route.resolver, resolverAbi, 'credits', [getAddress(owner)]),
+      ]).then(([no, yes, cash, tradeAllowance, bondAllowance, credits]) => ({
+        wallet: getAddress(owner), noShares: no.toString(), yesShares: yes.toString(),
+        cashAtoms: cash.toString(), allowanceAtoms: tradeAllowance.toString(),
+        bondAllowanceAtoms: bondAllowance.toString(), bondCreditsAtoms: credits.toString() })),
+      route.event.route === 'reality' && command
+        ? command('GET', `flurbo:hybrid-answer:v1:${route.event.source.questionId.toLowerCase()}:observation`)
+        : null,
+    ]);
     let automaticAnswer = null;
-    if (reality && command) {
-      const saved = await command('GET', `flurbo:hybrid-answer:v1:${route.event.source.questionId.toLowerCase()}:observation`);
-      if (saved) {
-        const { outcome, evidenceURI, observedAt } = JSON.parse(saved);
-        automaticAnswer = { outcome, evidenceURI, observedAt };
-      }
+    if (reality && saved) {
+      const { outcome, evidenceURI, observedAt } = JSON.parse(saved);
+      automaticAnswer = { outcome, evidenceURI, observedAt };
     }
     return { schema: 'flurbo.hybrid-snapshot.v1', ...list().find(item => item.id === route.id),
       resolver: route.resolver, eventHash: route.eventHash,
@@ -203,9 +221,9 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
   async function prepare(id, action, input, owner) {
     const route = routeFor(id);
     if (!address(owner)) throw Error('Select a MetaMask wallet');
-    const snap = await snapshot(id, owner);
     const record = route.record;
     if (['answer', 'arbitrate', 'withdrawReality', 'finalizeArbitration', 'evidence', 'appeal', 'claimAppeal', 'claimWinnings'].includes(action)) {
+      const snap = await snapshot(id, owner);
       if (route.event.route !== 'reality' || !snap.reality)
         throw Error('Reality action unavailable in this market');
       if (action === 'finalizeArbitration')
@@ -227,12 +245,14 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       return hybridRealityAction(id, action, input, owner, snap.reality);
     }
     if (action === 'withdrawBond') {
+      const snap = await snapshot(id, owner);
       if (BigInt(snap.user.bondCreditsAtoms) <= 0n) throw Error('No bond credit to collect');
       return { action, reason: `Collect ${formatUnits(BigInt(snap.user.bondCreditsAtoms), 6)} test AUSD bond credit`,
         transaction: tx(10143, owner, route.resolver,
           encodeFunctionData({ abi: resolverAbi, functionName: 'withdrawBond' })) };
     }
     if (action === 'challenge') {
+      const snap = await snapshot(id, owner);
       if (route.event.route !== 'mechanical' || snap.phase !== 1
         || snap.marketNow >= snap.challengeUntil || same(owner, record.prepared.proposer)
         || ![1, 2, 3].includes(input?.counter) || input.counter === snap.proposal
@@ -255,14 +275,19 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
           encodeFunctionData({ abi: resolverAbi, functionName: 'challenge',
             args: [route.eventIndex, input.counter, input.evidenceHash, input.evidenceURI] })) };
     }
-    if (route.event.route !== 'mechanical' && !['position', 'quote', 'approve', 'buy', 'sell', 'redeem'].includes(action))
+    if (route.event.route !== 'mechanical' && !['position', 'quote', 'approve', 'buy', 'sell', 'redeem'].includes(action)) {
+      await snapshot(id, owner);
       throw Error('Reality action unavailable in this market');
+    }
     if (action === 'position') {
       const { scope, mask } = claimFor(record, route.eventIndex, input);
-      const holdings = BigInt(await read(route.pool, poolAbi, 'holdings',
-        [getAddress(owner), scope, mask]));
+      const [chain, rawHoldings] = await Promise.all([
+        readHybridSnapshot(record, market, { includeStates: false }),
+        read(route.pool, poolAbi, 'holdings', [getAddress(owner), scope, mask]),
+      ]);
+      const holdings = BigInt(rawHoldings);
       let payout = null;
-      if (snap.resolved && holdings > 0n) {
+      if (chain.resolved && holdings > 0n) {
         const [num, den] = await read(route.pool, poolAbi, 'payoutFraction', [scope, mask]);
         payout = holdings * BigInt(num) / BigInt(den);
       }
@@ -273,55 +298,68 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       || BigInt(input.quantity) > (action === 'redeem' ? 1_000_000_000_000n : 20_000_000n))
       throw Error(action === 'redeem' ? 'Share quantity out of range' : 'Enter one to twenty shares');
     const quantity = BigInt(input.quantity), { scope, mask } = claimFor(record, route.eventIndex, input);
-    const holdings = BigInt(await read(route.pool, poolAbi, 'holdings', [getAddress(owner), scope, mask]));
+    const wallet = getAddress(owner), closesAt = record.prepared.draft.closesAt;
+    const needsCash = ['quote', 'approve', 'buy'].includes(action);
+    const [chain, rawHoldings, rawCash, rawAllowance] = await Promise.all([
+      readHybridSnapshot(record, market, { includeStates: false }),
+      read(route.pool, poolAbi, 'holdings', [wallet, scope, mask]),
+      ...(needsCash ? [
+        read(TEST_AUSD, cashAbi, 'balanceOf', [wallet]),
+        read(TEST_AUSD, cashAbi, 'allowance', [wallet, getAddress(route.pool)]),
+      ] : []),
+    ]);
+    const holdings = BigInt(rawHoldings);
     if (action === 'redeem') {
-      if (!snap.resolved || holdings < quantity) throw Error('Shares are not ready to collect');
+      if (!chain.resolved || holdings < quantity) throw Error('Shares are not ready to collect');
       const [num, den] = await read(route.pool, poolAbi, 'payoutFraction', [scope, mask]);
       const payout = quantity * BigInt(num) / BigInt(den);
       return { action, amountAtoms: payout.toString(), reason: `Collect about ${formatUnits(payout, 6)} test AUSD`,
         transaction: tx(10143, owner, route.pool,
           encodeFunctionData({ abi: poolAbi, functionName: 'redeem', args: [scope, mask, quantity] })) };
     }
-    if (snap.resolved || snap.marketNow >= snap.closesAt) throw Error('Trading is closed');
+    if (chain.resolved || chain.now >= closesAt) throw Error('Trading is closed');
     if (action === 'sell') {
       if (holdings < quantity) throw Error('Insufficient shares to sell');
       const quoted = BigInt(await read(route.pool, poolAbi, 'quoteSell', [scope, mask, quantity]));
       const minimum = quoted - quoted / 200n;
       return { action, amountAtoms: quoted.toString(), minimumReceivedAtoms: minimum.toString(),
-        expiresAt: snap.marketNow + 120,
+        expiresAt: chain.now + 120,
         reason: `Sell for at least ${formatUnits(minimum, 6)} test AUSD`,
         transaction: tx(10143, owner, route.pool,
           encodeFunctionData({ abi: poolAbi, functionName: 'sell',
-            args: [scope, mask, quantity, minimum, BigInt(snap.marketNow + 120)] })) };
+            args: [scope, mask, quantity, minimum, BigInt(chain.now + 120)] })) };
     }
-    const quoted = BigInt(await read(route.pool, poolAbi, 'quoteBuy', [scope, mask, quantity]));
+    const [rawQuoted, rawSell] = await Promise.all([
+      read(route.pool, poolAbi, 'quoteBuy', [scope, mask, quantity]),
+      action === 'quote' && holdings >= quantity
+        ? read(route.pool, poolAbi, 'quoteSell', [scope, mask, quantity]).catch(() => null)
+        : null,
+    ]);
+    const quoted = BigInt(rawQuoted);
     const maximum = quoted + (quoted + 199n) / 200n;
+    const cashAtoms = BigInt(rawCash).toString(), allowanceAtoms = BigInt(rawAllowance).toString();
     if (action === 'quote') {
-      let sellAtoms = null;
-      if (holdings >= quantity) {
-        try { sellAtoms = BigInt(await read(route.pool, poolAbi, 'quoteSell', [scope, mask, quantity])).toString(); }
-        catch { sellAtoms = null; }
-      }
+      const sellAtoms = rawSell === null || rawSell === undefined ? null : BigInt(rawSell).toString();
       return { action, buyAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
         sellAtoms, minProceedsAtoms: sellAtoms === null ? null
           : (BigInt(sellAtoms) - BigInt(sellAtoms) / 200n).toString(),
-        cashAtoms: snap.user.cashAtoms, allowanceAtoms: snap.user.allowanceAtoms,
+        cashAtoms, allowanceAtoms,
         holdingsAtoms: holdings.toString() };
     }
     if (action === 'approve') {
-      if (BigInt(snap.user.allowanceAtoms) >= maximum) throw Error('Approval already covers this trade');
+      if (BigInt(allowanceAtoms) >= maximum) throw Error('Approval already covers this trade');
       return { action, amountAtoms: maximum.toString(), reason: `Allow up to ${formatUnits(maximum, 6)} test AUSD`,
         transaction: tx(10143, owner, TEST_AUSD,
           encodeFunctionData({ abi: cashAbi, functionName: 'approve', args: [route.pool, maximum] })) };
     }
-    if (BigInt(snap.user.cashAtoms) < maximum || BigInt(snap.user.allowanceAtoms) < maximum)
+    if (BigInt(cashAtoms) < maximum || BigInt(allowanceAtoms) < maximum)
       throw Error('Fund and approve this purchase first');
     return { action, amountAtoms: quoted.toString(), maxCostAtoms: maximum.toString(),
-      expiresAt: snap.marketNow + 120,
+      expiresAt: chain.now + 120,
       reason: `Buy ${formatUnits(quantity, 6)} shares for at most ${formatUnits(maximum, 6)} test AUSD`,
       transaction: tx(10143, owner, route.pool,
         encodeFunctionData({ abi: poolAbi, functionName: 'buy',
-          args: [scope, mask, quantity, maximum, BigInt(snap.marketNow + 120)] })) };
+          args: [scope, mask, quantity, maximum, BigInt(chain.now + 120)] })) };
   }
   function ruleFor(ruleHash) {
     for (const { event } of routes.values())

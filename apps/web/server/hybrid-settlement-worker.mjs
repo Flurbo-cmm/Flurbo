@@ -150,46 +150,113 @@ export async function buildRealityObservation({ rule, questionId, captures, atte
     observedAt: now };
 }
 
-export async function readHybridSnapshot(record, market) {
-  if (await market.getChainId() !== 10143) throw Error('Hybrid market RPC chain mismatch');
+const verifiedPools = new WeakMap();
+const inFlightHeads = new WeakMap();
+
+function poolVerificationKey(record) {
+  const p = record?.prepared;
+  return [record?.pool, record?.resolver, record?.rulesHash, p?.schema, p?.draftHash, p?.configHash,
+    p?.creator, p?.proposer, p?.relay, p?.liquidityAtoms ?? '', p?.commissionBps ?? '',
+    p?.draft?.bondAtoms ?? '', ...(p?.eventHashes || []),
+    ...(p?.draft?.events || []).map(e => `${e.observationEndsAt}:${e.route}`)].join(':').toLowerCase();
+}
+
+async function ensureHybridPoolVerified(record, market) {
+  let map = verifiedPools.get(market);
+  if (!map) { map = new Map(); verifiedPools.set(market, map); }
+  const key = poolVerificationKey(record);
+  const existing = map.get(key);
+  if (existing === true) return;
+  if (existing) return existing;
+  const task = (async () => {
+    const resolver = getAddress(record.resolver), pool = getAddress(record.pool);
+    const readResolver = (functionName, args = []) => market.readContract({ address: resolver, abi: resolverAbi, functionName, args });
+    const readPool = functionName => market.readContract({ address: pool, abi: poolAbi, functionName });
+    const ls = isLsPrepared(record.prepared), prepared = record.prepared, size = prepared.draft.events.length;
+    const [[chainId, version, rulesHash, draftHash, linkedPool, proposer, relay, bond, count,
+      poolVersion, poolResolver, poolRulesHash, collateral, poolCount, funded,
+      liquidity, commissionBps, sponsor], events] = await Promise.all([
+      Promise.all([
+        market.getChainId(),
+        readResolver('protocolVersion'), readResolver('rulesHash'), readResolver('draftHash'),
+        readResolver('pool'), readResolver('proposer'), readResolver('relay'), readResolver('bond'),
+        readResolver('eventCount'), readPool('protocolVersion'), readPool('resolver'),
+        readPool('settlementRulesHash'), readPool('collateral'), readPool('eventCount'),
+        readPool('funded'),
+        ...(ls ? [readPool('liquidity'), readPool('commissionBps'), readPool('sponsor')] : []),
+      ]),
+      Promise.all(Array.from({ length: size }, (_, event) => Promise.all([
+        readResolver('eventHashes', [event]), readResolver('observationEnds', [event]),
+        readResolver('routes', [event]),
+      ]))),
+    ]);
+    if (chainId !== 10143) throw Error('Hybrid market RPC chain mismatch');
+    if (Number(version) !== 4 || Number(poolVersion) !== (ls ? 5 : 3) || Number(count) !== size
+      || Number(poolCount) !== size || !funded || !same(rulesHash, record.rulesHash)
+      || !same(poolRulesHash, record.rulesHash) || !same(draftHash, prepared.draftHash)
+      || !same(linkedPool, pool) || !same(poolResolver, resolver)
+      || !same(proposer, prepared.proposer) || !same(relay, prepared.relay)
+      || !same(collateral, TEST_AUSD) || bond !== BigInt(prepared.draft.bondAtoms))
+      throw Error('Hybrid pool differs from verified catalog');
+    if (ls && (BigInt(liquidity) !== BigInt(prepared.liquidityAtoms) || Number(commissionBps) !== prepared.commissionBps
+      || !same(sponsor, prepared.creator)))
+      throw Error('Hybrid pool differs from verified catalog');
+    for (let event = 0; event < size; event++) {
+      const [eventHash, observationEnds, route] = events[event];
+      if (!same(eventHash, prepared.eventHashes[event])
+        || Number(observationEnds) !== prepared.draft.events[event].observationEndsAt
+        || Number(route) !== (prepared.draft.events[event].route === 'mechanical' ? 0 : 1))
+        throw Error('Hybrid event differs from verified catalog');
+    }
+    map.set(key, true);
+  })();
+  map.set(key, task);
+  try { await task; } catch (err) { map.delete(key); throw err; }
+}
+
+export async function readHybridSnapshot(record, market, { includeStates = true, eventIndex = null } = {}) {
   const resolver = getAddress(record.resolver), pool = getAddress(record.pool);
   const readResolver = (functionName, args = []) => market.readContract({ address: resolver, abi: resolverAbi, functionName, args });
   const readPool = functionName => market.readContract({ address: pool, abi: poolAbi, functionName });
-  const ls = isLsPrepared(record.prepared);
-  const [head, version, rulesHash, draftHash, linkedPool, proposer, relay, bond, count,
-    poolVersion, poolResolver, poolRulesHash, collateral, poolCount, funded, resolved, delivered,
-    liquidity, commissionBps, sponsor] = await Promise.all([
-    market.getBlock(), readResolver('protocolVersion'), readResolver('rulesHash'), readResolver('draftHash'),
-    readResolver('pool'), readResolver('proposer'), readResolver('relay'), readResolver('bond'),
-    readResolver('eventCount'), readPool('protocolVersion'), readPool('resolver'),
-    readPool('settlementRulesHash'), readPool('collateral'), readPool('eventCount'),
-    readPool('funded'), readPool('resolved'), readResolver('delivered'),
-    ...(ls ? [readPool('liquidity'), readPool('commissionBps'), readPool('sponsor')] : []),
-  ]);
   const prepared = record.prepared, size = prepared.draft.events.length;
-  if (!hash32(head?.hash) || typeof head.number !== 'bigint'
-    || Number(version) !== 4 || Number(poolVersion) !== (ls ? 5 : 3) || Number(count) !== size
-    || Number(poolCount) !== size || !funded || !same(rulesHash, record.rulesHash)
-    || !same(poolRulesHash, record.rulesHash) || !same(draftHash, prepared.draftHash)
-    || !same(linkedPool, pool) || !same(poolResolver, resolver)
-    || !same(proposer, prepared.proposer) || !same(relay, prepared.relay)
-    || !same(collateral, TEST_AUSD) || bond !== BigInt(prepared.draft.bondAtoms))
-    throw Error('Hybrid pool differs from verified catalog');
-  if (ls && (BigInt(liquidity) !== BigInt(prepared.liquidityAtoms) || Number(commissionBps) !== prepared.commissionBps
-    || !same(sponsor, prepared.creator)))
-    throw Error('Hybrid pool differs from verified catalog');
-  const states = [];
-  for (let event = 0; event < size; event++) {
-    const [eventHash, observationEnds, route, state] = await Promise.all([
-      readResolver('eventHashes', [event]), readResolver('observationEnds', [event]),
-      readResolver('routes', [event]), readResolver('caseState', [event]),
-    ]);
-    if (!same(eventHash, prepared.eventHashes[event])
-      || Number(observationEnds) !== prepared.draft.events[event].observationEndsAt
-      || Number(route) !== (prepared.draft.events[event].route === 'mechanical' ? 0 : 1))
-      throw Error('Hybrid event differs from verified catalog');
-    states.push(state);
+  if (!includeStates) {
+    let heads = inFlightHeads.get(market);
+    if (!heads) { heads = new Map(); inFlightHeads.set(market, heads); }
+    const key = pool.toLowerCase();
+    let pending = heads.get(key);
+    if (!pending) {
+      pending = Promise.all([
+        ensureHybridPoolVerified(record, market),
+        market.getBlock(), readPool('resolved'), readResolver('delivered'),
+      ]).finally(() => heads.delete(key));
+      heads.set(key, pending);
+    }
+    const [, head, resolved, delivered] = await pending;
+    if (!hash32(head?.hash) || typeof head.number !== 'bigint')
+      throw Error('Hybrid pool differs from verified catalog');
+    return { now: Number(head.timestamp), blockNumber: head.number,
+      blockHash: head.hash, states: [], prepared, resolved, delivered };
   }
+  if (Number.isInteger(eventIndex) && eventIndex >= 0 && eventIndex < size) {
+    const [, head, resolved, delivered, state] = await Promise.all([
+      ensureHybridPoolVerified(record, market),
+      market.getBlock(), readPool('resolved'), readResolver('delivered'),
+      readResolver('caseState', [eventIndex]),
+    ]);
+    if (!hash32(head?.hash) || typeof head.number !== 'bigint')
+      throw Error('Hybrid pool differs from verified catalog');
+    const states = Array(size).fill(null);
+    states[eventIndex] = state;
+    return { now: Number(head.timestamp), blockNumber: head.number,
+      blockHash: head.hash, states, prepared, resolved, delivered };
+  }
+  const [, head, resolved, delivered, ...states] = await Promise.all([
+    ensureHybridPoolVerified(record, market),
+    market.getBlock(), readPool('resolved'), readResolver('delivered'),
+    ...Array.from({ length: size }, (_, event) => readResolver('caseState', [event])),
+  ]);
+  if (!hash32(head?.hash) || typeof head.number !== 'bigint')
+    throw Error('Hybrid pool differs from verified catalog');
   return { now: Number(head.timestamp), blockNumber: head.number,
     blockHash: head.hash, states, prepared, resolved, delivered };
 }

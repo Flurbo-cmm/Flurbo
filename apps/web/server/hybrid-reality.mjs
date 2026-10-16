@@ -25,21 +25,38 @@ export async function verifyKlerosProxy(source, proxy, expectedCodeHash = KLEROS
 export const castVoteCommand = (court, disputeId, voteIds, account = 'flurbo-kleros-juror') =>
   `cast send ${getAddress(court)} 'castVote(uint256,uint256[],uint256,uint256)' ${disputeId} '[${voteIds.join(',')}]' <CHOICE> 0 --rpc-url "$FLURBO_SEPOLIA_RPC_URL" --account ${account}`;
 
+const verifiedQuestions = new WeakMap();
+
 export async function hybridRealitySnapshot(source, event, owner = null, { juror = null } = {}) {
   const details = event.source;
-  if (await source.getChainId() !== 11155111) throw Error('Reality RPC is not Sepolia');
   const reality = getAddress(details.reality), arbitrator = getAddress(details.arbitrator);
   const read = (address, abi, functionName, args = []) => source.readContract({ address,
     abi, functionName, args });
   const q = details.questionId, args = [q];
-  const [contentHash, chosenArbitrator, opening, timeout, minBond, bond, finalizesAt,
-    bestAnswer, historyHash, pendingArbitration, finalized, disputeFee, proxyReality,
-    dispute, credit, block] = await Promise.all([
-    read(reality, realityAbi, 'getContentHash', args),
-    read(reality, realityAbi, 'getArbitrator', args),
-    read(reality, realityAbi, 'getOpeningTS', args),
-    read(reality, realityAbi, 'getTimeout', args),
-    read(reality, realityAbi, 'getMinBond', args),
+  let qMap = verifiedQuestions.get(source);
+  if (!qMap) { qMap = new Map(); verifiedQuestions.set(source, qMap); }
+  const qKey = `${reality}:${arbitrator}:${q}:${details.contentHash}:${event.observationEndsAt}:${details.minTimeout}:${details.minBond}`.toLowerCase();
+  let fixed = qMap.get(qKey);
+  const [verifiedFixed, bond, finalizesAt, bestAnswer, historyHash, pendingArbitration,
+    finalized, disputeFee, dispute, credit, block] = await Promise.all([
+    fixed ? Promise.resolve(fixed) : (async () => {
+      if (await source.getChainId() !== 11155111) throw Error('Reality RPC is not Sepolia');
+      const [contentHash, chosenArbitrator, opening, timeout, minBond, proxyReality] = await Promise.all([
+        read(reality, realityAbi, 'getContentHash', args),
+        read(reality, realityAbi, 'getArbitrator', args),
+        read(reality, realityAbi, 'getOpeningTS', args),
+        read(reality, realityAbi, 'getTimeout', args),
+        read(reality, realityAbi, 'getMinBond', args),
+        read(arbitrator, proxyAbi, 'realitio'),
+      ]);
+      if (!same(contentHash, details.contentHash) || !same(chosenArbitrator, arbitrator)
+        || !same(proxyReality, reality) || Number(opening) !== event.observationEndsAt
+        || Number(timeout) < details.minTimeout || BigInt(minBond) < BigInt(details.minBond))
+        throw Error('Reality question differs from the published source');
+      const value = { opening: Number(opening), minBond: BigInt(minBond) };
+      qMap.set(qKey, value);
+      return value;
+    })(),
     read(reality, realityAbi, 'getBond', args),
     read(reality, realityAbi, 'getFinalizeTS', args),
     read(reality, realityAbi, 'getBestAnswer', args),
@@ -47,22 +64,18 @@ export async function hybridRealitySnapshot(source, event, owner = null, { juror
     read(reality, realityAbi, 'isPendingArbitration', args),
     read(reality, realityAbi, 'isFinalized', args),
     read(arbitrator, proxyAbi, 'getDisputeFee', args),
-    read(arbitrator, proxyAbi, 'realitio'),
     read(arbitrator, proxyAbi, 'arbitrationRequests', [BigInt(q)]),
     owner ? read(reality, realityAbi, 'balanceOf', [getAddress(owner)]) : 0n,
     source.getBlock(),
   ]);
-  if (!same(contentHash, details.contentHash) || !same(chosenArbitrator, arbitrator)
-    || !same(proxyReality, reality) || Number(opening) !== event.observationEndsAt
-    || Number(timeout) < details.minTimeout || BigInt(minBond) < BigInt(details.minBond)
-    || !Number.isSafeInteger(Number(block.timestamp)))
+  if (!Number.isSafeInteger(Number(block.timestamp)))
     throw Error('Reality question differs from the published source');
   const court = Number(dispute[0]) > 0
     ? await klerosCourtSnapshot(source, arbitrator, BigInt(dispute[2]), juror) : null;
-  const nextBond = [BigInt(minBond), BigInt(bond) * 2n, 1n]
+  const nextBond = [verifiedFixed.minBond, BigInt(bond) * 2n, 1n]
     .reduce((a, b) => a > b ? a : b);
   return { chainId: 11155111, reality, arbitrator, questionId: q,
-    sourceNow: Number(block.timestamp), opensAt: Number(opening),
+    sourceNow: Number(block.timestamp), opensAt: verifiedFixed.opening,
     finalizesAt: Number(finalizesAt), bondWei: BigInt(bond).toString(),
     nextBondWei: nextBond.toString(), disputeFeeWei: BigInt(disputeFee).toString(),
     pendingArbitration, finalized, creditedEthWei: BigInt(credit).toString(),

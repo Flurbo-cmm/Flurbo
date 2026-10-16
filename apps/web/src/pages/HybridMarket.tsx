@@ -240,8 +240,11 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     }, 2500);
     return () => clearTimeout(timer);
   }, [pending, provider, owner, busy, pollPaused]);
+  const marketOpen = Boolean(market && (snapshot
+    ? !snapshot.resolved && snapshot.marketNow < market.closesAt
+    : Date.now() / 1000 < market.closesAt));
   useEffect(() => {
-    if (!market || !owner || !snapshot || snapshot.marketNow >= market.closesAt || snapshot.resolved
+    if (!market || !owner || !marketOpen
       || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) || Number(shares) <= 0) {
       setQuote(null); setQuoteError(''); return;
     }
@@ -254,7 +257,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         .catch(() => { if (live) setQuoteError('A current quote is unavailable. Refresh and try again.'); });
     }, 300);
     return () => { live = false; clearTimeout(timer); };
-  }, [id, market, owner, snapshot?.marketNow, snapshot?.resolved, side, shares,
+  }, [id, market, owner, marketOpen, side, shares,
     extra1, extra2, extra1Side, extra2Side, combinationRule, mode, refresh]);
   useEffect(() => {
     if (!market || !owner || !snapshot?.resolved || !extra1) {

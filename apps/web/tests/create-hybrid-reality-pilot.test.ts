@@ -145,5 +145,5 @@ test('rejects a human-route question whose observation time is not after closesA
   assert.throws(() => createHybridRealityPilot({ creator, proposer, relay, closesAt, origin,
     rules: [first, { schema: 'flurbo.human-question.v1', eventId: first.eventId,
       question: 'Will the advisory be published?', observationEndsAt: closesAt + 3600 }] }),
-  /Duplicate event id/);
+  /distinct/);
 });

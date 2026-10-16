@@ -1,4 +1,4 @@
-import { createPublicClient, encodeFunctionData, formatEther, formatUnits, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toHex } from 'viem';
+import { createPublicClient, defineChain, encodeFunctionData, formatEther, formatUnits, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEther, parseUnits, toHex } from 'viem';
 import { validateRealityRoute } from './reality-relay.mjs';
 import { pilotIndex } from './pilot-index.mjs';
 
@@ -148,10 +148,56 @@ export function oracleCatalog(value) {
   return value;
 }
 
+const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+const SEPOLIA_CHAIN = defineChain({ id: 11155111, name: 'Sepolia',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: { default: { http: ['https://ethereum-sepolia-rpc.publicnode.com'] } },
+  contracts: { multicall3: { address: MULTICALL3 } } });
+const MONAD_CHAIN = defineChain({ id: 10143, name: 'Monad Testnet',
+  nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+  rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } },
+  contracts: { multicall3: { address: MULTICALL3 } } });
+
+function resilientHttp(url, { batch = { batchSize: 4, wait: 15 }, minIntervalMs = 75,
+  retryAttempts = 4, retryDelayMs = 1100, ...options } = {}) {
+  const base = http(url, { batch, ...options });
+  let tail = Promise.resolve(), lastCall = 0;
+  return config => {
+    const t = base(config);
+    return {
+      ...t,
+      async request(args) {
+        for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+          await (tail = tail.then(async () => {
+            const wait = minIntervalMs - (Date.now() - lastCall);
+            if (wait > 0) await new Promise(r => setTimeout(r, wait));
+            lastCall = Date.now();
+          }, () => {}));
+          try {
+            return await t.request(args);
+          } catch (err) {
+            const limited = err?.cause?.code === -32011 || err?.code === -32011 || err?.status === 429
+              || /15\/sec|rate.?limit|too many requests|429/i.test(`${err?.message || ''} ${err?.details || ''}`);
+            if (limited && attempt < retryAttempts) {
+              await new Promise(r => setTimeout(r, retryDelayMs));
+              continue;
+            }
+            throw err;
+          }
+        }
+      },
+    };
+  };
+}
+
 export function oracleClients(sourceRpc, marketRpc) {
   if (!publicUrl(sourceRpc) || !publicUrl(marketRpc)) throw Error('HTTPS oracle RPC URLs required');
-  return [createPublicClient({ transport: http(sourceRpc, { timeout: 12_000 }) }),
-    createPublicClient({ transport: http(marketRpc, { timeout: 12_000 }) })];
+  return [
+    createPublicClient({ chain: SEPOLIA_CHAIN, batch: { multicall: { batchSize: 4096, wait: 15 } },
+      transport: resilientHttp(sourceRpc, { timeout: 12_000 }) }),
+    createPublicClient({ chain: MONAD_CHAIN, batch: { multicall: { batchSize: 4096, wait: 15 } },
+      transport: resilientHttp(marketRpc, { timeout: 12_000 }) }),
+  ];
 }
 
 const answerHex = outcome => outcome === 'no' ? ZERO

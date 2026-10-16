@@ -144,6 +144,36 @@ test('reality snapshot includes rule URI and the automatic answer', async () => 
   const second = await service.snapshot(`${poolAddress}-1`);
   assert.equal(second.automaticAnswer, null);
   assert.equal(second.ruleAdapter, 'json-api.v1');
+  let sourceReads = 0, eventHashReads = 0;
+  const openMarket = {
+    getChainId: async () => 10143,
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(base - 7200) }),
+    readContract: async (request: any) => {
+      if (request.functionName === 'eventHashes') eventHashReads += 1;
+      if (request.functionName === 'quoteBuy') return BigInt(request.args[2]) / 2n;
+      if (request.functionName === 'quoteSell') return BigInt(request.args[2]) / 3n;
+      if (['holdings', 'balanceOf', 'allowance'].includes(request.functionName)) return 1000000n;
+      return market.readContract(request);
+    },
+  };
+  const trackedSource = { ...source, readContract: async (request: any) => { sourceReads += 1; return source.readContract(request); } };
+  const fastService = hybridMarketService({ catalog, market: openMarket, source: trackedSource,
+    evidence: {}, origin: 'https://example.org', command });
+  const [summary0, summary1] = await Promise.all([
+    fastService.marketSummary(`${poolAddress}-0`),
+    fastService.marketSummary(`${poolAddress}-1`),
+  ]);
+  assert.equal(summary0.prices.yes, '500000');
+  assert.equal(summary1.prices.no, '500000');
+  assert.equal(eventHashReads, 2);
+  assert.equal(sourceReads, 0);
+  const readsBeforeQuote = reads.length;
+  const fastQuote = await fastService.prepare(`${poolAddress}-0`, 'quote',
+    { side: 'yes', quantity: '2000000' }, owner);
+  assert.equal(fastQuote.buyAtoms, '1000000');
+  assert.equal(eventHashReads, 2);
+  assert.equal(sourceReads, 0);
+  assert.equal(reads.length, readsBeforeQuote);
 });
 
 function lsMarket(change: Record<string, unknown> = {}) {

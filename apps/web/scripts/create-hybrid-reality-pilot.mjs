@@ -37,7 +37,7 @@ export function validateHumanQuestion(raw, closesAt = null, timeout = null) {
 // or a human-route Reality question when schema is flurbo.human-question.v1.
 function ruleEvents(rules, { closesAt, timeout }) {
   if (!Array.isArray(rules) || rules.length < 2 || rules.length > 32) throw Error('Provide 2 to 32 rules');
-  if (new Set(rules.map(rule => rule?.eventId)).size !== rules.length) throw Error('Duplicate event id');
+  if (new Set(rules.map(rule => rule?.eventId)).size !== rules.length) throw Error('Rule event IDs must be distinct');
   return rules.map(rule => {
     if (rule?.schema === HUMAN_QUESTION_SCHEMA) {
       const human = validateHumanQuestion(rule, closesAt, timeout);
