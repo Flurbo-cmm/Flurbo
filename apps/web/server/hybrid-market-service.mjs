@@ -8,6 +8,7 @@ import { simulatePairPurchase } from './pair-sensitivity.mjs';
 import { canonical, settlementRuleHash } from './settlement-rules.mjs';
 import { encodeClaim } from '../shared/claims.mjs';
 import { verifiedLsState } from '../shared/ls-lmsr.mjs';
+import { estimatePairs, poolWeb } from '../shared/pool-web.mjs';
 import { isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
 
 const poolAbi = parseAbi(['function holdings(address,uint32,uint256) view returns (uint128)',
@@ -169,6 +170,40 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       quantity: input.quantity, closed, blockNumber: String(head.blockNumber),
       blockHash: head.blockHash, observedAt: head.now, values: certified.values,
       reasons: certified.reasons, outcomes, sensitivity };
+  }
+  async function web(id) {
+    const route = routeFor(id), record = route.record;
+    const count = record.prepared.draft.events.length;
+    const head = await readHybridSnapshot(record, market, { includeStates: false });
+    const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
+      abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
+    const ls = isLsPrepared(record.prepared);
+    const [liquidity, order, factors, depth, commissionBps] = await Promise.all([
+      at('liquidity'), at('eliminationOrder'), at('factors'),
+      ...(ls ? [at('depth'), at('commissionBps')] : []),
+    ]);
+    const tables = factors.map(f => ({ scope: Number(f.scope), values: f.values.map(String) }));
+    let state = { events: count, liquidity: String(liquidity), factors: tables };
+    if (ls) {
+      const committed = { initialDepthAtoms: record.prepared.liquidityAtoms, commissionBps: record.prepared.commissionBps };
+      const verified = verifiedLsState(committed, { events: count, a: 0, b: 1, order: order.map(Number),
+        factors, liquidity, commissionBps, depth });
+      if (!verified) throw Error('Hybrid connections unavailable');
+      state = { events: count, liquidity: verified.state.liquidity, factors: verified.state.factors };
+    }
+    const shells = poolWeb({ events: count, factors: tables, marginals: [], joint: () => null });
+    const estimate = estimatePairs(state, shells.edges.map(edge => [edge.a, edge.b]));
+    const { prices } = await poolSummaries(record);
+    const priced = prices.map(item => item.yes === null ? null : Math.round(Number(item.yes) / 1000));
+    const web = poolWeb({ events: count, factors: tables,
+      marginals: priced.map((yes, i) => yes ?? estimate?.marginals[i] ?? null),
+      joint: (a, b) => estimate?.pairs.get(`${a}-${b}`) ?? null });
+    const confirmed = await market.getBlock({ blockNumber: head.blockNumber });
+    if (!same(confirmed?.hash, head.blockHash)) throw Error('Hybrid connections expired');
+    return { schema: 'flurbo.hybrid-web.v1', pool: route.pool, title: record.prepared.draft.title,
+      closesAt: record.prepared.draft.closesAt, blockNumber: String(head.blockNumber),
+      blockHash: head.blockHash, observedAt: head.now, estimated: estimate !== null,
+      questions: record.prepared.draft.events.map(event => event.question), ...web };
   }
   async function snapshot(id, owner = null) {
     const route = routeFor(id);
@@ -366,5 +401,5 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       if (event.rule && `0x${settlementRuleHash(event.rule)}` === ruleHash) return canonical(event.rule);
     throw Error('Hybrid rule not found');
   }
-  return { list, routeFor, ruleFor, marketSummary, snapshot, analysis, prepare };
+  return { list, routeFor, ruleFor, marketSummary, snapshot, analysis, web, prepare };
 }

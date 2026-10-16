@@ -232,3 +232,24 @@ test('analysis fails closed when the on-chain depth or commission differs', asyn
     await assert.rejects(lsMarket(change).service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' }),
       /Hybrid (comparison unavailable|pool differs from verified catalog)/);
 });
+
+test('web returns schema flurbo.hybrid-web.v1 with block number and at most 32 nodes', async () => {
+  const { service, expected } = lsMarket();
+  const web = await service.web(`${pool}-0`);
+  assert.equal(web.schema, 'flurbo.hybrid-web.v1');
+  assert.equal(web.pool, pool);
+  assert.equal(web.blockNumber, '200');
+  assert.ok(web.nodes.length >= 1 && web.nodes.length <= 32);
+  assert.equal(web.nodes.length, 2);
+  assert.deepEqual(web.nodes.map((node: any) => node.yes), [500, 500]);
+  assert.equal(web.edges.length, 1);
+  assert.deepEqual([web.edges[0].a, web.edges[0].b, web.edges[0].scope], [0, 1, 3]);
+  assert.equal(web.edges[0].difference, web.edges[0].joint - web.edges[0].independent);
+  assert.equal(web.questions.length, 2);
+  assert.ok(expected.depthWad > 0n);
+});
+
+test('web fails closed when the on-chain depth differs', async () => {
+  await assert.rejects(lsMarket({ depth: lsMarket().expected.depthWad + 1n }).service.web(`${pool}-0`),
+    /Hybrid (connections unavailable|pool differs from verified catalog)/);
+});
