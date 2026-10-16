@@ -210,6 +210,7 @@ function pageTitle(location: string) {
   return location === "/login" ? "Sign in | flurbo"
     : location === "/signup" ? "Create an account | flurbo"
     : /^\/markets\/(?:hybrid\/0x[0-9a-f]{40}\/\d+|[^/]+\/[0-3])\/thesis$/i.test(location) ? "Build your thesis | flurbo"
+    : /^\/markets\/hybrid\/0x[0-9a-f]{40}\/web$/i.test(location) ? "How questions connect | flurbo"
     : location.startsWith("/markets") ? "Markets | flurbo"
     : location === "/access" ? "Your account | flurbo"
     : location === "/fund" ? "Get test funds | flurbo"
@@ -248,6 +249,7 @@ export default function App() {
       <Route path="/oracle" component={LegacyOracleRoute} />
       <Route path="/oracle/:id" component={LegacyOracleRoute} />
       <Route path="/markets/oracle/:id" component={AccountRoute} />
+      <Route path="/markets/hybrid/:poolId/web" component={AccountRoute} />
       <Route path="/markets/hybrid/:poolId/:event/thesis" component={AccountRoute} />
       <Route path="/markets/hybrid/:poolId/:event" component={AccountRoute} />
       <Route path="/markets/:collection/:event" component={AccountRoute} />

@@ -22,12 +22,15 @@ export const BOARD_URL_KEY='flurbo.board-url';
 // Oracle and hybrid pages load when opened, so the board itself stays light. The board warms them when idle.
 const loadOracle=()=>import('./OracleMarkets'),loadHybrid=()=>import('./HybridMarket'),loadHybridThesis=()=>import('./HybridAnalysis');
 const OracleMarketDetail=lazy(loadOracle),HybridMarketDetail=lazy(loadHybrid);
+const HybridWeb=lazy(()=>import('./HybridWeb'));
 const HybridThesis=lazy(()=>loadHybridThesis().then(module=>({default:module.HybridThesis})));
 export function warmMarketPages(){for(const load of [loadOracle,loadHybrid,loadHybridThesis])void load().catch(()=>undefined);}
 function PagePending(){
   const gate=useLoadGate('market-page',{pending:true,label:'Loading the market'});
   return <main id="main" tabIndex={-1} className="page" aria-busy="true">{!gate.covered&&<span className="progress-line" aria-hidden="true"/>}<p role="status" className={gate.covered?'sr-only':'busy-text'}>Loading the market...</p></main>;
 }
+
+function webFocus(){const value=new URLSearchParams(window.location.search).get('focus');return value!==null&&/^([0-9]|[12][0-9]|3[01])$/.test(value)?Number(value):null;}
 
 export default function Markets(){
   const [location]=useLocation();
@@ -48,6 +51,10 @@ export default function Markets(){
       :<>{!gate.covered&&<span className="progress-line" aria-hidden="true"/>}<p role="status" className={gate.covered?'sr-only':'busy-text'}>Loading markets...</p><MarketSkeleton/></>}
   </main>;
   const {oracleMarkets,hybridMarkets}=directory;
+  const webId=location.match(/^\/markets\/hybrid\/(0x[0-9a-f]{40})\/web$/i);
+  if(webId)return hybridMarkets.some(m=>m.pool.toLowerCase()===webId[1].toLowerCase())
+    ?<Suspense fallback={<PagePending/>}><HybridWeb key={webId[1]} poolId={webId[1]} markets={hybridMarkets} focus={webFocus()}/></Suspense>
+    :<main id="main" tabIndex={-1} className="page page-task"><div className="state-block"><Inbox aria-hidden="true" strokeWidth={1.75}/><h1>Market not found</h1><Link href="/markets" className="btn btn-primary">All markets</Link></div></main>;
   const hybridId=location.match(/^\/markets\/hybrid\/(0x[0-9a-f]{40})\/([0-9]|[12][0-9]|3[01])(\/thesis)?$/i);
   if(hybridId){const id=`${hybridId[1]}-${Number(hybridId[2])}`;const market=hybridMarkets.find(m=>m.id.toLowerCase()===id.toLowerCase());return market
     ?<Suspense fallback={<PagePending/>}>{hybridId[3]?<HybridThesis key={location} market={market} markets={hybridMarkets}/>:<HybridMarketDetail key={id} id={market.id} markets={hybridMarkets}/>}</Suspense>
