@@ -18,7 +18,7 @@ import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
-import { APPROVAL_LABEL, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
+import { APPROVAL_LABEL, balanceLabel, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { credentialedReader, readerName } from '../reader-names';
@@ -118,6 +118,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [walletStatus, setWalletStatus] = useState<TradingConnection['status']>('checking');
   const activeOwner = useRef('');
   const [error, setError] = useState('');
+  const [balanceFailed, setBalanceFailed] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -193,8 +194,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     if (!market) return;
     let live = true;
     void request<Snapshot>(id, owner ? `?wallet=${owner}` : '').then(value => {
-      if (live && value.pool.toLowerCase() === market.pool.toLowerCase()) setSnapshot(value);
-    }).catch(e => { if (live) setError(friendly(e)); });
+      if (live && value.pool.toLowerCase() === market.pool.toLowerCase()) { setSnapshot(value); setBalanceFailed(false); }
+    }).catch(e => { if (live) { setError(friendly(e)); setBalanceFailed(true); } });
     void request<{ prices: { yes: string | null; no: string | null } }>(id, '/market')
       .then(value => { if (live) setSummary(value); }).catch(() => {});
     return () => { live = false; };
@@ -575,7 +576,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each correct share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
       {!sheetOpen && errorAlert}
       {notice && <p className="state-inline" role="status">{notice}</p>}
-      <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{snapshot?.user ? `${cash(snapshot.user.cashAtoms)} test AUSD` : 'MetaMask signs each trade and bond you review'}</small></div>
+      <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{balanceLabel({ owner: owner || null, snapshotLoaded: !!snapshot?.user && !!owner && snapshot.user.wallet.toLowerCase() === owner.toLowerCase(), cashAtoms: snapshot?.user?.cashAtoms ?? null, error: balanceFailed })}</small></div>
         <button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
       {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }} block/>
         <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { APPROVAL_LABEL, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../src/ticket-copy.ts';
+import { APPROVAL_LABEL, balanceLabel, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../src/ticket-copy.ts';
 
 test('a failed quote says whether the pool cannot price the combination', () => {
   assert.match(quoteErrorMessage(true), /cannot price this combination/i);
@@ -30,4 +30,13 @@ test('trade summary names every question, side and the rule', () => {
   assert.equal(tradeSummary('2', 'AND', legs), '2 shares · AND · A?: Yes · B?: No');
   assert.equal(tradeSummary('1', 'EXACTLY_ONE', legs), '1 share · EXACTLY ONE · A?: Yes · B?: No');
   assert.equal(tradeSummary('1', 'AND', [legs[0]]), '1 share · A?: Yes');
+});
+
+test('the balance line reads, fails and loads in plain words', () => {
+  const idle = 'MetaMask signs each trade and bond you review';
+  assert.equal(balanceLabel({ owner: null, snapshotLoaded: false, cashAtoms: null, error: false }), idle);
+  assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: false, cashAtoms: null, error: false }), 'Reading balance...');
+  assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: false, cashAtoms: null, error: true }), 'Balance unavailable. Refresh.');
+  assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: true, cashAtoms: '10500000', error: false }), '10.5 test AUSD');
+  assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: true, cashAtoms: '0', error: true }), '0 test AUSD');
 });
