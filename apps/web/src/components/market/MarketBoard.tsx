@@ -3,11 +3,12 @@ import { m } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { ArrowDownUp, Inbox, Info, RefreshCw, Search } from 'lucide-react';
 import MarketTile from './MarketTile';
+import PoolCard from './PoolCard';
 import CategoryNav from './CategoryNav';
 import LinkedRail from './LinkedRail';
 import Pager from '../ui/Pager';
 import { boardCapacity, paginate } from '../../board-layout';
-import { filterBoardRows, type BoardRow } from '../../market-board-rows';
+import { filterBoardRows, groupRows, type BoardRow } from '../../market-board-rows';
 import { visibleCategories, writeBoardQuery, type BoardQuery, type BoardSort, type BoardStatus, type CategorySlug } from '../../market-categories';
 import { shortcutFor } from '../../shortcuts';
 import { compactRelative } from '../../format';
@@ -16,6 +17,9 @@ const SLIDE = { type: 'spring', stiffness: 560, damping: 42, mass: 0.6 } as cons
 const FOOT_H = 64, FOOT_H_COMPACT = 56, GRID_PAD = 12, GRID_PAD_COMPACT = 4, BOTTOM_PAD = 8;
 const STATUSES: [BoardStatus, string][] = [['open', 'Open'], ['closed', 'Closed'], ['settled', 'Settled'], ['all', 'All']];
 const SORTS: [BoardSort, string][] = [['closing', 'Closing soon'], ['name', 'A to Z']];
+const VIEWS: ['questions' | 'pools', string][] = [['questions', 'Questions'], ['pools', 'Pools']];
+const VIEW_KEY = 'flurbo.board.view';
+const readView = (): 'questions' | 'pools' => { try { return sessionStorage.getItem(VIEW_KEY) === 'pools' ? 'pools' : 'questions'; } catch { return 'questions'; } };
 const LEGEND = 'Prices are the cost of one share in test AUSD, including price impact. A correct share pays 1.000. Prices are not probabilities.';
 
 function PressedGroup<T extends string>({ label, options, value, onChange, disabled = false, className = '' }: { label: string; options: [T, string][]; value: T; onChange(value: T): void; disabled?: boolean; className?: string }) {
@@ -39,6 +43,8 @@ export default function MarketBoard({ rows, query, onQuery, now, watchlist, onWa
   const [capacity, setCapacity] = useState({ columns: 4, rows: 4, perPage: 16, fits: true, compact: false });
   const [group, setGroup] = useState<string | null>(null);
   const [direction, setDirection] = useState(1);
+  const [view, setViewState] = useState(readView);
+  const setView = (next: 'questions' | 'pools') => { setViewState(next); try { sessionStorage.setItem(VIEW_KEY, next); } catch { /* storage unavailable */ } };
 
   // Capacity comes from the space left after the header and board chrome, measured on resize only.
   useLayoutEffect(() => {
@@ -67,6 +73,7 @@ export default function MarketBoard({ rows, query, onQuery, now, watchlist, onWa
     const rank = new Map(stableOrder.map((key, i) => [key, i]));
     return [...list].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity));
   }, [rows, query, category, watchlist, stableOrder]);
+  const pools = useMemo(() => groupRows(filtered), [filtered]);
   const paged = capacity.fits ? paginate(filtered, capacity.perPage, query.page) : { items: filtered, page: 1, pageCount: 1 };
   const pageKey = `${category}|${query.status}|${query.sort}|${query.q}|${paged.page}|${capacity.columns}x${capacity.rows}`;
 
@@ -111,6 +118,7 @@ export default function MarketBoard({ rows, query, onQuery, now, watchlist, onWa
         <label className="board-search"><Search aria-hidden="true" strokeWidth={1.75} /><span className="sr-only">Search markets</span>
           <input ref={search} placeholder="Find a market" value={query.q} autoComplete="off" spellCheck={false} onChange={(event) => onQuery({ q: event.target.value })} /><kbd aria-hidden="true">/</kbd></label>
         <PressedGroup label="Market status" options={STATUSES} value={query.status} onChange={(status) => onQuery({ status })} disabled={category === 'watchlist'} className="board-status" />
+        <PressedGroup label="Board view" options={VIEWS} value={view} onChange={setView} className="board-view" />
         <PressedGroup label="Sort" options={SORTS} value={query.sort} onChange={(sort) => onQuery({ sort })} className="board-sort" />
         <button type="button" className="btn btn-secondary btn-icon board-sort-toggle" aria-label={`Sort: ${query.sort === 'name' ? 'A to Z' : 'Closing soon'}`} onClick={() => onQuery({ sort: query.sort === 'name' ? 'closing' : 'name' })}><ArrowDownUp aria-hidden="true" strokeWidth={1.75} /></button>
         <span className="board-fresh">{loading ? <span role="status">{pendingPools > 0 ? `Loading ${pendingPools} more ${pendingPools === 1 ? 'collection' : 'collections'}` : 'Updating prices'}</span> : updatedAt ? <>Updated {compactRelative(Math.min(updatedAt / 1000, now), now)}</> : null}</span>
@@ -123,7 +131,9 @@ export default function MarketBoard({ rows, query, onQuery, now, watchlist, onWa
       {failed && <p role="alert" className="state-inline error board-alert" ref={(el) => { chromeRefs.current[3] = el; }}>Some markets could not be refreshed. Other markets are still available. Use Refresh prices to retry.</p>}
       <section className="board-region" aria-label="Markets" data-market-count={rows.length} ref={region}>
         <p className="sr-only" aria-live="polite">{filtered.length} markets{capacity.fits && paged.pageCount > 1 ? `, page ${paged.page} of ${paged.pageCount}` : ''}</p>
-        {paged.items.length > 0
+        {view === 'pools' && pools.length > 0
+          ? <ul className="pool-list" aria-label="Pools">{pools.map((group) => <li key={group.groupKey}><PoolCard group={group} now={now} deltas={deltas} /></li>)}</ul>
+          : paged.items.length > 0
           ? <m.div key={pageKey} className="board-grid" style={grid} initial={{ opacity: 0, x: 10 * direction }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}>
               {paged.items.map((row) => <MarketTile key={row.key} row={row} now={now} delta={deltas.get(row.key) ?? null} watched={!!watchlist?.has(row.key)} onWatch={watchlist ? onWatch : null} onFocusGroup={setGroup} />)}
             </m.div>

@@ -38,3 +38,18 @@ export function filterBoardRows<R extends SnapshotRow>(rows:R[],query:BoardQuery
     return query.sort==='name'?a.question.localeCompare(b.question):a.closesAt-b.closesAt;
   });
 }
+
+export type PoolGroup={groupKey:string;label:string;count:number;open:number;closesAt:number;webPath:string|null;rows:SnapshotRow[]};
+
+// One entry per pool, soonest close first. Only a hybrid pool with several questions has a connections page.
+export function groupRows(rows:SnapshotRow[]):PoolGroup[]{
+  const groups=new Map<string,PoolGroup>();
+  for(const row of rows){
+    const group=groups.get(row.groupKey)??{groupKey:row.groupKey,label:row.groupLabel,count:0,open:0,closesAt:row.closesAt,webPath:null,rows:[]};
+    group.count+=1;group.rows.push(row);
+    if(row.status==='Open')group.open+=1;
+    group.closesAt=Math.min(group.closesAt,row.closesAt);
+    groups.set(row.groupKey,group);
+  }
+  return [...groups.values()].map(group=>({...group,webPath:group.rows[0].kind==='hybrid'&&group.count>1?group.rows[0].path.replace(/\/\d+$/,'/web'):null})).sort((a,b)=>a.closesAt-b.closesAt||a.label.localeCompare(b.label));
+}

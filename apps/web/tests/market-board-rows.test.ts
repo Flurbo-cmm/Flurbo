@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildBoardRows, filterBoardRows, rowFromSnapshot, toSnapshotRow } from '../src/market-board-rows.ts';
+import { buildBoardRows, filterBoardRows, groupRows, rowFromSnapshot, toSnapshotRow } from '../src/market-board-rows.ts';
 import { readBoardQuery } from '../src/market-categories.ts';
 
 const now = 1_800_000_000_000, nowS = now / 1000;
@@ -79,3 +79,34 @@ test('snapshot rows round trip without functions and rebuild the same links', ()
     for (const yes of [undefined, true, false]) assert.equal(copy.href(yes), row.href(yes));
   }
 });
+
+test('rows with one groupKey form one group with count equal to the rows', () => {
+  const rows = buildBoardRows(fixture());
+  const groups = groupRows(rows);
+  const night = groups.find(group => group.groupKey === `hybrid:${night0()}`)!;
+  assert.equal(night.count, 2);
+  assert.equal(night.rows.length, 2);
+  assert.equal(night.label, 'Night market pool');
+  assert.equal(groups.reduce((sum, group) => sum + group.count, 0), rows.length);
+});
+
+test('a group closes at its earliest close and counts its open rows', () => {
+  const groups = groupRows(buildBoardRows(fixture()));
+  const archive = groups.find(group => group.groupKey.endsWith(archive0()))!;
+  assert.equal(archive.closesAt, nowS - 60);
+  assert.equal(archive.open, 0);
+  assert.equal(groups.find(group => group.groupKey.endsWith(night0()))!.open, 2);
+});
+
+test('groups sort soonest close first', () => {
+  const closes = groupRows(buildBoardRows(fixture())).map(group => group.closesAt);
+  assert.deepEqual(closes, [...closes].sort((a, b) => a - b));
+});
+
+test('only hybrid groups with more than one row have a web path', () => {
+  const groups = groupRows(buildBoardRows(fixture()));
+  assert.equal(groups.find(group => group.groupKey.endsWith(night0()))!.webPath, `/markets/hybrid/${night0()}/web`);
+  assert.equal(groups.find(group => group.groupKey === `hybrid:${kleros}`)!.webPath, null);
+  assert.equal(groups.find(group => group.groupKey.startsWith('oracle:'))!.webPath, null);
+});
+const night0 = () => night, archive0 = () => archive;
