@@ -13,11 +13,22 @@ import { pathToFileURL } from 'node:url';
 import { settlementRuleAuthoringIssues, settlementRuleHash, settlementTimeline, validateSettlementRule } from '../server/settlement-rules.mjs';
 import { parseSettlementCapture, retrieveSettlementCapture } from '../server/settlement-evidence.mjs';
 import { inspectProofCapture } from '../server/settlement-readers.mjs';
+import { HUMAN_QUESTION_SCHEMA, validateHumanQuestion } from './create-hybrid-reality-pilot.mjs';
 
 const WAITING = new Set(['VALUE_MISSING', 'EVM_BLOCK_NOT_YET_AVAILABLE', 'EVM_NOT_FINAL', 'EXTRACTION_MISSING_FIELD']);
 const iso = seconds => new Date(seconds * 1000).toISOString();
 
 export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), closesAt = null, request = fetch, proofs = [] } = {}) {
+  if (raw?.schema === HUMAN_QUESTION_SCHEMA) {
+    try {
+      const human = validateHumanQuestion(raw, closesAt);
+      return { eventId: human.eventId, status: 'ok', route: 'reality-human',
+        window: { opens: iso(human.observationEndsAt) }, sources: [],
+        meaning: 'Valid human-route Reality.eth question. Answered on Sepolia after the observation time.' };
+    } catch (error) {
+      return { eventId: raw?.eventId ?? null, status: 'invalid', message: error.message };
+    }
+  }
   let rule;
   try { rule = validateSettlementRule(raw); } catch (error) { return { eventId: raw?.eventId ?? null, status: 'invalid', message: error.message }; }
   const issues = settlementRuleAuthoringIssues(rule);

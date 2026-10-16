@@ -27,9 +27,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const output = rest.pop();
   const rpc = process.env.FLURBO_SEPOLIA_RPC_URL;
   if (!templatePath || !output || !rest.length || !rpc?.startsWith('https://'))
-    throw Error('Usage: node complete-hybrid-reality-draft.mjs TEMPLATE.json TX0 TX1 OUTPUT_DRAFT.json (set FLURBO_SEPOLIA_RPC_URL)');
+    throw Error('Usage: node complete-hybrid-reality-draft.mjs TEMPLATE.json TX0 TX1 OUTPUT_DRAFT.json  (or: TEMPLATE.json TXS.json OUTPUT_DRAFT.json)');
   const template = JSON.parse(await readFile(templatePath, 'utf8'));
-  const draft = await completeHybridRealityDraft(template, rest, createPublicClient({ transport: http(rpc) }));
+  const txHashes = rest.length === 1 && rest[0].endsWith('.json')
+    ? JSON.parse(await readFile(rest[0], 'utf8'))
+    : rest;
+  const draft = await completeHybridRealityDraft(template, txHashes, createPublicClient({ transport: http(rpc) }));
   await writeFile(output, JSON.stringify(draft, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify({ status: 'draft_completed', events: draft.events.length, output }));
 }

@@ -80,6 +80,35 @@ export async function verifyHybridDeployment({ id, prepared, unverified, adapter
   return record;
 }
 
+function pacedHttp(url, { minIntervalMs = 80, retryAttempts = 5, retryDelayMs = 1200, ...options } = {}) {
+  const base = http(url, options);
+  let lastCall = 0;
+  return config => {
+    const t = base(config);
+    return {
+      ...t,
+      async request(args) {
+        for (let attempt = 0; attempt <= retryAttempts; attempt++) {
+          const now = Date.now();
+          const wait = minIntervalMs - (now - lastCall);
+          if (wait > 0) await new Promise(r => setTimeout(r, wait));
+          lastCall = Date.now();
+          try {
+            return await t.request(args);
+          } catch (err) {
+            const isRateLimit = err?.cause?.code === -32011 || /15\/sec|rate limit/i.test(err?.message || '');
+            if (isRateLimit && attempt < retryAttempts) {
+              await new Promise(r => setTimeout(r, retryDelayMs));
+              continue;
+            }
+            throw err;
+          }
+        }
+      }
+    };
+  };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     adapter: { type: 'string' }, manager: { type: 'string' }, keeper: { type: 'string' },
@@ -94,8 +123,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     readFile('config/hybrid-markets.json', 'utf8').then(JSON.parse),
   ]);
   hybridSettlementCatalog(existing);
-  const market = createPublicClient({ transport: http(process.env.FLURBO_TESTNET_RPC_URL, { timeout: 20_000 }) });
-  const source = createPublicClient({ transport: http(process.env.FLURBO_SEPOLIA_RPC_URL, { timeout: 20_000 }) });
+  const market = createPublicClient({ transport: pacedHttp(process.env.FLURBO_TESTNET_RPC_URL, { timeout: 20_000 }) });
+  const source = createPublicClient({ transport: pacedHttp(process.env.FLURBO_SEPOLIA_RPC_URL, { timeout: 20_000 }) });
   const record = await verifyHybridDeployment({ id, prepared, unverified, adapter: values.adapter,
     manager: values.manager, keeper: values.keeper, answerer: values.answerer, market, source });
   const candidate = hybridSettlementCatalog({ ...existing, pools: [...existing.pools, record] });

@@ -7,11 +7,42 @@ import { realityQuestionText } from './prepare-hybrid-pilot.mjs';
 import { assertSettlementRuleAuthoring, settlementRuleHash } from '../server/settlement-rules.mjs';
 import { hybridArbitrator, SEPOLIA_KLEROS_SUBCOURT3, SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 
-// Custom rules replace the default chain-block questions. Each becomes one Reality question whose text links its rule.
+export const HUMAN_QUESTION_SCHEMA = 'flurbo.human-question.v1';
+
+export function defaultHybridRealityRules(closesAt, timeout = 3600) {
+  return evmBlockEvents({ closesAt, challengePeriod: timeout }).map(item => item.rule);
+}
+
+export function validateHumanQuestion(raw, closesAt = null, timeout = null) {
+  const keys = ['schema', 'eventId', 'question', 'observationEndsAt', 'challengePeriod'];
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)
+    || Object.keys(raw).some(key => !keys.includes(key))
+    || raw.schema !== HUMAN_QUESTION_SCHEMA
+    || typeof raw.eventId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(raw.eventId)
+    || typeof raw.question !== 'string' || raw.question.trim() !== raw.question
+    || raw.question.length < 12 || raw.question.length > 240
+    || !Number.isSafeInteger(raw.observationEndsAt) || raw.observationEndsAt <= 0)
+    throw Error('Invalid human question');
+  if (closesAt !== null && (raw.observationEndsAt <= closesAt || raw.observationEndsAt > closesAt + 365 * 86400))
+    throw Error('Invalid human question');
+  const challengePeriod = raw.challengePeriod ?? timeout ?? 3600;
+  if (!Number.isSafeInteger(challengePeriod) || challengePeriod < 3600 || challengePeriod > 7 * 86400
+    || (timeout !== null && challengePeriod !== timeout))
+    throw Error('Invalid human question');
+  return { id: raw.eventId, eventId: raw.eventId, question: raw.question,
+    observationEndsAt: raw.observationEndsAt, challengePeriod };
+}
+
+// Custom rules replace the default chain-block questions. Each becomes one Reality question whose text links its rule,
+// or a human-route Reality question when schema is flurbo.human-question.v1.
 function ruleEvents(rules, { closesAt, timeout }) {
   if (!Array.isArray(rules) || rules.length < 2 || rules.length > 32) throw Error('Provide 2 to 32 rules');
-  if (new Set(rules.map(rule => rule?.eventId)).size !== rules.length) throw Error('Rule event IDs must be distinct');
+  if (new Set(rules.map(rule => rule?.eventId)).size !== rules.length) throw Error('Duplicate event id');
   return rules.map(rule => {
+    if (rule?.schema === HUMAN_QUESTION_SCHEMA) {
+      const human = validateHumanQuestion(rule, closesAt, timeout);
+      return { id: human.id, question: human.question, observationEndsAt: human.observationEndsAt };
+    }
     assertSettlementRuleAuthoring(rule);
     if (rule.timing.challengePeriod !== timeout) throw Error(`${rule.eventId}: the rule challenge period must equal the timeout`);
     if (rule.timing.assertionPeriod !== 3600 || rule.timing.observationEndsAt <= closesAt)
@@ -22,7 +53,7 @@ function ruleEvents(rules, { closesAt, timeout }) {
 
 export function createHybridRealityPilot({ creator, proposer, relay, closesAt, origin, timeout = 3600,
   minBondWei = '100000000000000', arbitrator = SEPOLIA_KLEROS_SUBCOURT3,
-  title = 'Monad testnet Reality reader pool', rules = null }) {
+  title = 'Monad testnet Reality reader pool', liquidityAtoms = '10000000', commissionBps = 500, rules = null }) {
   if (!hybridArbitrator(arbitrator)) throw Error('Choose a supported Kleros arbitrator proxy');
   if (typeof title !== 'string' || title.length < 8 || title.length > 120)
     throw Error('Choose a title of 8 to 120 characters');
@@ -37,22 +68,26 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
     throw Error('Choose three distinct wallets, a close time 2 hours to 14 days away and an https origin');
   const [deployer, proposerWallet, relayWallet] = addresses;
   const items = (rules === null ? evmBlockEvents({ closesAt, challengePeriod: timeout }) : ruleEvents(rules, { closesAt, timeout })).map(item => {
+    if (!item.rule) return { ...item, questionText: `${item.question}\u241fflurbo\u241fen` };
     const ruleURI = `${origin}/api/hybrid/rules/0x${settlementRuleHash(item.rule)}`;
     return { ...item, ruleURI, questionText: realityQuestionText(item.question, ruleURI) };
   });
   const events = items.map(item => ({ id: item.id, question: item.question,
-    observationEndsAt: item.observationEndsAt, route: 'reality', rule: item.rule,
+    observationEndsAt: item.observationEndsAt, route: 'reality',
+    ...(item.rule ? { rule: item.rule } : {}),
     source: { kind: 'reality-sepolia', chainId: 11155111, reality: SEPOLIA_REALITY,
-      arbitrator: getAddress(arbitrator), ruleURI: item.ruleURI, questionText: item.questionText,
+      arbitrator: getAddress(arbitrator), ...(item.ruleURI ? { ruleURI: item.ruleURI } : {}),
+      questionText: item.questionText,
       minTimeout: timeout, minBond: minBondWei, openingAt: item.observationEndsAt } }));
   const draft = { schema: 'flurbo.hybrid-publication.v5', chainId: 10143, rulesReviewed: true,
     creator: deployer, proposer: proposerWallet, relay: relayWallet,
     title, closesAt, assertionPeriod: 3600,
-    challengePeriod: 3600, reportPeriod: 90 * 86400, arbitrationPeriod: 90 * 86400,
-    bondAtoms: '1000000', liquidityAtoms: '10000000', commissionBps: 500, events };
+    challengePeriod: timeout, reportPeriod: 90 * 86400, arbitrationPeriod: 90 * 86400,
+    bondAtoms: '1000000', liquidityAtoms: String(liquidityAtoms), commissionBps, events };
   return { schema: 'flurbo.hybrid-reality-template.v1', draft,
     questions: items.map((item, eventIndex) => ({ eventIndex, questionText: item.questionText,
-      opening: item.observationEndsAt, timeout, minBondWei, nonce: 0 })) };
+      opening: item.observationEndsAt, timeout, minBondWei, nonce: 0,
+      ...(item.ruleURI ? { ruleURI: item.ruleURI } : {}) })) };
 }
 
 export function askCommand(template, index, templatePath) {
@@ -63,11 +98,12 @@ export function askCommand(template, index, templatePath) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const [creator, proposer, relay, close, origin, output, arbitrator, title, rulesFile] = process.argv.slice(2);
+  const [creator, proposer, relay, close, origin, output, arbitrator, title, rulesFile, liquidityAtoms] = process.argv.slice(2);
   if (!output || !/^[1-9]\d*$/.test(close || ''))
-    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE] [RULES.json]  (use "" to skip ARBITRATOR or TITLE)');
+    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE] [RULES.json] [LIQUIDITY_ATOMS]  (use "" to skip optional args)');
   const template = createHybridRealityPilot({ creator, proposer, relay, closesAt: Number(close), origin,
     ...(arbitrator ? { arbitrator } : {}), ...(title ? { title } : {}),
+    ...(liquidityAtoms ? { liquidityAtoms } : {}),
     ...(rulesFile ? { rules: JSON.parse(await readFile(rulesFile, 'utf8')) } : {}) });
   await writeFile(output, JSON.stringify(template, null, 2) + '\n', { flag: 'wx' });
   template.questions.forEach((_, index) => console.log(askCommand(template, index, output)));

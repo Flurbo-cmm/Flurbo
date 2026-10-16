@@ -503,7 +503,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         { counter, evidenceHash: challengeEvidence.hash, evidenceURI: challengeEvidence.uri }))}>Review challenge</button></>}
     </div>}
     {canAnswer && <div className="oracle-settlement-action"><h3>{hasRealityAnswer ? 'Post another answer' : 'Submit an answer'}</h3>
-      <p>Reality.eth accepts a bonded answer on Sepolia. A different answer must at least double the current bond. If it contradicts Flurbo's published source reading, Flurbo requests Kleros arbitration automatically; you can also request it yourself. Needs Sepolia ETH for the bond and gas.</p>
+      <p>Reality.eth accepts a bonded answer on Sepolia. A different answer must at least double the current bond. {snapshot.ruleAdapter ? "If it contradicts Flurbo's published source reading, Flurbo requests Kleros arbitration automatically; you can also request it yourself." : 'Anyone can challenge a bonded answer to Kleros within the answer window.'} Needs Sepolia ETH for the bond and gas.</p>
       <SegmentedControl label="Answer" value={realityAnswer} options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'void', label: 'Void' }]} onChange={value => setRealityAnswer(value as 'yes'|'no'|'void')} block/>
       <label>Bond in Sepolia ETH<input inputMode="decimal" value={bondEth} onChange={e => setBondEth(e.target.value)}/></label>
       <p className="market-caption">Minimum now: {formatEther(BigInt(reality!.nextBondWei))} Sepolia ETH. If another answer arrives first, your transaction may revert.</p>
@@ -549,7 +549,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       {credentialedReader(readerAdapter) ? <p className="market-caption">This source needs credentials. The evidence holds a TLS proof of its response.</p>
         : snapshot.source?.urls?.map(url => <p key={url}><a className="text-link" href={url} target="_blank" rel="noreferrer">View source <ArrowUpRight size={14}/></a></p>)}
       <dl className="facts"><dt>Reader</dt><dd>{readerName(readerAdapter)}</dd><dt>Publisher</dt><dd>{snapshot.source?.publisher || 'Reality.eth'}</dd>
-        {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : 'Not recorded yet'}</dd></>
+        {reality ? <><dt>Flurbo reader answer</dt><dd>{snapshot.automaticAnswer ? <a href={snapshot.automaticAnswer.evidenceURI} target="_blank" rel="noreferrer">{readerLabel}: read evidence</a> : snapshot.ruleAdapter ? 'Not recorded yet' : 'Answered on Reality.eth'}</dd></>
           : <><dt>Provisional evidence</dt><dd>{snapshot.proposalEvidenceURI ? <a href={snapshot.proposalEvidenceURI} target="_blank" rel="noreferrer">Read evidence</a> : 'Waiting for source'}</dd></>}</dl>
       {reality && <p className="market-caption">A dedicated relay delivers the final Sepolia answer to Monad. This testnet relay remains trusted and can misreport until verified cross-chain delivery is added.</p>}
     </section>

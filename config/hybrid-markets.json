@@ -455,6 +455,989 @@
         "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dc0a9544a2ccc5f4f7734609b14cb34df938d29f65865f6213e3a03e7c89c7cbf2000000000000000000000000000000000000000000000000000000006ac3f78b00000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000260000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e10000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000076a70000000000000000000000000000000000000000000000000000000000000000027cf97bf29fbadadeadaa6d030b6efea6cb55651df7c0d99adf851d7265597f5c76435b71eb88e3f6adb3726f0716bb14dddcd15cc8c758518a72a93a83f8b5030000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000006ac400eb000000000000000000000000000000000000000000000000000000006ac400eb000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
         "liquidityAtoms": "10000000"
       }
+    },
+    {
+      "id": "flb-1",
+      "pool": "0x015F11c11d5C40CC5b91F99845CcC73F75b19Bfb",
+      "resolver": "0x787898663cdF5087cf321e41eCb7fDACeFb6603E",
+      "rulesHash": "0x83baca6f5b01bb603359a740d0cb70cd6d90cd407c092a5550aab3b115810bc7",
+      "deploymentBlock": 71433545,
+      "keeper": "0x771fE7003FA20737C933c39B89386d78cbc36370",
+      "answerer": "0x7CaD88C893b9d28178F4Ae5c6F25171823FC9352",
+      "prepared": {
+        "schema": "flurbo.hybrid-prepared.v5",
+        "chainId": 10143,
+        "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+        "proposer": "0xa45c95f673580132F2E6f75372808162Ea069d49",
+        "relay": "0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1",
+        "draft": {
+          "schema": "flurbo.hybrid-publication.v5",
+          "chainId": 10143,
+          "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+          "title": "flb.1 Overture",
+          "closesAt": 1792159200,
+          "assertionPeriod": 3600,
+          "challengePeriod": 3600,
+          "reportPeriod": 7776000,
+          "arbitrationPeriod": 7776000,
+          "bondAtoms": "1000000",
+          "liquidityAtoms": "50000000",
+          "commissionBps": 500,
+          "events": [
+            {
+              "id": "flb-1-01",
+              "question": "Will the US Treasury 10-year constant-maturity yield (BC_10YEAR) for 2026-10-16 be at least 5.10 percent in the daily Treasury XML feed?",
+              "observationEndsAt": 1792224000,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-01",
+                "question": "Will the US Treasury 10-year constant-maturity yield (BC_10YEAR) for 2026-10-16 be at least 5.10 percent in the daily Treasury XML feed?",
+                "source": {
+                  "id": "us-treasury-daily-yield-xml",
+                  "publisher": "U.S. Department of the Treasury",
+                  "urls": [
+                    "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=202610"
+                  ],
+                  "adapter": "xml-feed.v1",
+                  "reader": {
+                    "parser": "fast-xml-parser@5.11.1",
+                    "select": "/feed/entry",
+                    "aggregate": "max",
+                    "field": "/content/m:properties/d:BC_10YEAR/#text",
+                    "filter": [
+                      {
+                        "path": "/content/m:properties/d:NEW_DATE/#text",
+                        "op": "eq",
+                        "value": "2026-10-16T00:00:00"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "bc-10year",
+                  "period": "2026-10-16",
+                  "unit": "percent"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "5.10"
+                },
+                "timing": {
+                  "scheduledAt": 1792188000,
+                  "publicationCutoff": 1792224000,
+                  "correctionCutoff": 1792224000,
+                  "observationEndsAt": 1792224000,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xe969425f8528a6366906446aaa72ec73957e9567db6613ad6c2e1cbeeaf6ce28",
+                "questionText": "Will the US Treasury 10-year constant-maturity yield (BC_10YEAR) for 2026-10-16 be at least 5.10 percent in the daily Treasury XML feed? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xe969425f8528a6366906446aaa72ec73957e9567db6613ad6c2e1cbeeaf6ce28. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792224000,
+                "questionId": "0x8b6698f5ef584cf1187785078b9bcaa0f938966efd2a5f3cfe83135e88778beb",
+                "contentHash": "0xc2c5b1a03a4572ca629456bcff2ec97c74866568afecb789744c8035fc60481f",
+                "questionTxHash": "0xc3c1e115244c267facf67e358b571419e6e47d16e162f4493489c4641769753f"
+              }
+            },
+            {
+              "id": "flb-1-02",
+              "question": "Will the US Treasury 2-year constant-maturity yield (BC_2YEAR) for 2026-10-16 be at least 4.77 percent in the daily Treasury XML feed?",
+              "observationEndsAt": 1792224000,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-02",
+                "question": "Will the US Treasury 2-year constant-maturity yield (BC_2YEAR) for 2026-10-16 be at least 4.77 percent in the daily Treasury XML feed?",
+                "source": {
+                  "id": "us-treasury-daily-yield-xml",
+                  "publisher": "U.S. Department of the Treasury",
+                  "urls": [
+                    "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=202610"
+                  ],
+                  "adapter": "xml-feed.v1",
+                  "reader": {
+                    "parser": "fast-xml-parser@5.11.1",
+                    "select": "/feed/entry",
+                    "aggregate": "max",
+                    "field": "/content/m:properties/d:BC_2YEAR/#text",
+                    "filter": [
+                      {
+                        "path": "/content/m:properties/d:NEW_DATE/#text",
+                        "op": "eq",
+                        "value": "2026-10-16T00:00:00"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "bc-2year",
+                  "period": "2026-10-16",
+                  "unit": "percent"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "4.77"
+                },
+                "timing": {
+                  "scheduledAt": 1792188000,
+                  "publicationCutoff": 1792224000,
+                  "correctionCutoff": 1792224000,
+                  "observationEndsAt": 1792224000,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x33139e904cde6ac400f28147f15158c700b1053839ef2e86559afd01718eec2f",
+                "questionText": "Will the US Treasury 2-year constant-maturity yield (BC_2YEAR) for 2026-10-16 be at least 4.77 percent in the daily Treasury XML feed? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x33139e904cde6ac400f28147f15158c700b1053839ef2e86559afd01718eec2f. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792224000,
+                "questionId": "0x20de9bdcf70c4af60607f0e41b5622aec6341c24dbb0d6561724491dc9b396ef",
+                "contentHash": "0x217fc91065cf74ed66324cfe002698ee9ee2f9a86c636209bbe3c567b83d4575",
+                "questionTxHash": "0x39ebdc90d4494915080214094747b16fa074b58333020678853ad9dc3daa7253"
+              }
+            },
+            {
+              "id": "flb-1-03",
+              "question": "Will the ECB EUR/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.1210 USD per EUR?",
+              "observationEndsAt": 1792195200,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-03",
+                "question": "Will the ECB EUR/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.1210 USD per EUR?",
+                "source": {
+                  "id": "ecb-frankfurter-eur-usd",
+                  "publisher": "European Central Bank via Frankfurter",
+                  "urls": [
+                    "https://api.frankfurter.dev/v1/2026-10-16?base=EUR&symbols=USD"
+                  ],
+                  "adapter": "json-api.v1",
+                  "reader": {
+                    "select": "/rates/USD",
+                    "aggregate": "value"
+                  }
+                },
+                "observation": {
+                  "series": "ecb-eur-usd",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "1.121"
+                },
+                "timing": {
+                  "scheduledAt": 1792166400,
+                  "publicationCutoff": 1792195200,
+                  "correctionCutoff": 1792195200,
+                  "observationEndsAt": 1792195200,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xd5bf3458868b35784197abfdcf771f16619c9ffcaa91cfdcacb396958fccf602",
+                "questionText": "Will the ECB EUR/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.1210 USD per EUR? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xd5bf3458868b35784197abfdcf771f16619c9ffcaa91cfdcacb396958fccf602. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792195200,
+                "questionId": "0xd55ac84e6b3ef6288c2dc93df4e2751168f75b275f2e59cdfec01e578431a239",
+                "contentHash": "0xbe1f0d9d6d40e554af152bb879a4ba1d8f7e696790d7607f30688441e8cb981e",
+                "questionTxHash": "0x375ce1a07da5c5da9478c49b7293a83c5f25466460eb0ab25f4a8b26ab35d3d8"
+              }
+            },
+            {
+              "id": "flb-1-04",
+              "question": "Will the ECB USD/JPY reference rate published on Frankfurter for 2026-10-16 be at least 158.00 JPY per USD?",
+              "observationEndsAt": 1792195200,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-04",
+                "question": "Will the ECB USD/JPY reference rate published on Frankfurter for 2026-10-16 be at least 158.00 JPY per USD?",
+                "source": {
+                  "id": "ecb-frankfurter-usd-jpy",
+                  "publisher": "European Central Bank via Frankfurter",
+                  "urls": [
+                    "https://api.frankfurter.dev/v1/2026-10-16?base=USD&symbols=JPY"
+                  ],
+                  "adapter": "json-api.v1",
+                  "reader": {
+                    "select": "/rates/JPY",
+                    "aggregate": "value"
+                  }
+                },
+                "observation": {
+                  "series": "ecb-usd-jpy",
+                  "period": "2026-10-16",
+                  "unit": "JPY"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "158"
+                },
+                "timing": {
+                  "scheduledAt": 1792166400,
+                  "publicationCutoff": 1792195200,
+                  "correctionCutoff": 1792195200,
+                  "observationEndsAt": 1792195200,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x367bdb0db4bea31df029ad91c0fff3fc775d69cb065a33619baf735996b60bd9",
+                "questionText": "Will the ECB USD/JPY reference rate published on Frankfurter for 2026-10-16 be at least 158.00 JPY per USD? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x367bdb0db4bea31df029ad91c0fff3fc775d69cb065a33619baf735996b60bd9. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792195200,
+                "questionId": "0xd1447348f6a6c50b5393c4bcc8f29775db1af05e4eb34ea351164a14576660d8",
+                "contentHash": "0xb60dcf7f14a641c3ca60b308820b9b67a7ab3222fe76c8794bfb1c355a4ea072",
+                "questionTxHash": "0x9f4b9fce63f2e583d0107e60149a0ff1a657722494a03660f98a633ad1c8f55d"
+              }
+            },
+            {
+              "id": "flb-1-05",
+              "question": "Will the ECB GBP/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.3250 USD per GBP?",
+              "observationEndsAt": 1792195200,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-05",
+                "question": "Will the ECB GBP/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.3250 USD per GBP?",
+                "source": {
+                  "id": "ecb-frankfurter-gbp-usd",
+                  "publisher": "European Central Bank via Frankfurter",
+                  "urls": [
+                    "https://api.frankfurter.dev/v1/2026-10-16?base=GBP&symbols=USD"
+                  ],
+                  "adapter": "json-api.v1",
+                  "reader": {
+                    "select": "/rates/USD",
+                    "aggregate": "value"
+                  }
+                },
+                "observation": {
+                  "series": "ecb-gbp-usd",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "1.325"
+                },
+                "timing": {
+                  "scheduledAt": 1792166400,
+                  "publicationCutoff": 1792195200,
+                  "correctionCutoff": 1792195200,
+                  "observationEndsAt": 1792195200,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x0b7d64dbf522b1a6bf7e3e6dd304bd770258d72cc07bd31d431a88a9eb58b789",
+                "questionText": "Will the ECB GBP/USD reference rate published on Frankfurter for 2026-10-16 be at least 1.3250 USD per GBP? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x0b7d64dbf522b1a6bf7e3e6dd304bd770258d72cc07bd31d431a88a9eb58b789. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792195200,
+                "questionId": "0xbd2bc4d2060febbf76ac1dc6d562dc4377b61d34525860c56501b1b1279f3f81",
+                "contentHash": "0x7ac48e0379a7694a2dae44e59b649bd0b3c0f7c843a30cde4ce635e734ee4297",
+                "questionTxHash": "0x59b066edb62290c6b6a688b6961e87de5fb982eec5e0398e996e73ac9ea0c109"
+              }
+            },
+            {
+              "id": "flb-1-06",
+              "question": "Will the Kraken XBTUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 82000.00 USD?",
+              "observationEndsAt": 1792217400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-06",
+                "question": "Will the Kraken XBTUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 82000.00 USD?",
+                "source": {
+                  "id": "kraken-ohlc-xxbtzusd",
+                  "publisher": "Kraken",
+                  "urls": [
+                    "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440&since=1792022400"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/result/XXBTZUSD",
+                    "aggregate": "only",
+                    "field": "/4",
+                    "filter": [
+                      {
+                        "path": "/0",
+                        "op": "eq",
+                        "value": "1792108800"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "kraken-xxbtzusd-close",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "82000"
+                },
+                "timing": {
+                  "scheduledAt": 1792195800,
+                  "publicationCutoff": 1792217400,
+                  "correctionCutoff": 1792217400,
+                  "observationEndsAt": 1792217400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x26e52b2993911e2e284833540766a94aadfa38a212b583e6c96aa5384d790a4b",
+                "questionText": "Will the Kraken XBTUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 82000.00 USD? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x26e52b2993911e2e284833540766a94aadfa38a212b583e6c96aa5384d790a4b. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792217400,
+                "questionId": "0x25afea75e8fce72da762a995a04c1d5c14f03bafde240b37f590c2c808ed3c2f",
+                "contentHash": "0x53874d796a0ad6d5a436a7d099c5da3b7a8b996a1a54fa2fb1519ee239a481f9",
+                "questionTxHash": "0x4f0df3267a44eaba76cf4c4da2888a81a92d5bb77df5b421a235ad27989d8007"
+              }
+            },
+            {
+              "id": "flb-1-07",
+              "question": "Will the Kraken ETHUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 2440.00 USD?",
+              "observationEndsAt": 1792217400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-07",
+                "question": "Will the Kraken ETHUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 2440.00 USD?",
+                "source": {
+                  "id": "kraken-ohlc-xethzusd",
+                  "publisher": "Kraken",
+                  "urls": [
+                    "https://api.kraken.com/0/public/OHLC?pair=ETHUSD&interval=1440&since=1792022400"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/result/XETHZUSD",
+                    "aggregate": "only",
+                    "field": "/4",
+                    "filter": [
+                      {
+                        "path": "/0",
+                        "op": "eq",
+                        "value": "1792108800"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "kraken-xethzusd-close",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "2440"
+                },
+                "timing": {
+                  "scheduledAt": 1792195800,
+                  "publicationCutoff": 1792217400,
+                  "correctionCutoff": 1792217400,
+                  "observationEndsAt": 1792217400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x9ba2062c3cb506f61949c5584175aba54c27f442e21f456a3b63484bd6c42a74",
+                "questionText": "Will the Kraken ETHUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 2440.00 USD? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x9ba2062c3cb506f61949c5584175aba54c27f442e21f456a3b63484bd6c42a74. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792217400,
+                "questionId": "0x3f4e4b4db61fbedd6f61d382308505188014d78de3691181feb37308c763020d",
+                "contentHash": "0xf1a92d53f2b47d42dd81a2ba21a9b2fdd810a75bfe144a44ca1a78fc4a8a65a3",
+                "questionTxHash": "0x040989208c1bdf977f5fd1b2f4ddc18ae06327ef7a4b9f459f7de955df48ec60"
+              }
+            },
+            {
+              "id": "flb-1-08",
+              "question": "Will the Kraken SOLUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 105.50 USD?",
+              "observationEndsAt": 1792217400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-08",
+                "question": "Will the Kraken SOLUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 105.50 USD?",
+                "source": {
+                  "id": "kraken-ohlc-solusd",
+                  "publisher": "Kraken",
+                  "urls": [
+                    "https://api.kraken.com/0/public/OHLC?pair=SOLUSD&interval=1440&since=1792022400"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/result/SOLUSD",
+                    "aggregate": "only",
+                    "field": "/4",
+                    "filter": [
+                      {
+                        "path": "/0",
+                        "op": "eq",
+                        "value": "1792108800"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "kraken-solusd-close",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "105.5"
+                },
+                "timing": {
+                  "scheduledAt": 1792195800,
+                  "publicationCutoff": 1792217400,
+                  "correctionCutoff": 1792217400,
+                  "observationEndsAt": 1792217400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xdcd69ddaf8ffa6fd2b12f1e0f89e6c3263fdfac4aa236bea0719d82fdadbcf64",
+                "questionText": "Will the Kraken SOLUSD daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 105.50 USD? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xdcd69ddaf8ffa6fd2b12f1e0f89e6c3263fdfac4aa236bea0719d82fdadbcf64. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792217400,
+                "questionId": "0x9ffdef7b667d8fb2556ba8b36516b6809afa18f52ba2d74c449a8a687f5e76ef",
+                "contentHash": "0x72589d9409cc0d146224b66d48d7d87c3ef0c6a3e8401b326e840025f07576e2",
+                "questionTxHash": "0x0cd8632f3f87aa12b34bdd08642b6c7038acd4c4998411893be81c876df9c174"
+              }
+            },
+            {
+              "id": "flb-1-09",
+              "question": "Will the Kraken PAXGUSD (tokenized gold) daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 4160.00 USD?",
+              "observationEndsAt": 1792217400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-09",
+                "question": "Will the Kraken PAXGUSD (tokenized gold) daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 4160.00 USD?",
+                "source": {
+                  "id": "kraken-ohlc-paxgusd",
+                  "publisher": "Kraken",
+                  "urls": [
+                    "https://api.kraken.com/0/public/OHLC?pair=PAXGUSD&interval=1440&since=1792022400"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/result/PAXGUSD",
+                    "aggregate": "only",
+                    "field": "/4",
+                    "filter": [
+                      {
+                        "path": "/0",
+                        "op": "eq",
+                        "value": "1792108800"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "kraken-paxgusd-close",
+                  "period": "2026-10-16",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "4160"
+                },
+                "timing": {
+                  "scheduledAt": 1792195800,
+                  "publicationCutoff": 1792217400,
+                  "correctionCutoff": 1792217400,
+                  "observationEndsAt": 1792217400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xb03b8d018a419000064be891b2c6e8add92abc9172ba347eda480df0177da543",
+                "questionText": "Will the Kraken PAXGUSD (tokenized gold) daily candle for 2026-10-16 UTC (timestamp 1792108800) close at or above 4160.00 USD? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xb03b8d018a419000064be891b2c6e8add92abc9172ba347eda480df0177da543. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792217400,
+                "questionId": "0xc4bba8edf71676012097b12c00528251cd45263bdff40bcbbeba839c57fcb11d",
+                "contentHash": "0xea21f6d8085b59bb4e944cf405f74a2b5b2810cfa2ab2442bc9c5f56e1066f26",
+                "questionTxHash": "0xa80222ba6a0b4b0e63fb463df34aa9761fd5087390eea938ee64f5537fe8dd0c"
+              }
+            },
+            {
+              "id": "flb-1-10",
+              "question": "Will Ethereum chain total value locked (TVL) on DefiLlama be at least 50300000000 USD when captured after 2026-10-17 00:10 UTC?",
+              "observationEndsAt": 1792217400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-10",
+                "question": "Will Ethereum chain total value locked (TVL) on DefiLlama be at least 50300000000 USD when captured after 2026-10-17 00:10 UTC?",
+                "source": {
+                  "id": "defillama-chains-ethereum",
+                  "publisher": "DefiLlama",
+                  "urls": [
+                    "https://api.llama.fi/v2/chains"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "",
+                    "aggregate": "only",
+                    "field": "/tvl",
+                    "filter": [
+                      {
+                        "path": "/name",
+                        "op": "eq",
+                        "value": "Ethereum"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "defillama-tvl-ethereum",
+                  "period": "2026-10-17T00:10Z",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "50300000000"
+                },
+                "timing": {
+                  "scheduledAt": 1792195800,
+                  "publicationCutoff": 1792217400,
+                  "correctionCutoff": 1792217400,
+                  "observationEndsAt": 1792217400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x8bdf392b95c5cd53895fdd397a38eb8a758e33e384a3fda69b3ba70554e8e404",
+                "questionText": "Will Ethereum chain total value locked (TVL) on DefiLlama be at least 50300000000 USD when captured after 2026-10-17 00:10 UTC? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x8bdf392b95c5cd53895fdd397a38eb8a758e33e384a3fda69b3ba70554e8e404. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792217400,
+                "questionId": "0x4e8eb32f5f0d8710ab0026f20761000eaf63a14ada35e02bcedebe158e014377",
+                "contentHash": "0xbe86f72587dfb5e3f1fc84fc4072f12cad162b70099be1aabb5322b1915f3624",
+                "questionTxHash": "0x63561103e70d0b89d625dbb578881f366de3e79478728c594611aa0a750b9a92"
+              }
+            },
+            {
+              "id": "flb-1-11",
+              "question": "Will the Cleveland Guardians (home) win ALCS Game 4 (gamePk 849817) against the Tampa Bay Rays on 2026-10-16 in the MLB Stats API?",
+              "observationEndsAt": 1792231200,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-11",
+                "question": "Will the Cleveland Guardians (home) win ALCS Game 4 (gamePk 849817) against the Tampa Bay Rays on 2026-10-16 in the MLB Stats API?",
+                "source": {
+                  "id": "mlb-statsapi-849817",
+                  "publisher": "Major League Baseball Stats API",
+                  "urls": [
+                    "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk=849817"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/dates/0/games/0/teams/home/isWinner",
+                    "aggregate": "value",
+                    "checks": [
+                      {
+                        "path": "/dates/0/games/0/gamePk",
+                        "equals": "849817"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "mlb-home-win-849817",
+                  "period": "2026-10-16",
+                  "unit": "boolean"
+                },
+                "decision": {
+                  "type": "category",
+                  "operator": "eq",
+                  "value": "true"
+                },
+                "timing": {
+                  "scheduledAt": 1792209600,
+                  "publicationCutoff": 1792231200,
+                  "correctionCutoff": 1792231200,
+                  "observationEndsAt": 1792231200,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0xe2442f408f2a402138a31decdac1e96115fa051ca5aea6588e96473dad242e75",
+                "questionText": "Will the Cleveland Guardians (home) win ALCS Game 4 (gamePk 849817) against the Tampa Bay Rays on 2026-10-16 in the MLB Stats API? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0xe2442f408f2a402138a31decdac1e96115fa051ca5aea6588e96473dad242e75. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792231200,
+                "questionId": "0xbb06cf4bd18678370037ab1408c46a479448785a669fde10808199e5160fc92d",
+                "contentHash": "0x691d344b18f0ceca0f95fce42814b074e51ccbce1fdab0910d36ae64276a59a5",
+                "questionTxHash": "0x115a28c899295fdeb8528c5a581967c3842c77e544d382fbb47ae719bd2b15c2"
+              }
+            },
+            {
+              "id": "flb-1-12",
+              "question": "Will the Los Angeles Dodgers (home) win NLCS Game 5 (gamePk 849808) against the Milwaukee Brewers on 2026-10-16 in the MLB Stats API?",
+              "observationEndsAt": 1792238400,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-12",
+                "question": "Will the Los Angeles Dodgers (home) win NLCS Game 5 (gamePk 849808) against the Milwaukee Brewers on 2026-10-16 in the MLB Stats API?",
+                "source": {
+                  "id": "mlb-statsapi-849808",
+                  "publisher": "Major League Baseball Stats API",
+                  "urls": [
+                    "https://statsapi.mlb.com/api/v1/schedule?sportId=1&gamePk=849808"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/dates/0/games/0/teams/home/isWinner",
+                    "aggregate": "value",
+                    "checks": [
+                      {
+                        "path": "/dates/0/games/0/gamePk",
+                        "equals": "849808"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "mlb-home-win-849808",
+                  "period": "2026-10-16",
+                  "unit": "boolean"
+                },
+                "decision": {
+                  "type": "category",
+                  "operator": "eq",
+                  "value": "true"
+                },
+                "timing": {
+                  "scheduledAt": 1792216800,
+                  "publicationCutoff": 1792238400,
+                  "correctionCutoff": 1792238400,
+                  "observationEndsAt": 1792238400,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x53541b90f81bdda66c9355ab4bc042334c1dd5677d53e87f644d1002acd31ffc",
+                "questionText": "Will the Los Angeles Dodgers (home) win NLCS Game 5 (gamePk 849808) against the Milwaukee Brewers on 2026-10-16 in the MLB Stats API? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x53541b90f81bdda66c9355ab4bc042334c1dd5677d53e87f644d1002acd31ffc. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792238400,
+                "questionId": "0xce96c82e8f7c4b109b288aa08a63f090212bab987e7cf1e2892bd101b3049e86",
+                "contentHash": "0xe063253560d66c7e0c8ab0b2da361cca6b54b03cfdc7cca1816915acab551297",
+                "questionTxHash": "0x370126b0d65845b6a4194161aeb650af0f353cbba3bbdc700c74dd9522b559ea"
+              }
+            },
+            {
+              "id": "flb-1-13",
+              "question": "Will the USGS ComCat API record at least 3 earthquakes with magnitude 4.5 or higher worldwide between 2026-10-16T14:00:00Z and 2026-10-17T02:00:00Z?",
+              "observationEndsAt": 1792234800,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-13",
+                "question": "Will the USGS ComCat API record at least 3 earthquakes with magnitude 4.5 or higher worldwide between 2026-10-16T14:00:00Z and 2026-10-17T02:00:00Z?",
+                "source": {
+                  "id": "usgs-fdsnws",
+                  "publisher": "United States Geological Survey",
+                  "urls": [
+                    "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2026-10-16T14:00:00Z&endtime=2026-10-17T02:00:00Z&minmagnitude=4.5&eventtype=earthquake&orderby=time-asc"
+                  ],
+                  "adapter": "json-api.v1",
+                  "reader": {
+                    "select": "/features",
+                    "aggregate": "count"
+                  }
+                },
+                "observation": {
+                  "series": "usgs-mag-4.5-count",
+                  "period": "2026-10-16T14:00:00Z/2026-10-17T02:00:00Z",
+                  "unit": "events"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "3"
+                },
+                "timing": {
+                  "scheduledAt": 1792213200,
+                  "publicationCutoff": 1792234800,
+                  "correctionCutoff": 1792234800,
+                  "observationEndsAt": 1792234800,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x37d2bec85fed8775eb780899ae59e5accb29f2cde00c890218bd02c011cac4e9",
+                "questionText": "Will the USGS ComCat API record at least 3 earthquakes with magnitude 4.5 or higher worldwide between 2026-10-16T14:00:00Z and 2026-10-17T02:00:00Z? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x37d2bec85fed8775eb780899ae59e5accb29f2cde00c890218bd02c011cac4e9. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792234800,
+                "questionId": "0xd77bde2514d943f511e9de2a41c70bf895df16c0b9ffbda11872e0cd598cf585",
+                "contentHash": "0xcad80412f7df7df34ed56665781be058b2b5cf90b958a819bc7ce5fcf56099bc",
+                "questionTxHash": "0x58c8b35f7e69f5d1d4a5253190112e9d2085203747a38dda437bb59ea8158492"
+              }
+            },
+            {
+              "id": "flb-1-14",
+              "question": "Will the NOAA SWPC 3-hour Planetary K-index (Kp) for the 2026-10-16T21:00:00 UTC window be at least 4.00?",
+              "observationEndsAt": 1792218600,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "flb-1-14",
+                "question": "Will the NOAA SWPC 3-hour Planetary K-index (Kp) for the 2026-10-16T21:00:00 UTC window be at least 4.00?",
+                "source": {
+                  "id": "noaa-swpc-kp",
+                  "publisher": "NOAA Space Weather Prediction Center",
+                  "urls": [
+                    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "",
+                    "aggregate": "max",
+                    "field": "/Kp",
+                    "filter": [
+                      {
+                        "path": "/time_tag",
+                        "op": "eq",
+                        "value": "2026-10-16T21:00:00"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "noaa-kp",
+                  "period": "2026-10-16T21:00Z",
+                  "unit": "Kp"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "4"
+                },
+                "timing": {
+                  "scheduledAt": 1792197000,
+                  "publicationCutoff": 1792218600,
+                  "correctionCutoff": 1792218600,
+                  "observationEndsAt": 1792218600,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbopm.singu.online/api/hybrid/rules/0x97e35550beb1a833f26b1c57ae6f516eb3b3d46ca20c6fd4b7bee623f0747295",
+                "questionText": "Will the NOAA SWPC 3-hour Planetary K-index (Kp) for the 2026-10-16T21:00:00 UTC window be at least 4.00? Resolution rule: https://flurbopm.singu.online/api/hybrid/rules/0x97e35550beb1a833f26b1c57ae6f516eb3b3d46ca20c6fd4b7bee623f0747295. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792218600,
+                "questionId": "0xb94972522d28ef3d99c376a5102dc6101a4709709670a9d26e29cf0a3e5f514c",
+                "contentHash": "0x98c55944eb42940ee4de3351f7d7df1b9041632ac7ac7f5b34c95f4d44bf7318",
+                "questionTxHash": "0x6c205faa446d64a51563780cb5f17a5f52fc710ce95a667be36d0fc9478849a5"
+              }
+            },
+            {
+              "id": "flb-1-15",
+              "question": "Will the United States or Israel conduct a confirmed military strike on sovereign Iranian territory between 16 October 2026 14:00 UTC and 17 October 2026 06:00 UTC?",
+              "observationEndsAt": 1792216800,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will the United States or Israel conduct a confirmed military strike on sovereign Iranian territory between 16 October 2026 14:00 UTC and 17 October 2026 06:00 UTC?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792216800,
+                "questionId": "0xa7da3b2a4de3a8c9b445247e4c9f6c28a93ec4eadf5ef56496e0ff4176c2122a",
+                "contentHash": "0x4f31fc5303bc6c607f8dd61c2e3527a7e09ff9f1e835fa0ff94395d895396655",
+                "questionTxHash": "0x920a8d736bee65800ba5bb86c24df386daea2f3e9d4f8b9229e569bd114a673a"
+              }
+            },
+            {
+              "id": "flb-1-16",
+              "question": "Will UKMTO (United Kingdom Maritime Trade Operations) publish an official incident or attack advisory for the Red Sea, Bab el-Mandeb, or Gulf of Aden between 16 October 2026 14:00 UTC and 17 October 2026 06:00 UTC?",
+              "observationEndsAt": 1792216800,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will UKMTO (United Kingdom Maritime Trade Operations) publish an official incident or attack advisory for the Red Sea, Bab el-Mandeb, or Gulf of Aden between 16 October 2026 14:00 UTC and 17 October 2026 06:00 UTC?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1792216800,
+                "questionId": "0xd1c4694f8c488b9a465fd728f8213bf6be12112524ef9369cfa805480f6a470e",
+                "contentHash": "0xf305cc917a92e70b6a0cb77f2afd15da372e830e088e0daf2d8fa151776abeb9",
+                "questionTxHash": "0xd7f9bf380b5da920af7f881075757c1b21b7b11331244a24d2e7aeba04881c92"
+              }
+            }
+          ]
+        },
+        "draftHash": "0x7a9cef7af0ba71a15be6df4d246ee993bc06838fb630e44ddc78b60c5ffdcd8f",
+        "eventHashes": [
+          "0x65029c5511cfabad7df926376df8a2cf57a44e969c37ed6d37cf99b832bad789",
+          "0x3246b497d0cbf3c230c8461315b6954f50b751f63f83f67b0884ff642655d0e5",
+          "0x142d69f61bdd4aae190bef9e6e723851a44076919d2706491fa100ec08d355ea",
+          "0xecf0f8b4dc5a3dbe162c092dba77ac3b7e945520a9a0cfedf5ab704389b053f8",
+          "0xf5b7035a4e5eee2b33c6b30e6de8b9203710d345501f89ef4d145fd2ec525a38",
+          "0xd2f342deda604246d4c9183c9e7c82de13dbb41b4f4766727b0f3e3b9c4ab7d3",
+          "0xc0d1d7d8002692ae2b40a95498c4846f6f0f997f42e214a0e89b2a185d970191",
+          "0x9561dd605d3dae0e02e37ebd10be75f4b6bc7b01010c7a51ec571208706974ab",
+          "0x27536c5e481f914d8eb69d9856cf0fea61dd4e28b213e97ac98c12411f05caf6",
+          "0xa046243f2c203105867673a0a9b19d659a41b208e5243ef491ce282511cc89a8",
+          "0x97ac8a46d8151dde938579794f6f2edaa07a350443114fa40b5dcfe8bff60333",
+          "0x905757b928d4fbf68d28e444274abce6c5348218f095cdc0ea62cba29b17a636",
+          "0x20b5c7e6850ef6c73c64419dd1008ee59ff225e9e37f235a14034143b341fec0",
+          "0x7e655af0e9f3bb44ec8afbca4c85203654ac24fee493790329906694693e9569",
+          "0x31eae0c3baad26c0c2f324a2a96f0728a9bb6363d2b01f1a30c3ef2ff7afe9ac",
+          "0x0b7145213307ebdee86d19ee312c588c84f911cb89181a1d05497838f9c0b0ad"
+        ],
+        "configHash": "0xeb68b1c1a698609a903e6f836db75fbd849ec0f41ef5c3bf1c2450fd49fe696c",
+        "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dc7a9cef7af0ba71a15be6df4d246ee993bc06838fb630e44ddc78b60c5ffdcd8f000000000000000000000000000000000000000000000000000000006ad22de000000000000000000000000000000000000000000000000000000000000001a000000000000000000000000000000000000000000000000000000000000003c000000000000000000000000000000000000000000000000000000000000005e0000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e10000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000000001065029c5511cfabad7df926376df8a2cf57a44e969c37ed6d37cf99b832bad7893246b497d0cbf3c230c8461315b6954f50b751f63f83f67b0884ff642655d0e5142d69f61bdd4aae190bef9e6e723851a44076919d2706491fa100ec08d355eaecf0f8b4dc5a3dbe162c092dba77ac3b7e945520a9a0cfedf5ab704389b053f8f5b7035a4e5eee2b33c6b30e6de8b9203710d345501f89ef4d145fd2ec525a38d2f342deda604246d4c9183c9e7c82de13dbb41b4f4766727b0f3e3b9c4ab7d3c0d1d7d8002692ae2b40a95498c4846f6f0f997f42e214a0e89b2a185d9701919561dd605d3dae0e02e37ebd10be75f4b6bc7b01010c7a51ec571208706974ab27536c5e481f914d8eb69d9856cf0fea61dd4e28b213e97ac98c12411f05caf6a046243f2c203105867673a0a9b19d659a41b208e5243ef491ce282511cc89a897ac8a46d8151dde938579794f6f2edaa07a350443114fa40b5dcfe8bff60333905757b928d4fbf68d28e444274abce6c5348218f095cdc0ea62cba29b17a63620b5c7e6850ef6c73c64419dd1008ee59ff225e9e37f235a14034143b341fec07e655af0e9f3bb44ec8afbca4c85203654ac24fee493790329906694693e956931eae0c3baad26c0c2f324a2a96f0728a9bb6363d2b01f1a30c3ef2ff7afe9ac0b7145213307ebdee86d19ee312c588c84f911cb89181a1d05497838f9c0b0ad0000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000006ad32b00000000000000000000000000000000000000000000000000000000006ad32b00000000000000000000000000000000000000000000000000000000006ad2ba80000000000000000000000000000000000000000000000000000000006ad2ba80000000000000000000000000000000000000000000000000000000006ad2ba80000000000000000000000000000000000000000000000000000000006ad31138000000000000000000000000000000000000000000000000000000006ad31138000000000000000000000000000000000000000000000000000000006ad31138000000000000000000000000000000000000000000000000000000006ad31138000000000000000000000000000000000000000000000000000000006ad31138000000000000000000000000000000000000000000000000000000006ad34720000000000000000000000000000000000000000000000000000000006ad36340000000000000000000000000000000000000000000000000000000006ad35530000000000000000000000000000000000000000000000000000000006ad315e8000000000000000000000000000000000000000000000000000000006ad30ee0000000000000000000000000000000000000000000000000000000006ad30ee000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "liquidityAtoms": "50000000",
+        "commissionBps": 500
+      }
     }
   ]
 }
