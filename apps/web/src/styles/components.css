@@ -162,9 +162,7 @@ main input[type="checkbox"]:disabled, main input[type="radio"]:disabled { opacit
   position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; padding: 2px;
   border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface); max-width: 100%;
 }
-.segmented-block { display: grid; width: 100%; }
-.segmented-block button { white-space: normal; text-align: center; line-height: 1.2; padding-inline: var(--s-2); }
-.segmented button, .segmented [role="radio"] {
+.segmented-block { display: grid; width: 100%; }.segmented button, .segmented [role="radio"] {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: calc(var(--control-md) - 6px);
   padding: 4px var(--s-3); border-radius: 2px; color: var(--ink-2); font-size: 14px; font-weight: 500; white-space: nowrap;
   transition: color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
@@ -175,6 +173,7 @@ main input[type="checkbox"]:disabled, main input[type="radio"]:disabled { opacit
 .segmented .seg-ink { position: absolute; inset: 0; z-index: 0; border-radius: 2px; background: var(--ink); }
 .segmented:has(.seg-ink) [aria-checked="true"], .segmented:has(.seg-ink) [aria-pressed="true"] { background: transparent; }
 .segmented button:disabled { color: var(--ink-disabled); cursor: not-allowed; }
+.segmented.segmented-block [role="radio"] { white-space: normal; text-align: center; line-height: 1.2; padding-inline: var(--s-2); }
 .segmented .seg-meta { font-family: var(--font-num); font-weight: 500; font-variant-numeric: tabular-nums; opacity: 0.8; }.segmented-label { display: block; margin-bottom: 6px; font-size: var(--text-label); font-weight: 500; }
 
 /* Tabs */
