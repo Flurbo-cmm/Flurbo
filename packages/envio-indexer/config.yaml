@@ -21,11 +21,13 @@ chains:
     contracts:
       - name: HybridPool
         address:
+          - "0x015f11c11d5c40cc5b91f99845ccc73f75b19bfb"
           - "0x0fc7a9634f52dd5bf91c252587f912d5e121d528"
           - "0x6da09fa753f97f7078b5a61c332262af93c89a2c"
           - "0xb5ce32de7a8631960dd26ab46bb20524d1ff9a44"
       - name: HybridResolver
         address:
+          - "0x787898663cdf5087cf321e41ecb7fdacefb6603e"
           - "0x89cd737382efc35eb88137008ca66d4794546b26"
           - "0x976920c857280709b09729592a224aae8bcc98e7"
           - "0xd76f8c1b9356d5d0bdb84447355f41e3366e5ca8"
