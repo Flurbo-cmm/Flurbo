@@ -43,6 +43,15 @@ test('claims are classified as a single answer or a combination with its payout 
   }
 });
 
+test('claims on any of 32 questions are classified, including legs above the fourth question', () => {
+  assert.deepEqual(describeClaim(2 ** 5, '2'), { legs: 1, kind: 'single', rule: null, answer: 'YES' });
+  assert.deepEqual(describeClaim(2 ** 31, '1'), { legs: 1, kind: 'single', rule: null, answer: 'NO' });
+  const wide = encodeClaim({ events: 16, legs: [{ event: 5, yes: true }, { event: 15, yes: false }], rule: 'AND' });
+  assert.deepEqual(describeClaim(wide.scope, wide.mask), { legs: 2, kind: 'combined', rule: 'AND', answer: null });
+  const mixed = encodeClaim({ events: 16, legs: [{ event: 1, yes: true }, { event: 9, yes: true }], rule: 'OR' });
+  assert.deepEqual(describeClaim(mixed.scope, mixed.mask), { legs: 2, kind: 'combined', rule: 'OR', answer: null });
+});
+
 function fixture({ digestEnv = {} as Record<string, string>, deliver = null as any, origin = 'https://flurbo.singu.online' } = {}) {
   const redis = fakeRedis(), OPERATOR = addr(0x0a);
   const alice = addr(0xa1), bob = addr(0xb2), carol = addr(0xc3), dave = addr(0xd4), legacyMember = addr(0xe5);
@@ -213,4 +222,19 @@ test('links made before metrics shipped are counted when the member next loads t
   const r = await metrics.report();
   assert.equal(r.users.find((u: any) => u.account === people.dave).wallets, 1);
   assert.equal(r.funnel.find((s: any) => s.key === 'linked').count, 3);
+});
+
+test('a wide pool with trades above the fourth question still produces the report', async () => {
+  const { metrics, redis, people } = fixture();
+  const key = [...redis.kv.keys()].find(k => k.startsWith('flurbo:pilot:index:v1:'))!;
+  const index = JSON.parse(redis.kv.get(key)!);
+  const template = index.logs.find((log: any) => log.args.trader === people.stranger);
+  const wide = encodeClaim({ events: 16, legs: [{ event: 5, yes: true }, { event: 15, yes: false }], rule: 'AND' });
+  index.logs.push({ ...template, block: 119, hash: '0x' + '9'.repeat(64), args: { ...template.args, scope: 2 ** 5, mask: '2' } },
+    { ...template, block: 120, hash: '0x' + '8'.repeat(64), args: { ...template.args, scope: wide.scope, mask: wide.mask } });
+  redis.kv.set(key, JSON.stringify(index));
+  const r = await metrics.report();
+  const stranger = r.unlinked.find((u: any) => u.wallet === people.stranger);
+  assert.deepEqual([stranger.trades.singles, stranger.trades.combined, stranger.trades.byRule], [2, 1, { SINGLE: 2, AND: 1 }]);
+  assert.deepEqual(r.totals.byLegs, { 1: 4, 2: 4 });
 });

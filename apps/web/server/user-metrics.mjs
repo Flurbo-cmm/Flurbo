@@ -1,7 +1,7 @@
 import { poolRpc } from './pool-rpc.mjs';
 import { agentWalletKey, accountDigest } from './agents/agent-store.mjs';
 import { emailConfig, resendDelivery } from './settlement-email.mjs';
-import { CLAIM_RULES, ruleMatches } from '../shared/claims.mjs';
+import { CLAIM_RULES, claimEvents, ruleMatches } from '../shared/claims.mjs';
 
 // Operator-only growth metrics: who signed in, requested and received access, linked a wallet, got starter
 // MON and placed bets. Sign-ins and links are recorded from the moment this ships; applications come from
@@ -23,7 +23,8 @@ const latest = (a, b) => a === null ? b : b === null ? a : Math.max(a, b);
 // What kind of prediction a claim is: one answer, or a combination with its payout rule.
 export function describeClaim(scope, mask) {
   scope = Number(scope);
-  const legs = [0, 1, 2, 3].filter(i => scope & (1 << i)).length;
+  const legs = Number.isInteger(scope) && scope > 0 && scope < 2 ** 32 ? claimEvents(scope).length : 0;
+  if (legs < 1 || legs > 3) return { legs, kind: 'combined', rule: 'OTHER', answer: null };
   if (legs === 1) return { legs, kind: 'single', rule: null, answer: String(mask) === '2' ? 'YES' : String(mask) === '1' ? 'NO' : null };
   for (const rule of CLAIM_RULES) {
     if (rule === 'AT_LEAST_TWO' && legs < 3) continue;
