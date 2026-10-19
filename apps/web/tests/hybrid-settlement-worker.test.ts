@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRealityObservation, hybridCaptureStep, hybridRealityOutcome, hybridSettlementCatalog, hybridSettlementWorker,
-  nextHybridAction, nextHybridActions, planRealityAnswer, readHybridSnapshot, realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
+  nextHybridAction, nextHybridActions, planRealityAnswer, publicHybridError, readHybridSnapshot,
+  realityAnswerBytes } from '../server/hybrid-settlement-worker.mjs';
 import { hybridRulesHash } from '../scripts/prepare-hybrid-pilot.mjs';
 import { SEPOLIA_REALITY } from '../server/oracle-integration.mjs';
 import { evidenceArchive } from '../server/evidence-archive.mjs';
-import { digest } from '../server/settlement-rules.mjs';
+import { digest, settlementRuleHash } from '../server/settlement-rules.mjs';
 import { keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -94,7 +95,7 @@ test('reader outcomes map to Reality answers', () => {
 });
 
 const origin = 'https://flurbopm.singu.online';
-const questionOf = (index: number) => `0x${['a', 'b'][index].repeat(64)}`;
+const questionOf = (index: number) => `0x${['a', 'b', '1'][index].repeat(64)}`;
 function memory() {
   const values = new Map<string, string>();
   return { values, command: async (op: string, name: string, value?: string, ...options: string[]) => {
@@ -137,12 +138,16 @@ const actor = (name: keyof typeof keys) => privateKeyToAccount(keys[name] as `0x
 
 function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = false, finalAtBlock = false,
   finalAnswer = `0x${'0'.repeat(64)}`, realityBalance = 0n, secondPool = false, failFirstPool = false,
-  ls = false, resolved = false, surplus = 0n, blockTime = at + 3700 } = {}) {
-  const first = catalog(['reality', 'reality'], { proposer: actor('proposer'), relay: actor('relay'),
+  ls = false, resolved = false, surplus = 0n, blockTime = at + 3700, routes = ['reality', 'reality'],
+  finalQuestions = null as number[] | null, answeredQuestions = null as number[] | null,
+  failQuestion = null as number | null, capturesFor = null as ((index: number) => any[]) | null,
+  relayBalance = 10n ** 18n, relayWrite = null as ((request: any) => Promise<string>) | null } = {}) {
+  const first = catalog(routes, { proposer: actor('proposer'), relay: actor('relay'),
     answerer: actor('answerer') }, ls ? { commissionBps: 500 } : {}).pools[0];
   const pools = secondPool ? [first, { ...first, id: 'objective-test-2', pool: account('6'), resolver: account('7'),
     rulesHash: hybridRulesHash(first.prepared, account('7')) }] : [first];
   const events: any[] = pools[0].prepared.draft.events;
+  const controls = { failQuestion };
   const redis = memory();
   const archive = evidenceArchive(redis.command, origin);
   const writes: any[] = [], reads: string[] = [];
@@ -151,6 +156,9 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
     getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(blockTime) }),
     simulateContract: async (request: any) => ({ request }),
     getTransactionReceipt: async () => null,
+    estimateContractGas: async () => 127_532n,
+    getGasPrice: async () => 102_000_000_000n,
+    getBalance: async ({ address }: any) => address.toLowerCase() === actor('relay').toLowerCase() ? relayBalance : 10n ** 18n,
     readContract: async ({ address, functionName, args = [] }: any) => {
       const record = pools.find(item => [item.pool, item.resolver].some(value => value.toLowerCase() === address.toLowerCase()))!;
       if (failFirstPool && record === pools[0] && address.toLowerCase() === record.resolver.toLowerCase())
@@ -161,7 +169,8 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
       const values: Record<string, unknown> = {
         protocolVersion: isPool ? (ls ? 5n : 3n) : 4n, liquidity: 10000000n, commissionBps: 500,
         sponsor: prepared.creator, surplus, rulesHash: record.rulesHash, draftHash: prepared.draftHash,
-        pool: record.pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n, eventCount: 2n,
+        pool: record.pool, proposer: prepared.proposer, relay: prepared.relay, bond: 1000000n,
+        eventCount: BigInt(events.length),
         resolver: record.resolver, settlementRulesHash: record.rulesHash, funded: true, resolved, delivered: resolved,
         collateral: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc', routes: 1n,
         eventHashes: prepared.eventHashes[Number(args[0])], observationEnds: BigInt(at + 3600),
@@ -177,20 +186,27 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
     getTransactionReceipt: async () => { const error = Error('pending'); error.name = 'TransactionReceiptNotFoundError'; throw error; },
     simulateContract: async (request: any) => ({ request }),
     readContract: async ({ functionName, args = [], blockNumber }: any) => {
-      const index = args[0] === questionOf(1) ? 1 : 0, item = events[index].source;
+      if (controls.failQuestion !== null && args[0] === questionOf(controls.failQuestion))
+        throw Error('request to https://secret.example/abc failed');
+      const index = Math.max(0, events.findIndex(event => event.source?.questionId === args[0])), item = events[index].source;
+      const final = finalQuestions ? finalQuestions.includes(index)
+        : blockNumber === undefined ? finalAtLatest : finalAtBlock;
       const values: Record<string, unknown> = {
         getContentHash: item.contentHash, getArbitrator: item.arbitrator, getOpeningTS: BigInt(at + 3600),
-        getTimeout: 3600n, getMinBond: bond, getBond: answeredBond, getFinalizeTS: 0n,
+        getTimeout: 3600n, getMinBond: bond,
+        getBond: answeredQuestions && !answeredQuestions.includes(index) ? 0n : answeredBond, getFinalizeTS: 0n,
         getBestAnswer: `0x${'0'.repeat(64)}`, getHistoryHash: `0x${'0'.repeat(64)}`,
-        isPendingArbitration: false, isFinalized: blockNumber === undefined ? finalAtLatest : finalAtBlock,
+        isPendingArbitration: false, isFinalized: final,
         getFinalAnswerIfMatches: finalAnswer, getDisputeFee: 10n ** 16n,
         realitio: item.reality, arbitrationRequests: [0n, account('1'), 0n, 0n], balanceOf: realityBalance };
       return values[functionName];
     },
   };
-  const capture = jsonCapture(events[0].rule);
-  const captureStore = { list: async () => [capture], put: async () => ({}), recordAttempt: async () => true,
-    latestAttempt: async () => null };
+  const capturesOf = capturesFor || ((index: number) => [jsonCapture(events[index].rule)]);
+  const captureStore = { list: async (ruleHash: string) => {
+      const index = events.findIndex(event => settlementRuleHash(event.rule) === ruleHash);
+      return index < 0 ? [] : capturesOf(index);
+    }, put: async () => ({}), recordAttempt: async () => true, latestAttempt: async () => null };
   const packetStore = { put: async () => { throw Error('unused'); }, get: async () => { throw Error('unused'); } };
   const answererWallet = { writeContract: async (request: any) => {
     writes.push(request); return `0x${String(writes.length).repeat(64)}`; } };
@@ -200,9 +216,10 @@ function workerFixture({ failChain = false, answeredBond = 0n, finalAtLatest = f
     marketRpcUrl: 'https://market.example', sourceRpcUrl: 'https://source.example',
     proposerPrivateKey: keys.proposer, relayPrivateKey: keys.relay, answererPrivateKey: keys.answerer,
     answererWallet, proposerWallet: {}, request: publicRequest(archive),
-    relayWallet: { writeContract: async (request: any) => { writes.push(request); return `0x${String(writes.length).repeat(64)}`; } },
+    relayWallet: { writeContract: relayWrite || (async (request: any) => {
+      writes.push(request); return `0x${String(writes.length).repeat(64)}`; }) },
     now: () => at + 3700 });
-  return { build, writes, reads, redis, bond, pool: first.pool };
+  return { build, writes, reads, redis, bond, pool: first.pool, controls, events };
 }
 
 test('answer is submitted once across restarts', async () => {
@@ -227,7 +244,7 @@ test('worker errors are masked', async () => {
   const { build } = workerFixture({ failChain: true });
   const worker = build();
   await worker.tick();
-  assert.equal(worker.status().lastError, 'objective-test: Hybrid settlement source or transaction request failed');
+  assert.equal(worker.status().lastError, 'objective-test event 0 answer ANSWER_FAILED: Hybrid settlement source or transaction request failed; objective-test event 1 answer ANSWER_FAILED: Hybrid settlement source or transaction request failed');
 });
 
 test('non-boolean final Reality answers deliver as Void', () => {
@@ -258,7 +275,113 @@ test('one failing pool does not stop the next pool', async () => {
   const worker = build();
   await worker.tick();
   assert.equal(writes.filter(call => call.functionName === 'submitAnswer').length, 2);
-  assert.equal(worker.status().lastError, 'objective-test: Hybrid settlement source or transaction request failed');
+  assert.equal(worker.status().lastError, 'objective-test snapshot SNAPSHOT_FAILED: Hybrid settlement source or transaction request failed');
+});
+
+const yes = `0x${'0'.repeat(63)}1`;
+const journalOf = (address: string, event: number) => `flurbo:hybrid-settlement:v1:${address.toLowerCase()}:reality:${event}`;
+const answeredTo = (writes: any[]) => writes.filter(call => call.functionName === 'submitAnswer').map(call => call.args[0]);
+const finalFirst = { answeredBond: 10n ** 14n, answeredQuestions: [0], finalQuestions: [0], finalAnswer: yes };
+
+test('a failing event does not block later events', async () => {
+  const { build, writes } = workerFixture({ routes: ['reality', 'reality', 'reality'], failQuestion: 0 });
+  const worker = build();
+  await worker.tick();
+  assert.deepEqual(answeredTo(writes), [questionOf(1), questionOf(2)]);
+  const failure = worker.status().events['objective-test']['0'];
+  assert.equal(failure.stage, 'answer');
+  assert.equal(failure.code, 'ANSWER_FAILED');
+  assert.equal(typeof failure.since, 'string');
+  assert.equal(worker.status().lastError,
+    'objective-test event 0 answer ANSWER_FAILED: Hybrid settlement source or transaction request failed');
+  assert.doesNotMatch(worker.status().lastError, /secret\.example/);
+});
+
+test('a pending transaction on one event does not stop later events', async () => {
+  const { build, writes } = workerFixture({ answeredBond: 10n ** 14n, finalQuestions: [0, 1], finalAnswer: yes });
+  const worker = build();
+  const reports = () => writes.filter(call => call.functionName === 'reportReality').map(call => call.args[0]);
+  await worker.tick();
+  assert.deepEqual(reports(), [0]);
+  await worker.tick();
+  assert.deepEqual(reports(), [0, 1]);
+});
+
+test('one Monad transaction per pool per tick while answers continue', async () => {
+  const { build, writes } = workerFixture({ routes: ['reality', 'reality', 'reality'], ...finalFirst });
+  await build().tick();
+  const monad = writes.filter(call => ['reportReality', 'propose', 'finalize', 'deliver'].includes(call.functionName));
+  assert.deepEqual(monad.map(call => [call.functionName, call.args[0]]), [['reportReality', 0]]);
+  assert.deepEqual(answeredTo(writes), [questionOf(1), questionOf(2)]);
+});
+
+test('a relay without MON is reported per event and frees its journal', async () => {
+  const { build, writes, redis, pool: address } = workerFixture({ ...finalFirst, relayBalance: 0n });
+  const worker = build();
+  await worker.tick();
+  assert.equal(writes.some(call => call.functionName === 'reportReality'), false);
+  assert.equal(await redis.command('GET', journalOf(address, 0)), null);
+  const failure = worker.status().events['objective-test']['0'];
+  assert.deepEqual({ ...failure, since: typeof failure.since }, { stage: 'report', code: 'RELAY_GAS_LOW', since: 'string' });
+  assert.match(worker.status().lastError, /objective-test event 0 report RELAY_GAS_LOW: Hybrid relay wallet needs MON for gas/);
+});
+
+test('a write rejected before broadcast clears its journal', async () => {
+  const relayWrite = async (): Promise<string> => { throw Object.assign(Error('wrapped'), { name: 'ContractFunctionExecutionError',
+    cause: Object.assign(Error('x'), { name: 'InsufficientFundsError' }) }); };
+  const { build, redis, pool: address } = workerFixture({ ...finalFirst, relayWrite });
+  const worker = build();
+  await worker.tick();
+  assert.equal(await redis.command('GET', journalOf(address, 0)), null);
+  assert.equal(worker.status().events['objective-test']['0'].code, 'RELAY_GAS_LOW');
+});
+
+test('an uncertain write keeps its journal and later events still run', async () => {
+  const relayWrite = async (): Promise<string> => { throw Object.assign(Error('timeout'), { name: 'TimeoutError' }); };
+  const { build, writes, redis, pool: address } = workerFixture({ routes: ['reality', 'reality', 'reality'],
+    ...finalFirst, relayWrite });
+  const worker = build();
+  await worker.tick();
+  assert.equal(await redis.command('GET', journalOf(address, 0)), 'preparing');
+  assert.equal(worker.status().events['objective-test']['0'].code, 'SUBMISSION_UNCERTAIN');
+  assert.match(worker.status().lastError,
+    /SUBMISSION_UNCERTAIN: Hybrid settlement submission uncertain; inspect the wallet before retrying/);
+  assert.deepEqual(answeredTo(writes), [questionOf(1), questionOf(2)]);
+});
+
+test('public errors map to stable codes and unknown errors to their stage', () => {
+  assert.deepEqual(publicHybridError(Error('Hybrid relay wallet needs MON for gas'), 'report'),
+    { code: 'RELAY_GAS_LOW', message: 'Hybrid relay wallet needs MON for gas' });
+  assert.deepEqual(publicHybridError(Error('Sepolia answer signer needs ETH for bond and gas'), 'answer'),
+    { code: 'ANSWERER_ETH_LOW', message: 'Sepolia answer signer needs ETH for bond and gas' });
+  assert.deepEqual(publicHybridError(Error('fetch https://rpc.example/KEY failed'), 'capture'),
+    { code: 'CAPTURE_FAILED', message: 'Hybrid settlement source or transaction request failed' });
+});
+
+test('an event error clears when the event succeeds', async () => {
+  const { build, controls } = workerFixture({ failQuestion: 0 });
+  const worker = build();
+  await worker.tick();
+  assert.equal(worker.status().events['objective-test']['0'].code, 'ANSWER_FAILED');
+  controls.failQuestion = null;
+  await worker.tick();
+  assert.deepEqual(worker.status().events, {});
+  assert.equal(worker.status().lastError, null);
+});
+
+test('a relay without gas no longer stops answers for later questions', async () => {
+  const rules = catalog(['reality', 'reality', 'reality']).pools[0].prepared.draft.events.map((event: any) => event.rule);
+  const fixture = workerFixture({ routes: ['reality', 'reality', 'reality'], ...finalFirst, relayBalance: 0n,
+    capturesFor: (index: number) => index === 1 ? [] : [jsonCapture(rules[index], '{"value":4.25}')] });
+  const worker = fixture.build();
+  await worker.tick();
+  const answers = fixture.writes.filter(call => call.functionName === 'submitAnswer');
+  assert.equal(answers.find(call => call.args[0] === questionOf(1))?.args[1], realityAnswerBytes[3]);
+  assert.equal(answers.find(call => call.args[0] === questionOf(2))?.args[1], realityAnswerBytes[2]);
+  assert.equal(worker.status().events['objective-test']['0'].code, 'RELAY_GAS_LOW');
+  const answered = worker.status().answers;
+  assert.equal(answered[`${fixture.pool}-1`], 'submitted');
+  assert.equal(answered[`${fixture.pool}-2`], 'submitted');
 });
 
 test('answerer withdraws its Reality credit once', async () => {
@@ -291,6 +414,8 @@ function snapshotMarket(record: any, pool_: Record<string, unknown> = {}) {
   const prepared = record.prepared;
   return { getChainId: async () => 10143,
     getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(at + 3700) }),
+    estimateContractGas: async () => 127_532n, getGasPrice: async () => 102_000_000_000n,
+    getBalance: async () => 10n ** 18n,
     readContract: async ({ address, functionName, args = [] }: any) => {
       const isPool = address.toLowerCase() === record.pool.toLowerCase();
       const values: Record<string, unknown> = { protocolVersion: isPool ? 3 : 4, rulesHash: record.rulesHash,

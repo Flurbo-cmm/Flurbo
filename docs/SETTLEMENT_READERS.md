@@ -133,11 +133,13 @@ Reader keys (`parser, pages, anchors, pattern` required): `parser, pages, anchor
    node apps/web/scripts/check-settlement-rule.mjs <rule-or-rules.json> --closes-at <unix seconds>
    ```
 
-   It reports validity, the rule hash, what each source returns now, and whether the market would still be a prediction (`ok`, `already-public`, `source-error`). A credentialed rule reports `proof-required`, or pass sample proofs with `--proof <capture.json>`.
+   It reports validity, the rule hash, what each source returns now, and whether the market would still be a prediction (`ok`, `invalid`, `already-public`, `source-error`). A credentialed rule reports `proof-required`, or pass sample proofs with `--proof <capture.json>`.
 4. **Build the pool.** Reality-routed pools can carry custom rules: `create-hybrid-reality-pilot.mjs` takes a rules file as its ninth argument, then `complete-hybrid-reality-draft.mjs`, `prepare-hybrid-pilot.mjs`, deploy and register as in the hybrid runbook. A deployed pool cannot be changed.
 5. **Capture.** The hybrid worker checks every two minutes. Inside `[scheduledAt, publicationCutoff]` it fetches each public source once per cycle; a snapshot rule stops after the first valid capture is retained. For `proof-http.v1` the prover uploads instead.
 6. **Settle.** After `observationEndsAt` the worker evaluates the retained captures, archives public evidence, and posts the bonded answer. Challenges go to Kleros as for any Reality-routed answer.
 7. **Verify.** `node apps/web/scripts/verify-settlement-evidence.mjs <evidence URL or file> --rule-hash <hash>` replays the evaluation from the retained captures. Any packet change fails with `PACKET_BINDING_FAILED` or `PACKET_REPLAY_FAILED`.
+
+**Sports fixtures.** Every MLB rule selects the game by `gamePk` and carries two checks, `{"path":"/dates/0/games/0/gamePk","equals":"<pk>"}` and `{"path":"/dates/0/games/0/status/detailedState","equals":"Final"}`, so a postponed, suspended or unplayed game reads as missing and the question answers Void after the capture cutoff. The question text must say so: "If the game is not final by <cutoff UTC> (postponed, suspended or cancelled), this question resolves Invalid." `check-settlement-rule.mjs` refuses a gamePk that is not in the schedule, a game already postponed and a game starting less than 4 hours before the cutoff (status `invalid`, exit code 1), and warns when the `Final` check is missing.
 
 ## 6. Rules that must not be broken
 

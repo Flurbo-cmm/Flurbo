@@ -53,7 +53,10 @@ function ruleEvents(rules, { closesAt, timeout }) {
 
 export function createHybridRealityPilot({ creator, proposer, relay, closesAt, origin, timeout = 3600,
   minBondWei = '100000000000000', arbitrator = SEPOLIA_KLEROS_SUBCOURT3,
-  title = 'Monad testnet Reality reader pool', liquidityAtoms = '10000000', commissionBps = 500, rules = null }) {
+  title = 'Monad testnet Reality reader pool', liquidityAtoms = '10000000', commissionBps = 500, rules = null,
+  reportPeriod = 7 * 86400 }) {
+  if (!Number.isSafeInteger(reportPeriod) || reportPeriod < 86400 || reportPeriod > 90 * 86400)
+    throw Error('Report period must be 1 to 90 days');
   if (!hybridArbitrator(arbitrator)) throw Error('Choose a supported Kleros arbitrator proxy');
   if (typeof title !== 'string' || title.length < 8 || title.length > 120)
     throw Error('Choose a title of 8 to 120 characters');
@@ -82,7 +85,7 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
   const draft = { schema: 'flurbo.hybrid-publication.v5', chainId: 10143, rulesReviewed: true,
     creator: deployer, proposer: proposerWallet, relay: relayWallet,
     title, closesAt, assertionPeriod: 3600,
-    challengePeriod: timeout, reportPeriod: 90 * 86400, arbitrationPeriod: 90 * 86400,
+    challengePeriod: timeout, reportPeriod, arbitrationPeriod: 90 * 86400,
     bondAtoms: '1000000', liquidityAtoms: String(liquidityAtoms), commissionBps, events };
   return { schema: 'flurbo.hybrid-reality-template.v1', draft,
     questions: items.map((item, eventIndex) => ({ eventIndex, questionText: item.questionText,
@@ -98,12 +101,13 @@ export function askCommand(template, index, templatePath) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const [creator, proposer, relay, close, origin, output, arbitrator, title, rulesFile, liquidityAtoms] = process.argv.slice(2);
+  const [creator, proposer, relay, close, origin, output, arbitrator, title, rulesFile, liquidityAtoms,
+    reportPeriod] = process.argv.slice(2);
   if (!output || !/^[1-9]\d*$/.test(close || ''))
-    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE] [RULES.json] [LIQUIDITY_ATOMS]  (use "" to skip optional args)');
+    throw Error('Usage: node create-hybrid-reality-pilot.mjs CREATOR PROPOSER RELAY CLOSE_UNIX ORIGIN OUTPUT_TEMPLATE.json [ARBITRATOR] [TITLE] [RULES.json] [LIQUIDITY_ATOMS] [REPORT_PERIOD_SECONDS]  (use "" to skip optional args)');
   const template = createHybridRealityPilot({ creator, proposer, relay, closesAt: Number(close), origin,
     ...(arbitrator ? { arbitrator } : {}), ...(title ? { title } : {}),
-    ...(liquidityAtoms ? { liquidityAtoms } : {}),
+    ...(liquidityAtoms ? { liquidityAtoms } : {}), ...(reportPeriod ? { reportPeriod: Number(reportPeriod) } : {}),
     ...(rulesFile ? { rules: JSON.parse(await readFile(rulesFile, 'utf8')) } : {}) });
   await writeFile(output, JSON.stringify(template, null, 2) + '\n', { flag: 'wx' });
   template.questions.forEach((_, index) => console.log(askCommand(template, index, output)));

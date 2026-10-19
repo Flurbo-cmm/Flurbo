@@ -213,7 +213,7 @@ async function main() {
           from: mail.from, to: mail.to, origin: config.origin,
           workers: () => ({ hybrid_settlement: config.hybridSettlement?.status(),
             hybrid_arbitration: config.hybridArbitration?.status(), hybrid_court: config.hybridCourt?.status() }),
-          balances: () => walletBalances(source, hybrid.pools) });
+          balances: () => walletBalances(source, hybrid.pools, market) });
       } catch { console.error('Hybrid alerts disabled: set FLURBO_MONITOR_EMAIL_TO, FLURBO_MONITOR_EMAIL_FROM and FLURBO_MONITOR_RESEND_KEY'); }
     }
   }

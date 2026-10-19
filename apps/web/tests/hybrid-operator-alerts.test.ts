@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hybridAlertsFor, hybridOperatorAlerts } from '../server/hybrid-operator-alerts.mjs';
-import { at, catalog } from './hybrid-catalog-fixture.ts';
+import { humanQuestionsWaiting, hybridAlertsFor, hybridOperatorAlerts } from '../server/hybrid-operator-alerts.mjs';
+import { account, at, catalog } from './hybrid-catalog-fixture.ts';
 
 const origin = 'https://flurbopm.singu.online';
 const zero = `0x${'0'.repeat(64)}`;
@@ -117,11 +117,63 @@ test('worker errors and low balances alert once per window', async () => {
   const h = fixture(pool([open(), open()]));
   await h.alerts.tick();
   h.setWorkers({ hybrid_court: { lastError: 'Sepolia keeper needs the arbitration fee and gas' } });
-  h.setBalances({ keeper: 10n ** 16n, answerer: 10n ** 18n });
+  h.setBalances({ keeper: { address: account('8'), wei: 10n ** 16n }, answerer: { address: account('9'), wei: 10n ** 18n },
+    relay: null, proposer: null });
   assert.equal(await h.alerts.tick(), 'sent 1');
   assert.match(h.sent[0].body.text, /arbitration fee and gas/);
   assert.match(h.sent[0].body.text, /keeper/i);
+  assert.ok(h.sent[0].body.text.includes(account('8')));
   assert.equal(await h.alerts.tick(), 'idle');
+});
+
+test('a low Monad relay balance names the wallet and the delivery count', async () => {
+  const h = fixture(pool([open(), open()]));
+  await h.alerts.tick();
+  h.setBalances({ keeper: null, answerer: null, proposer: null,
+    relay: { address: '0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1', wei: 100_000_000_000_000_000n } });
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.equal(h.sent[0].body.subject, 'ACTION: Flurbo hybrid: Low Monad balance: relay');
+  for (const part of ['0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1', '0.1000 MON', 'below 0.3000', 'about 7 deliveries'])
+    assert.ok(h.sent[0].body.text.includes(part), part);
+  assert.equal(await h.alerts.tick(), 'idle');
+  assert.equal(h.sent.length, 1);
+});
+
+const human = structuredClone(record);
+delete (human.prepared.draft.events[1] as any).rule;
+const opensAt = at + 3600;
+const unanswered = (sourceNow: number, bondWei = '0') => pool([open(), { phase: 0, result: 0,
+  reality: reality({ bondWei, finalized: false, pendingArbitration: false, sourceNow, opensAt }) }]);
+
+test('a human question asks for an answer once when its window opens', async () => {
+  const h = fixture(unanswered(opensAt - 60), { pools: [human] });
+  await h.alerts.tick();
+  assert.deepEqual(h.alerts.status().waitingForHumanAnswer, {});
+  h.set(unanswered(opensAt + 60));
+  assert.equal(await h.alerts.tick(), 'sent 1');
+  assert.equal(h.sent.length, 1);
+  const { subject, text } = h.sent[0].body;
+  assert.match(subject, /^ACTION: Flurbo hybrid:/);
+  assert.ok(subject.includes('Answer needed: question 2 of'));
+  assert.ok(text.includes('no automatic reader'));
+  assert.ok(text.includes('0.0001 Sepolia ETH'));
+  const draft = human.prepared.draft;
+  const deadline = new Date((draft.events[1].observationEndsAt + draft.reportPeriod) * 1000).toISOString()
+    .replace('T', ' ').slice(0, 16) + ' UTC';
+  assert.ok(text.includes(deadline), deadline);
+  assert.equal(await h.alerts.tick(), 'idle');
+  assert.equal(h.sent.length, 1);
+  assert.deepEqual(h.alerts.status().waitingForHumanAnswer, { [human.id]: [1] });
+  h.set(unanswered(opensAt + 120, '100000000000000'));
+  await h.alerts.tick();
+  assert.deepEqual(h.alerts.status().waitingForHumanAnswer, {});
+});
+
+test('rule-backed questions never ask for a human answer', () => {
+  const state = pool([{ phase: 0, result: 0, reality: reality({ bondWei: '0', finalized: false, pendingArbitration: false,
+    sourceNow: opensAt + 60, opensAt }) }, open()]);
+  assert.equal(hybridAlertsFor(record, state, origin).some(alert => alert.id.startsWith('human:')), false);
+  assert.deepEqual(humanQuestionsWaiting(record, state), []);
 });
 
 test('mechanical questions report proposal, challenge and result', () => {
