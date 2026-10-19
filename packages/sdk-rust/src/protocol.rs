@@ -71,7 +71,7 @@ pub fn parse_deployment(d: &Value) -> Result<Deployment> {
         return Err(bad("hashes"));
     }
     let closes_at = d.get("closesAt").and_then(Value::as_u64);
-    let event_count = d.get("eventCount").and_then(Value::as_u64).filter(|n| (2..=4).contains(n));
+    let event_count = d.get("eventCount").and_then(Value::as_u64).filter(|n| (2..=32).contains(n));
     let (Some(closes_at), Some(event_count)) = (closes_at, event_count) else { return Err(bad("market shape")) };
     let l = &d["limits"];
     let service = l["maxQuantityAtoms"].as_str() == Some("100000000") && l["maxLimitAtoms"].as_str() == Some("100000000")

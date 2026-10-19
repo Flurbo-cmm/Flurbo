@@ -139,6 +139,18 @@ type ClockFn = dyn Fn() -> i64 + Send + Sync;
 
 /// Runner state the executor consults: Flurbo's policy, the stop request and any stop code from Flurbo.
 /// The market detail lists exactly the deployment's events, with indices 0..event_count in order.
+pub const MAX_PAIRS_PER_CYCLE: usize = 6;
+
+/// The question pairs to research this cycle: all of them for a small pool, else `limit` pairs from the cursor, wrapping.
+pub fn pairs_for_cycle(event_count: usize, cursor: usize, limit: usize) -> (Vec<(usize, usize)>, usize) {
+    let pairs: Vec<(usize, usize)> = (0..event_count).flat_map(|a| (a + 1..event_count).map(move |b| (a, b))).collect();
+    if pairs.len() <= limit {
+        return (pairs, 0);
+    }
+    let start = cursor % pairs.len();
+    ((0..limit).map(|i| pairs[(start + i) % pairs.len()]).collect(), (start + limit) % pairs.len())
+}
+
 pub fn listed_events_match(listed: &[Value], event_count: u32) -> bool {
     listed.len() == event_count as usize && listed.iter().enumerate().all(|(i, e)| e["index"].as_u64() == Some(i as u64))
 }
@@ -268,6 +280,7 @@ pub struct AgentRunner {
     pub started_at: i64,
     saved: Value,
     verified: HashSet<String>,
+    pair_cursor: HashMap<String, usize>,
     last_cycle_at: Option<i64>,
     runtime_file: PathBuf,
     outbox_file: PathBuf,
@@ -380,6 +393,7 @@ impl AgentRunner {
             started_at,
             saved,
             verified: HashSet::new(),
+            pair_cursor: HashMap::new(),
             last_cycle_at: None,
         })
     }
@@ -508,13 +522,13 @@ impl AgentRunner {
             self.log("market_detail_mismatch", json!({"namespace": d.namespace}));
             return Ok(());
         }
-        for a in 0..events.len() {
-            for b in a + 1..events.len() {
-                if self.blocked_by().is_some() || self.stop_requested() {
-                    return Ok(());
-                }
-                self.decide_pair(d, &detail, &listed, &events, (a, b), &market, &head)?;
+        let (pairs, next) = pairs_for_cycle(events.len(), self.pair_cursor.get(&d.namespace).copied().unwrap_or(0), MAX_PAIRS_PER_CYCLE);
+        self.pair_cursor.insert(d.namespace.clone(), next);
+        for pair in pairs {
+            if self.blocked_by().is_some() || self.stop_requested() {
+                return Ok(());
             }
+            self.decide_pair(d, &detail, &listed, &events, pair, &market, &head)?;
         }
         Ok(())
     }

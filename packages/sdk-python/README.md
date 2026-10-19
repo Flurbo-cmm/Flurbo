@@ -1,8 +1,10 @@
-# flurbo-sdk for Python (0.2.0b0, private)
+# flurbo-sdk for Python (0.3.0b0, private)
 
 Research evidence now uses `flurbo.agent-evidence.v2`: complete capture provenance, separate publisher and HTTP timestamps, and cited evidence coverage for every event. Regenerate legacy records; missing provenance cannot be filled in from retrieval time. Generic HTTP retrieval has no verified publication time and therefore abstains under the default release-freshness policy. Background research requires an explicit per-event `research.evidenceRequirements` configuration. Forecast freshness keeps that policy basis through the trade checks. See the [research protocol and migration policy](../../protocol/specs/research.md). This does not change settlement or transaction permissions.
 
 Purchase safety: before approving or signing a new buy, the runtime asks the backend outcome-compatibility endpoint. When the server enforces compatibility rules, known collisions stop the purchase and unknown combinations abstain; if the endpoint cannot be reached, the buy does not proceed. The public testnet currently runs with these rules switched off, so every buy logs `SEMANTICS_DISABLED` and relies on your policy limits alone. Paper fills use the same check. Sell, redemption and already-signed recovery remain available. Review [configuration and rollout requirements](../../protocol/specs/semantics.md) before upgrading a live agent.
+
+Pool size: from 0.3.0 the runtime trades every Flurbo pool, from 2 to 32 questions; a claim still covers at most 3 of them. Each cycle researches at most 6 question pairs per market and moves on to the next pairs in later cycles, so a 16-question pool (120 pairs) is covered every 20 cycles. Earlier versions refuse a pool of more than 4 questions as an unsupported deployment.
 
 Every configuration key, including research providers, `extraSources` and `evidenceRequirements`, is described in the [agent configuration reference](../../docs/AGENT_CONFIG_REFERENCE.md).
 

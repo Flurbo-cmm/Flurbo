@@ -60,8 +60,8 @@ export function agentRedis():TestRedis{
   return {real:false,command:r.command,keys:async()=>[...r.data.keys()],get:async k=>r.data.get(k)??null,set:async(k,v)=>{r.data.set(k,v);},del:async k=>{r.data.delete(k);}};
 }
 
-export function setup({links=[owner],at=now}:{links?:string[];at?:number}={}){
-  const f=poolFixture(at,3),redis=agentRedis(),txs=new Map<string,any>(),receipts=new Map<string,any>(),blocks=new Map<string,any>();
+export function setup({links=[owner],at=now,count=3}:{links?:string[];at?:number;count?:number}={}){
+  const f=poolFixture(at,count),redis=agentRedis(),txs=new Map<string,any>(),receipts=new Map<string,any>(),blocks=new Map<string,any>();
   // Agent RPC: multicall is expanded into the fixture's single reads; receipts come from a local table.
   const rpc=async(method:string,params:any[]=[])=>{
     if(method==='eth_call'&&params[0].to==='0xca11bde05977b3631167028862be2a173976ca11'){

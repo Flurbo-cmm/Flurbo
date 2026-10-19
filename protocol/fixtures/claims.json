@@ -6611,8 +6611,36 @@
       "scope": 3,
       "mask": "1",
       "events": 5,
+      "valid": true,
+      "note": "five-event pool"
+    },
+    {
+      "scope": 2147483648,
+      "mask": "2",
+      "events": 32,
+      "valid": true,
+      "note": "event 31 in a thirty-two event pool"
+    },
+    {
+      "scope": 2147516417,
+      "mask": "254",
+      "events": 32,
+      "valid": true,
+      "note": "three events across a wide pool"
+    },
+    {
+      "scope": 3,
+      "mask": "1",
+      "events": 33,
       "valid": false,
-      "note": "pools have two to four events"
+      "note": "pools have two to thirty-two events"
+    },
+    {
+      "scope": 3,
+      "mask": "1",
+      "events": 1,
+      "valid": false,
+      "note": "pools have at least two events"
     }
   ],
   "decode": [
@@ -11379,6 +11407,2200 @@
           "yes": true
         }
       ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "1",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "2",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "3",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "4",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "5",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "6",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "7",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "8",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "9",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "10",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "11",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "12",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "13",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "14",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "15",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "16",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "17",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "18",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "19",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "20",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "21",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "22",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "23",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "24",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "25",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "26",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "27",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "28",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "29",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "30",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "31",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "32",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "33",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "34",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "35",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "36",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "37",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "38",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "39",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "40",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "41",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "42",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "43",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "44",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "45",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "46",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "47",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "48",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "49",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "50",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "51",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "52",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "53",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "54",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "55",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "56",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "57",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "58",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "59",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "60",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "61",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "62",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "63",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "64",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "65",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "66",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "67",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "68",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "69",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "70",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "71",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "72",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "73",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "74",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "75",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "76",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "77",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "78",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "79",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "80",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "81",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "82",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "83",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "84",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "85",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "86",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "87",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "88",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "89",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "90",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "91",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "92",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "93",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "94",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "95",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "96",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "97",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "98",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "99",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "100",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "101",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "102",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "103",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "104",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "105",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "106",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "107",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "108",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "109",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "110",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "111",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "112",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "113",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "114",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "115",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "116",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "117",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "118",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "119",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "120",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "121",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "122",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "123",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "124",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "125",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "126",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "127",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "128",
+      "events": 32,
+      "rule": "AND",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "129",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "130",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "131",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "132",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "133",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "134",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "135",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "136",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "137",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "138",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "139",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "140",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "141",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "142",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "143",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "144",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "145",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "146",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "147",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "148",
+      "events": 32,
+      "rule": "EXACTLY_ONE",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "149",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "150",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "151",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "152",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "153",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "154",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "155",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "156",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "157",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "158",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "159",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "160",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "161",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "162",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "163",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "164",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "165",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "166",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "167",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "168",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "169",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "170",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "171",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "172",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "173",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "174",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "175",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "176",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "177",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "178",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "179",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "180",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "181",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "182",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "183",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "184",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "185",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "186",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "187",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "188",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "189",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "190",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "191",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "192",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "193",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "194",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "195",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "196",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "197",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "198",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "199",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "200",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "201",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "202",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "203",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "204",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "205",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "206",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "207",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "208",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "209",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "210",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "211",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "212",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "213",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "214",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "215",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "216",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "217",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "218",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "219",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "220",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "221",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "222",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "223",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "224",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "225",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "226",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "227",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "228",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "229",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "230",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "231",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "232",
+      "events": 32,
+      "rule": "AT_LEAST_TWO",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "233",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "234",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "235",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "236",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "237",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "238",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "239",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": false
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "240",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "241",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "242",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "243",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "244",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "245",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "246",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "247",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "248",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "249",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "250",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "251",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": false
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "252",
+      "events": 32,
+      "rule": "OTHER",
+      "legs": null
+    },
+    {
+      "scope": 2147516417,
+      "mask": "253",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": false
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
+    },
+    {
+      "scope": 2147516417,
+      "mask": "254",
+      "events": 32,
+      "rule": "OR",
+      "legs": [
+        {
+          "event": 0,
+          "yes": true
+        },
+        {
+          "event": 15,
+          "yes": true
+        },
+        {
+          "event": 31,
+          "yes": true
+        }
+      ]
     }
   ],
   "keys": [
@@ -11509,6 +13731,28 @@
       "voidMask": 5,
       "numerator": "2",
       "denominator": "4",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "1250000"
+    },
+    {
+      "scope": 2147483649,
+      "mask": "8",
+      "events": 32,
+      "yesMask": 2147483649,
+      "voidMask": 0,
+      "numerator": "1",
+      "denominator": "1",
+      "quantityAtoms": "2500000",
+      "payoutAtoms": "2500000"
+    },
+    {
+      "scope": 2147483648,
+      "mask": "2",
+      "events": 32,
+      "yesMask": 0,
+      "voidMask": 2147483648,
+      "numerator": "1",
+      "denominator": "2",
       "quantityAtoms": "2500000",
       "payoutAtoms": "1250000"
     }

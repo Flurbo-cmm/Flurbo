@@ -40,7 +40,7 @@ fn signed(v: u128) -> i128 {
 }
 
 pub const SDK_LANGUAGE: &str = "rust";
-pub const SDK_VERSION: &str = "0.2.0";
+pub const SDK_VERSION: &str = "0.3.0";
 
 /// What the executor asks its runner: the current effective policy, whether live execution is allowed
 /// now, the clock, where to log and whom to tell when Flurbo says to stop.

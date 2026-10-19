@@ -240,3 +240,16 @@ test('agents on a pool that is no longer served still list and keep the portfoli
   assert.equal((await s.call(alice,'POST',`/api/agents/${agent.id}/runtime-policy`,{markets:['pilot']},retired)).status,400);
   assert.equal((await s.call(alice,'POST',`/api/agents/${assisted.id}/evaluate`,{forecast:forecast(s.f.manifest.pool)},retired)).status,404);
 });
+
+test('an assisted agent evaluates and proposes on a 16 question pool',async()=>{
+  const s=setup({count:16}),pool=s.f.manifest.pool;
+  const id=(await s.call(alice,'POST','/api/agents',{name:'Wide pair agent',namespace:s.f.namespace,mode:'paper'})).body.id;
+  const wide=forecast(pool,{joint:{events:[3,12],statesPpm:['300000','100000','150000','450000']}});
+  const record=await s.call(alice,'POST',`/api/agents/${id}/evaluate`,{forecast:wide});
+  assert.equal(record.status,200,JSON.stringify(record.body));
+  const claims=record.body.decision.evaluations.map((e:any)=>e.claim);
+  assert.ok(claims.length>0);
+  for(const claim of claims)assert.equal(claim.scope & ~((1<<3)|(1<<12)),0,JSON.stringify(claim));
+  assert.equal(record.body.decision.outcome,'propose');
+  assert.equal(record.body.impliedStale,false);
+});

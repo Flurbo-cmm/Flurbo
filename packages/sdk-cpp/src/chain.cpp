@@ -270,7 +270,7 @@ Value RuntimeClient::validate_trade(const std::string& ns, unsigned scope, unsig
 bool semantics_disabled(const Value& r) { return r.is_object() && r["mode"].is_string() && r.str("mode") == "disabled"; }
 std::string semantic_error(const Value& r, const Deployment& d, unsigned scope, unsigned mask, const std::string& quantity, int64_t now) {
   const std::string unavailable = "SEMANTICS_UNAVAILABLE";
-  if (d.event_count < 2 || d.event_count > 4) return unavailable;
+  if (d.event_count < 2 || d.event_count > 32) return unavailable;
   try {
     if (r.str("schema") != "flurbo.semantic-assessment.v1" || r.str("pool") != d.pool || r.str("rulesHash") != d.rules_hash || r.integer("scope") != scope
         || r.str("mask") != std::to_string(mask) || r.str("quantityAtoms") != quantity) return unavailable;
@@ -280,6 +280,7 @@ std::string semantic_error(const Value& r, const Deployment& d, unsigned scope, 
         || !r["configRevision"].is_string() || !is_digest(r.str("configRevision"))) return unavailable;
     // A valid, claim-bound "disabled" answer proceeds without semantic assurance; any other mode is unavailable.
     if (r["mode"].is_string() && r.str("mode") == "disabled") return "";
+    if (d.event_count > 4) return unavailable;
     if (!r["mode"].is_string() || r.str("mode") != "enforced") return unavailable;
     auto digest = r.str("rulesDigest"), status = r.str("status"), coverage = r.str("coverage");
     if (!is_digest(digest)

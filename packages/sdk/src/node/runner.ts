@@ -20,7 +20,17 @@ import { jsonRpc } from './rpc.ts';
 import { signerFromEnv, type Signer } from './signer.ts';
 import { researcher as makeResearcher, httpRetriever, openAiCompatible, anthropicMessages, fixtureForecaster, ProviderError, type Forecaster, type Retriever } from './research.ts';
 
-export const SDK_RUNTIME_VERSION = '0.2.0';
+export const SDK_RUNTIME_VERSION = '0.3.0';
+export const MAX_PAIRS_PER_CYCLE = 6;
+
+// The question pairs to research this cycle: all of them for a small pool, else `limit` pairs from the cursor, wrapping.
+export function pairsForCycle(eventCount: number, cursor: number, limit = MAX_PAIRS_PER_CYCLE): { pairs: [number, number][]; next: number } {
+  const pairs: [number, number][] = [];
+  for (let a = 0; a < eventCount; a++) for (let b = a + 1; b < eventCount; b++) pairs.push([a, b]);
+  if (pairs.length <= limit) return { pairs, next: 0 };
+  const start = cursor % pairs.length;
+  return { pairs: Array.from({ length: limit }, (_, i) => pairs[(start + i) % pairs.length]), next: (start + limit) % pairs.length };
+}
 
 // Operator configuration. Secrets are never in this file, only the names of environment variables.
 export type AgentConfig = {
@@ -174,7 +184,7 @@ export function agentRunner(o: RunnerOptions) {
   const strategy = o.strategy ?? jointEdgeStrategy(strategyConfig(config));
 
   let flurbo: FlurboPolicy | null = null, readAt: number | null = null, blockedBy: string | null = null, lastCycleAt: number | null = null, lastErrorCode: string | null = null;
-  const verified = new Set<string>();
+  const verified = new Set<string>(), pairCursor = new Map<string, number>();
   const stop = (code: string) => { if (!blockedBy) log('stopped_new_actions', { code }); blockedBy = code; };
   const effective = () => effectivePolicy({ mode: config.mode, maxTradeCostAtoms: config.policy.maxTradeCostAtoms, spend: config.policy.spend }, flurbo, readAt, now(), config.policyMaxAgeSeconds);
   const liveAllowed = () => {
@@ -235,7 +245,9 @@ export function agentRunner(o: RunnerOptions) {
     if (!market.open) { log('market_closed', { namespace: d.namespace }); return; }
     if (d.closesAt - now() < config.policy.minSecondsBeforeClose) { log('too_close_to_close', { namespace: d.namespace }); return; }
     const events: ResearchQuestion[] = market.events.map(e => ({ index: e.index, question: e.question, yesRule: e.yesRule, noRule: e.noRule, observationEndsAt: e.observationEndsAt }));
-    for (let a = 0; a < events.length; a++) for (let b = a + 1; b < events.length; b++) {
+    const cycle = pairsForCycle(events.length, pairCursor.get(d.namespace) ?? 0);
+    pairCursor.set(d.namespace, cycle.next);
+    for (const [a, b] of cycle.pairs) {
       if (blockedBy || existsSync(stopFile)) return;
       const decisionId = `d-${randomUUID()}`, pair = [events[a], events[b]];
       const sources = [...detail.events.filter((e: any) => e.index === a || e.index === b).filter((e: any) => e.source?.referenceUrl).map((e: any) => ({ event: e.index, url: e.source.referenceUrl })),

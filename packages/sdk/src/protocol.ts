@@ -39,7 +39,7 @@ export function parseDeployment(value: unknown): Deployment {
   if (d!.chainId !== CHAIN_ID) bad('chain');
   if (!isNamespace(d!.namespace)) bad('namespace');
   if (addr(d!.collateral?.address, 'collateral') !== COLLATERAL || d!.collateral.decimals !== COLLATERAL_DECIMALS) bad('collateral');
-  if (!Number.isSafeInteger(d!.closesAt) || ![2, 3, 4].includes(d!.eventCount)) bad('market shape');
+  if (!Number.isSafeInteger(d!.closesAt) || !Number.isInteger(d!.eventCount) || d!.eventCount < 2 || d!.eventCount > 32) bad('market shape');
   const l = d!.limits;
   if (!l || l.maxQuantityAtoms !== '100000000' || l.maxLimitAtoms !== '100000000' || JSON.stringify(l.slippageBps) !== '[10,50,100]' || l.maxDeadlineSeconds !== 300) bad('service limits');
   return { schema: 'flurbo.agent-deployment.v1', interface: DEPLOYMENT_INTERFACE, namespace: d!.namespace, chainId: CHAIN_ID,

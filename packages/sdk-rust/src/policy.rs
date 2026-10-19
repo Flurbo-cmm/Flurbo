@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::claims::{pays_in, ClaimRef};
+use crate::claims::{pays_in, scope_events, ClaimRef};
 use crate::num::{dec, dec_opt};
 use crate::protocol::{SERVICE_MAX_ATOMS, SERVICE_SLIPPAGE_BPS};
 
@@ -160,7 +160,8 @@ pub fn spend_of(e: &PolicyEntry) -> i128 {
     0
 }
 
-/// Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome.
+/// Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome of the events its
+/// positions touch. Above 16 touched events the floor is taken as 0, which overstates the loss.
 pub fn worst_case_loss(inp: &PolicyInput) -> i128 {
     let (market, candidate) = (&inp.market, &inp.candidate);
     let mut positions: BTreeMap<(u32, u32), i128> = BTreeMap::new();
@@ -180,10 +181,21 @@ pub fn worst_case_loss(inp: &PolicyInput) -> i128 {
     }
     add(&candidate.claim, candidate.quantity_atoms);
     cost += candidate.limit_atoms;
-    let floor = (0..(1u32 << market.event_count))
-        .map(|state| positions.iter().filter(|((s, m), q)| **q > 0 && pays_in(*s, *m, state)).map(|(_, q)| *q).sum::<i128>())
-        .min()
-        .unwrap_or(0);
+    let live: Vec<(u32, u32, i128)> = positions.iter().filter(|(_, q)| **q > 0).map(|((s, m), q)| (*s, *m, *q)).collect();
+    let mut events: Vec<u32> = live.iter().flat_map(|(s, _, _)| scope_events(*s)).collect();
+    events.sort_unstable();
+    events.dedup();
+    let floor = if events.len() > 16 {
+        0
+    } else {
+        (0u32..(1 << events.len()))
+            .map(|local| {
+                let state = events.iter().enumerate().filter(|(i, _)| local >> i & 1 == 1).fold(0u32, |s, (_, e)| s | (1u32 << e));
+                live.iter().filter(|(s, m, _)| pays_in(*s, *m, state)).map(|(_, _, q)| *q).sum::<i128>()
+            })
+            .min()
+            .unwrap_or(0)
+    };
     cost - floor
 }
 

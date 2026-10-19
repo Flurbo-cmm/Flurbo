@@ -11,7 +11,7 @@ class Semantics(unittest.TestCase):
     def test_conformance(self):
         for c in F['cases']:
             with self.subTest(c['name']):
-                self.assertEqual(semantic_error(c['result'], F['deployment'], c['claim'], c['claim']['quantityAtoms'], F['now']), c['error'])
+                self.assertEqual(semantic_error(c['result'], {**F['deployment'], **c.get('deployment', {})}, c['claim'], c['claim']['quantityAtoms'], F['now']), c['error'])
 
     def test_execution_aborts_before_approval_or_signing(self):
         for code in ('SEMANTIC_COLLISION', 'SEMANTICS_UNKNOWN', 'SEMANTICS_UNAVAILABLE'):

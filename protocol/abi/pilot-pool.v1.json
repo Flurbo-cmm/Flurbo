@@ -142,6 +142,28 @@
     ]
   },
   {
+    "name": "depth",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "name": "commissionBps",
+    "type": "function",
+    "stateMutability": "view",
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "uint16"
+      }
+    ]
+  },
+  {
     "name": "funded",
     "type": "function",
     "stateMutability": "view",

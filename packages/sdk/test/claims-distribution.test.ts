@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { claimFromJSON } from '../src/claims.ts';
 import { allOf, anyOf, exactlyOne, atLeastTwo, describe, encode, assertClaim, assertSamePool, claimShape, paysIn, payoutFraction, winningCombinations, CHAIN_ID,
   jointFromPair, independentJoint, marginal, both, claimProbability, frechetBounds, assertJoint, parseDecimal, formatAtoms, parseAtoms, FlurboError } from '../src/index.ts';
 
@@ -82,4 +83,17 @@ test('atoms never pass through floating point', () => {
   assert.equal(code(() => parseAtoms(12 as unknown)), 'invalid_input'); assert.equal(code(() => parseAtoms('1.5')), 'invalid_input');
   assert.equal(parseAtoms('340282366920938463463374607431768211455'), (1n << 128n) - 1n);
   assert.equal(code(() => parseAtoms('340282366920938463463374607431768211456')), 'invalid_input');
+});
+
+test('wide pools: v1 claims accept 2 to 32 events', () => {
+  assert.equal(assertClaim({ chainId: CHAIN_ID, pool, scope: 2 ** 15, mask: 2n }, 16).scope, 2 ** 15);
+  const last = encode(pool, 16, [{ event: 15, yes: true }], 'AND');
+  assert.deepEqual([last.scope, last.mask], [32768, 2n]);
+  assert.equal(claimFromJSON({ chainId: CHAIN_ID, pool, scope: 2 ** 31, mask: '2' }, 32).scope, 2 ** 31);
+  assert.equal(code(() => assertClaim({ chainId: CHAIN_ID, pool, scope: 1, mask: 2n }, 33)), 'unsupported_claim');
+  assert.equal(code(() => assertClaim({ chainId: CHAIN_ID, pool, scope: 1, mask: 2n }, 1)), 'unsupported_claim');
+  assert.deepEqual(payoutFraction(encode(pool, 32, [{ event: 31, yes: true }], 'AND'), 32, { yesMask: 0, voidMask: 2 ** 31 }),
+    { numerator: 1n, denominator: 2n });
+  assert.equal(paysIn(encode(pool, 32, [{ event: 31, yes: true }], 'AND'), 2 ** 31), true);
+  assert.equal(paysIn(encode(pool, 32, [{ event: 31, yes: true }], 'AND'), 2 ** 30), false);
 });

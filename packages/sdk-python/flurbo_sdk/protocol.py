@@ -42,7 +42,7 @@ def parse_deployment(d: dict) -> dict:
     for value in (hashes.get("pool"), hashes.get("resolver"), d.get("rulesHash")):
         if not isinstance(value, str) or not _HASH.match(value):
             bad("hashes")
-    if not isinstance(d.get("closesAt"), int) or d.get("eventCount") not in (2, 3, 4):
+    if not isinstance(d.get("closesAt"), int) or type(d.get("eventCount")) is not int or not 2 <= d["eventCount"] <= 32:
         bad("market shape")
     limits = d.get("limits") or {}
     if (limits.get("maxQuantityAtoms"), limits.get("maxLimitAtoms"), limits.get("slippageBps"), limits.get("maxDeadlineSeconds")) != ("100000000", "100000000", [10, 50, 100], 300):

@@ -8,5 +8,5 @@ the command-line runner.
 from .errors import FlurboError
 from .protocol import PROTOCOL_VERSION, CHAIN_ID, COLLATERAL, parse_deployment
 
-__version__ = "0.2.0b0"
+__version__ = "0.3.0b0"
 __all__ = ["FlurboError", "PROTOCOL_VERSION", "CHAIN_ID", "COLLATERAL", "parse_deployment", "__version__"]

@@ -74,12 +74,13 @@ export function assessSemantics(manifest, input, config = activeSemanticConfig()
   if (!input || Array.isArray(input) || Object.keys(input).sort().join(',') !== 'mask,quantityAtoms,scope' || typeof input.mask !== 'string'
     || !/^[1-9][0-9]{0,2}$/.test(input.mask) || typeof input.quantityAtoms !== 'string' || !/^[1-9][0-9]{0,8}$/.test(input.quantityAtoms) || BigInt(input.quantityAtoms) > 100_000_000n) bad('Choose a supported claim and quantity.');
   const count = manifest.publication.draft.events.length;
-  if (!Number.isInteger(count) || count < 1 || count > 4) throw Error('Unsupported semantic deployment');
+  if (!Number.isInteger(count) || count < 1 || count > 32) throw Error('Unsupported semantic deployment');
   try { validateClaim(input.scope, input.mask, count); } catch { bad('Choose a supported claim and quantity.'); }
   const pool = manifest.pool.toLowerCase(), rulesHash = manifest.rulesHash;
   if (config.mode === 'disabled') return { schema: 'flurbo.semantic-assessment.v1', mode: 'disabled', pool, rulesHash, scope: input.scope, mask: input.mask,
     quantityAtoms: input.quantityAtoms, configRevision: config.revision, checkedAt: now, expiresAt: now + 60, notice: SEMANTIC_NOTICE_DISABLED };
   if (config.mode !== 'enforced') throw Error('Unsupported semantic mode');
+  if (count > 4) throw Error('Unsupported semantic deployment');
   if (config.errors.has(pool)) throw Error('Semantic rules for this market are misconfigured');
   const entry = config.markets.get(pool);
   if (entry && (entry.rulesHash !== rulesHash || entry.predicates.some(p => p.event >= count))) throw Error('Semantic rules do not match this deployment');

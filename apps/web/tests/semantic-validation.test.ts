@@ -88,3 +88,13 @@ test('operator diagnostics report mode, revision, coverage and misconfiguration 
   assert.match(d.markets[2].error,/match/);assert.deepEqual(d.unusedRules,['0x'+'8'.repeat(40)]);
   assert.deepEqual(semanticDiagnostics(semanticConfig({mode:'off'}),[{namespace:'pilot',manifest}]).markets.map((m:any)=>m.status),['disabled']);
 });
+
+const wide={pool,rulesHash,publication:{draft:{events:Array.from({length:16},()=>({}))}}};
+test('disabled mode answers for a 16 question pool',()=>{
+  const r:any=assessSemantics(wide,{scope:32768,mask:'2',quantityAtoms:'1000000'},semanticConfig({mode:'off'}),1000);
+  assert.equal(r.mode,'disabled');assert.equal(r.scope,32768);
+  assert.throws(()=>assessSemantics({...wide,publication:{draft:{events:Array.from({length:33},()=>({}))}}},{scope:1,mask:'2',quantityAtoms:'1000000'},semanticConfig({mode:'off'})),/Unsupported semantic deployment/);
+});
+test('enforced mode refuses a pool above 4 questions',()=>{
+  assert.throws(()=>assessSemantics(wide,{scope:32768,mask:'2',quantityAtoms:'1000000'},exclusive),/Unsupported semantic deployment/);
+});

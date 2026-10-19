@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { worstCaseLoss, type PolicyInput } from '../src/policy.ts';
 import assert from 'node:assert/strict';
 import { createClient, fixtureTransport, FIXTURE_NAMESPACE, FIXTURE_NOW, FIXTURE_FORECAST, DEFAULT_CONFIG, parseForecast, candidateClaims, decide,
   claimKey, decisionToJSON, memoryPaperStore, recordPaperFill, evaluatePaper, requestForecast, fixtureProvider, allOf, FlurboError,
@@ -108,4 +109,21 @@ test('forecast providers are untrusted: failures, rate limits and malformed outp
   }
   const future = { ...FIXTURE_FORECAST, evidence: [{ ...FIXTURE_FORECAST.evidence[0], observedAt: new Date((FIXTURE_NOW + 3600) * 1000).toISOString() }] };
   assert.equal((await requestForecast(fixtureProvider({ [`${market.pool}:0,1`]: future }), request, { now }) as { reason: string }).reason, 'invalid_output');
+});
+
+test('worst-case loss on a 32-event pool is bounded and exact', () => {
+  const pool = '0x' + '22'.repeat(20), namespace = 'practice-' + '22'.repeat(20);
+  const bought = (id: string, scope: number, mask: string, quantityAtoms: string, costAtoms: string) => ({ id, action: 'buy' as const,
+    namespace, claim: { scope, mask }, quantityAtoms, limitAtoms: costAtoms, costAtoms, status: 'confirmed' as const, plannedAt: 1 });
+  const input = (journal: any[], candidate: { scope: number; mask: string }) => ({ now: 1, policy: {} as any, wallet: {} as any,
+    market: { namespace, pool, eventCount: 32, closesAt: 2, open: true, resolved: false }, journal,
+    candidate: { action: 'buy', namespace, claim: candidate, quantityAtoms: '1000000', limitAtoms: '600000', slippageBps: 50,
+      quoteBlockTimestamp: 1, gasLimit: '1', maxFeePerGas: '1' } }) as PolicyInput;
+  const journal = [bought('a', 1, '2', '1000000', '500000'), bought('b', 2 ** 15, '2', '2000000', '900000'),
+    bought('c', 2 ** 31, '1', '3000000', '1200000')];
+  const started = performance.now();
+  assert.equal(worstCaseLoss(input(journal, { scope: 2 ** 31, mask: '2' })), 2_200_000n);
+  assert.ok(performance.now() - started < 100);
+  const spread = Array.from({ length: 17 }, (_, event) => bought(`e${event}`, 2 ** event, '2', '1000000', '100000'));
+  assert.equal(worstCaseLoss(input(spread, { scope: 1, mask: '2' })), 2_300_000n);
 });

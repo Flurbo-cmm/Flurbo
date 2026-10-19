@@ -5,7 +5,7 @@ import {semanticError} from '../src/semantics.ts';
 import {executor} from '../src/node/executor.ts';
 const f=JSON.parse(readFileSync(new URL('../../../protocol/fixtures/semantics.json',import.meta.url),'utf8'));
 test('semantic assessment conformance: bindings, freshness, payout matrix and unknowns',()=>{
-  for(const c of f.cases)assert.equal(semanticError(c.result,{...f.deployment,...c.claim},f.now),c.error,c.name);
+  for(const c of f.cases)assert.equal(semanticError(c.result,{...f.deployment,...c.deployment,...c.claim},f.now),c.error,c.name);
 });
 test('custom execution and direct signing reject collisions before signer, nonce or approval',async()=>{
   const blocked=['SEMANTIC_COLLISION','SEMANTICS_UNKNOWN','SEMANTICS_UNAVAILABLE'];
@@ -36,4 +36,9 @@ test('a valid disabled answer passes the guard and is logged; a failed request i
       assert.equal(await ex.sign('test',f.deployment),null);assert.equal(entry.note,expected);assert.ok(!logs.includes('SEMANTICS_DISABLED'));
     }
   }
+});
+test('wide pools proceed only on a disabled assessment',()=>{
+  const wide=f.cases.filter((c:any)=>c.deployment?.eventCount===16);
+  assert.deepEqual(wide.map((c:any)=>[c.result.mode,c.error]),[['disabled',null],['enforced','SEMANTICS_UNAVAILABLE']]);
+  for(const c of wide)assert.equal(semanticError(c.result,{...f.deployment,...c.deployment,...c.claim},f.now),c.error,c.name);
 });

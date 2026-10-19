@@ -23,7 +23,7 @@ export const scopeEvents = (scope: number): number[] => { const out: number[] = 
 const canonical = <T>(fn: () => T, message: string): T => { try { return fn(); } catch { throw new FlurboError('unsupported_claim', message); } };
 
 export function assertClaim(claim: Claim, eventCount: number): Claim {
-  if (eventCount < 2 || eventCount > 4) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to four events.');
+  if (!Number.isInteger(eventCount) || eventCount < 2 || eventCount > 32) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to thirty-two events.');
   return assertWideClaim(claim, eventCount);
 }
 
@@ -44,7 +44,7 @@ export function assertSamePool(claims: Claim[]): string {
 
 // Build a claim from answers and a payout rule through the canonical encoder.
 export function encode(pool: string, eventCount: number, answers: Answer[], rule: Rule): Claim {
-  if (eventCount < 2 || eventCount > 4) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to four events.');
+  if (!Number.isInteger(eventCount) || eventCount < 2 || eventCount > 32) throw new FlurboError('unsupported_claim', 'Protocol v1 supports two to thirty-two events.');
   return encodeWide(pool, eventCount, answers, rule);
 }
 export function encodeWide(pool: string, eventCount: number, answers: Answer[], rule: Rule): Claim {
@@ -78,7 +78,7 @@ export function winningCombinations(claim: Claim, eventCount: number): Answer[][
 // Does the claim pay in the given full-pool assignment (bit i = event i is Yes)? Evaluation only.
 export function paysIn(claim: Claim, state: number): boolean {
   let local = 0, index = 0;
-  for (const event of scopeEvents(claim.scope)) { if (state & (1 << event)) local |= 1 << index; index++; }
+  for (const event of scopeEvents(claim.scope)) { if (Math.floor(state / 2 ** event) % 2 === 1) local |= 1 << index; index++; }
   return (claim.mask & (1n << BigInt(local))) !== 0n;
 }
 

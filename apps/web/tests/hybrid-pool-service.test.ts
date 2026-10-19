@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { decodeFunctionData, decodeFunctionResult, encodeFunctionData, encodeFunctionResult, getAddress, keccak256, parseAbi } from 'viem';
-import { AGENT_MAX_QUESTIONS, AGENT_MIN_QUESTIONS, agentNamespace, hybridAgentPools, hybridEventRules, hybridPoolManifest,
+import { AGENT_MAX_QUESTIONS, AGENT_MIN_QUESTIONS, ANALYTICS_MAX_QUESTIONS, agentNamespace, hybridAgentPools, hybridEventRules, hybridPoolManifest,
   hybridPoolService, readHybridPoolAnchor } from '../server/hybrid-pool-service.mjs';
 import { settlementRuleHash } from '../server/settlement-rules.mjs';
 import { loadSemanticConfig } from '../server/semantic-validation.mjs';
@@ -39,7 +39,7 @@ const batched = (rpc: (method: string, params?: any[]) => Promise<any>) => {
 };
 
 test('agent pool constants and namespace', () => {
-  assert.equal(AGENT_MIN_QUESTIONS, 2); assert.equal(AGENT_MAX_QUESTIONS, 4);
+  assert.equal(AGENT_MIN_QUESTIONS, 2); assert.equal(AGENT_MAX_QUESTIONS, 32); assert.equal(ANALYTICS_MAX_QUESTIONS, 4);
   assert.equal(agentNamespace('0xB5CE32DE7A8631960dd26ab46bB20524d1fF9a44'), 'practice-b5ce32de7a8631960dd26ab46bb20524d1ff9a44');
 });
 
@@ -118,7 +118,7 @@ test('the service refuses a manifest that is not a verified hybrid agent pool', 
   for (const change of [
     (m: any) => { m.schema = 'flurbo.other.v1'; }, (m: any) => { m.status = 'unverified'; }, (m: any) => { m.publication.mode = 'rehearsal'; },
     (m: any) => { m.chainId = 143; }, (m: any) => { m.publication.draft.events = m.publication.draft.events.slice(0, 1); },
-    (m: any) => { m.publication.draft.events = [0, 1, 2, 3, 4].map(i => ({ ...m.publication.draft.events[0], id: `e-${i}` })); },
+    (m: any) => { m.publication.draft.events = Array.from({ length: 33 }, (_, i) => ({ ...m.publication.draft.events[0], id: `e-${i}` })); },
     (m: any) => { delete m.codeHashes[resolver]; }, (m: any) => { m.pool = '0x' + '00'.repeat(20); }, (m: any) => { m.resolver = '0x' + 'AB'.repeat(20); },
   ]) assert.throws(bad(change), /^Error: Verified hybrid pool manifest required$/);
 });
@@ -284,10 +284,10 @@ test('positions read holdings and payouts in one verified snapshot, batched or n
   await assert.rejects(f.service.positions('0x1234', claims), /^Error: Invalid wallet$/);
 });
 
-test('agent pools: only 2 to 4 question pools are served, unreadable anchors stay pending and are retried', async () => {
+test('agent pools: 2 to 32 question pools are served, analytics only up to 4, unreadable anchors stay pending and are retried', async () => {
   const addr = (d: string) => '0x' + d.repeat(40);
   const records = [hybridRecord({ count: 2, pool: addr('a'), resolver: addr('b') }), hybridRecord({ count: 4, pool: addr('c'), resolver: addr('d') }),
-    hybridRecord({ count: 5, pool: addr('e'), resolver: addr('f') })];
+    hybridRecord({ count: 16, pool: addr('e'), resolver: addr('f') })];
   (records[0] as any).keeper = addr('8'); (records[1] as any).answerer = addr('9');
   const catalog = { schema: 'flurbo.hybrid-catalog.v1', pools: records };
   const history = { refresh: async () => ({}) }, payouts = { refresh: async () => ({}) };
@@ -299,8 +299,11 @@ test('agent pools: only 2 to 4 question pools are served, unreadable anchors sta
     return anchorFor(record);
   };
   const pools = await hybridAgentPools({ catalog, rpc: async () => { throw Error('no chain'); }, indexes, readAnchor, log: (line: string) => { logs.push(line); } });
-  assert.deepEqual([...pools.services.keys()], [agentNamespace(addr('a'))]);
-  assert.deepEqual(pools.collections, [{ namespace: agentNamespace(addr('a')), label: 'Explicit test fixtures', pool: addr('a'), closesAt: records[0].prepared.draft.closesAt }]);
+  assert.deepEqual([...pools.services.keys()], [agentNamespace(addr('a')), agentNamespace(addr('e'))]);
+  assert.deepEqual(pools.collections, [{ namespace: agentNamespace(addr('a')), label: 'Explicit test fixtures', pool: addr('a'), closesAt: records[0].prepared.draft.closesAt },
+    { namespace: agentNamespace(addr('e')), label: 'Explicit test fixtures', pool: addr('e'), closesAt: records[2].prepared.draft.closesAt }]);
+  const wide: any = pools.services.get(agentNamespace(addr('e')));
+  assert.equal(wide.analytics, undefined); assert.equal(wide.claimAnalytics, undefined);
   const served: any = pools.services.get(agentNamespace(addr('a')));
   assert.equal(served.index, history); assert.equal(served.payouts, payouts);
   assert.equal(typeof served.analytics, 'function'); assert.equal(typeof served.claimAnalytics, 'function');
@@ -312,8 +315,9 @@ test('agent pools: only 2 to 4 question pools are served, unreadable anchors sta
   const collections = pools.collections, services = pools.services;
   assert.equal(await pools.refresh(), 'added 1, pending 0');
   assert.equal(pools.collections, collections); assert.equal(pools.services, services);
-  assert.deepEqual([...pools.services.keys()], [agentNamespace(addr('a')), agentNamespace(addr('c'))]);
-  assert.equal(pools.collections[1].namespace, agentNamespace(addr('c')));
+  assert.deepEqual([...pools.services.keys()], [agentNamespace(addr('a')), agentNamespace(addr('e')), agentNamespace(addr('c'))]);
+  assert.equal(pools.collections[2].namespace, agentNamespace(addr('c')));
+  assert.equal(typeof (pools.services.get(agentNamespace(addr('c'))) as any).analytics, 'function');
   assert.equal((pools.services.get(agentNamespace(addr('c'))) as any).index, undefined);
   assert.equal(pools.pending(), 0); assert.equal(await pools.refresh(), 'idle');
   const reserved = new Set([addr('a'), addr('b'), addr('c'), addr('d'), addr('e'), addr('f'), account('1'), account('2'), account('3'), account('6'), account('7'), addr('8'), addr('9')]);
@@ -352,4 +356,18 @@ test('the service refuses a manifest with an invalid pricing block', () => {
   ]) assert.throws(bad(change), /^Error: Verified hybrid pool manifest required$/);
   const m = structuredClone(manifest); m.publication.pricing = null;
   assert.throws(() => hybridPoolService({ manifest: m, rpc: async () => null }), /^Error: Verified hybrid pool manifest required$/);
+});
+
+test('a 16 question pool quotes every question and reviews a buy on event 15', async () => {
+  const now = 1_800_000_000, f = poolFixture(now, 16);
+  const markets = await f.service.markets();
+  assert.equal(markets.prices.length, 16);
+  assert.deepEqual(markets.prices.map((p: any) => p.event), Array.from({ length: 16 }, (_, i) => i));
+  const review = await f.service.prepare({ owner, action: 'buy', scope: 2 ** 15, mask: '2', quantity: '1000000', slippageBps: 50 });
+  assert.equal(review.action, 'approve');
+  f.options.allowance = 1_000_000n;
+  const buy = await f.service.prepare({ owner, action: 'buy', scope: 2 ** 15, mask: '2', quantity: '1000000', slippageBps: 50 });
+  const call = decodeFunctionData({ abi: pilotPoolAbi, data: buy.transaction.data });
+  assert.equal(call.functionName, 'buy'); assert.equal(call.args[0], 32768); assert.equal(call.args[1], 2n);
+  assert.equal(buy.semanticAssessment.mode, 'disabled');
 });

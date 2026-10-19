@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flurbo-sdk"
-version = "0.2.0b0"
+version = "0.3.0b0"
 description = "Flurbo agent SDK and runtime for Python: protocol-conformant claims, policies, signing, journaled execution and recovery. Monad testnet only; not published."
 readme = "README.md"
 requires-python = ">=3.11"

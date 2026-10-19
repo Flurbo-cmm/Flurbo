@@ -182,7 +182,7 @@ export function executor(o: ExecutorOptions) {
     for (const e of o.journal.read().entries.filter(x => landed(x) && (!['accepted', 'rejected'].includes(x.report.status) || (x.report.status === 'accepted' && !['confirmed', 'reverted', 'mismatch', 'attributed-elsewhere'].includes(x.report.flurboStatus ?? ''))))) {
       try {
         const r = e.report.status === 'accepted' ? await o.client.execution(e.hash!)
-          : await o.client.reportExecution({ namespace: e.namespace, hash: e.hash!, intent: reportIntent(e) as never, decisionId: e.decisionId, nonce: e.nonce ?? undefined, sdk: { language: 'typescript', version: '0.2.0' } });
+          : await o.client.reportExecution({ namespace: e.namespace, hash: e.hash!, intent: reportIntent(e) as never, decisionId: e.decisionId, nonce: e.nonce ?? undefined, sdk: { language: 'typescript', version: '0.3.0' } });
         await o.journal.locked(j => { const x = j.entries.find(y => y.id === e.id); if (x) x.report = { status: 'accepted', attempts: x.report.attempts + 1, flurboStatus: r?.status ?? null }; });
       } catch (err) {
         const api = err instanceof RuntimeApiError ? err : null;

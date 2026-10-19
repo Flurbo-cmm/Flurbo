@@ -2,7 +2,7 @@
 
 Software checks in a compliant runtime: they bound what this runtime does, not what the wallet key can do.
 """
-from .claims import pays_in
+from .claims import pays_in, scope_events
 from .protocol import SERVICE_MAX_ATOMS, SERVICE_SLIPPAGE_BPS
 
 VIOLATIONS = ("SERVICE_LIMIT", "MARKET_NOT_ALLOWED", "MARKET_CLOSED", "MARKET_NOT_RESOLVED", "TOO_CLOSE_TO_CLOSE", "ACTION_DISABLED",
@@ -27,7 +27,8 @@ def spend_of(e: dict) -> int:
 
 
 def worst_case_loss(inp: dict) -> int:
-    """Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome."""
+    """Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome of the events its
+    positions touch. Above 16 touched events the floor is taken as 0, which overstates the loss."""
     market, candidate = inp["market"], inp["candidate"]
     positions: dict[tuple[int, int], int] = {}
     cost = 0
@@ -49,10 +50,14 @@ def worst_case_loss(inp: dict) -> int:
             add(e["claim"], -int(e["quantityAtoms"]))
     add(candidate["claim"], int(candidate["quantityAtoms"]))
     cost += int(candidate["limitAtoms"])
-    floor = None
-    for state in range(2 ** market["eventCount"]):
-        payout = sum(q for (scope, mask), q in positions.items() if q > 0 and pays_in(scope, mask, state))
-        floor = payout if floor is None or payout < floor else floor
+    live = [(scope, mask, q) for (scope, mask), q in positions.items() if q > 0]
+    events = sorted({e for scope, _, _ in live for e in scope_events(scope)})
+    floor = 0 if len(events) > 16 else None
+    if floor is None:
+        for local in range(1 << len(events)):
+            state = sum(1 << e for i, e in enumerate(events) if local >> i & 1)
+            payout = sum(q for scope, mask, q in live if pays_in(scope, mask, state))
+            floor = payout if floor is None or payout < floor else floor
     return cost - (floor or 0)
 
 

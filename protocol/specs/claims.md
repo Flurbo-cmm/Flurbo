@@ -4,7 +4,7 @@ A claim is a Boolean payout condition over one to three events of one pool. It i
 
 ## Pool and events
 
-- A pool has 2 to 4 events, indexed from 0 in the order the deployment lists them.
+- A pool has 2 to 32 events, indexed from 0 in the order the deployment lists them. A claim selects 1 to 3 of them.
 - Claims from different pools never combine. A request that mixes pools is rejected (`cross_pool`).
 
 ## Scope

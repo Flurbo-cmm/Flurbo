@@ -1,4 +1,4 @@
-export const SDK_VERSION = '0.2.0-beta.0';
+export const SDK_VERSION = '0.3.0-beta.0';
 export const CHAIN_ID = 10143;
 
 // Wire schemas. A consumer must reject a schema it does not recognise rather than guess.

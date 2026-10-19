@@ -1,8 +1,10 @@
-# flurbo-sdk for C++ (0.2.0-beta.0, private)
+# flurbo-sdk for C++ (0.3.0-beta.0, private)
 
 Research evidence now uses `flurbo.agent-evidence.v2`, with full-capture provenance, independent publisher/HTTP timestamps and per-event citation coverage. Legacy records must be regenerated. Generic HTTP retrieval cannot establish publisher release time; operators must explicitly select per-event background research where appropriate through `research.evidenceRequirements`. See [the research protocol](../../protocol/specs/research.md). Oversized or incomplete HTTP responses now fail instead of returning a silently shortened body. C++ retrieval requests identity transfer content and rejects unsupported content encodings rather than treating compressed bytes as evidence.
 
 Purchase safety: before approving or signing a new buy, the runtime asks the backend outcome-compatibility endpoint. When the server enforces compatibility rules, known collisions stop the purchase and unknown combinations abstain; if the endpoint cannot be reached, the buy does not proceed. The public testnet currently runs with these rules switched off, so every buy logs `SEMANTICS_DISABLED` and relies on your policy limits alone. Paper fills use the same check. Sell, redemption and already-signed recovery remain available. Review [configuration and rollout requirements](../../protocol/specs/semantics.md) before upgrading a live agent.
+
+Pool size: from 0.3.0 the runtime trades every Flurbo pool, from 2 to 32 questions; a claim still covers at most 3 of them. Each cycle researches at most 6 question pairs per market and moves on to the next pairs in later cycles, so a 16-question pool (120 pairs) is covered every 20 cycles. Earlier versions refuse a pool of more than 4 questions as an unsupported deployment.
 
 Every configuration key, including research providers, `extraSources` and `evidenceRequirements`, is described in the [agent configuration reference](../../docs/AGENT_CONFIG_REFERENCE.md).
 

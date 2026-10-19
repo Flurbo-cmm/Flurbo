@@ -3,11 +3,12 @@ export type SemanticExpectation = { pool: string; rulesHash: string; eventCount:
 // A valid, claim-bound "disabled" answer proceeds without semantic assurance. A failed request, a stale
 // or malformed answer, or any other mode is SEMANTICS_UNAVAILABLE, never "disabled".
 export function semanticError(r: any, e: SemanticExpectation, now: number, requireCoverage = true): string | null {
-  if(!Number.isInteger(e.eventCount)||e.eventCount<2||e.eventCount>4)return 'SEMANTICS_UNAVAILABLE';
+  if(!Number.isInteger(e.eventCount)||e.eventCount<2||e.eventCount>32)return 'SEMANTICS_UNAVAILABLE';
   if (!r || r.schema !== 'flurbo.semantic-assessment.v1' || r.pool !== e.pool || r.rulesHash !== e.rulesHash || r.scope !== e.scope || r.mask !== e.mask || r.quantityAtoms !== e.quantityAtoms
     || !Number.isSafeInteger(r.checkedAt) || !Number.isSafeInteger(r.expiresAt) || r.checkedAt > now + 15 || r.expiresAt <= now || r.expiresAt - r.checkedAt !== 60
     || typeof r.configRevision !== 'string' || !/^[0-9a-f]{64}$/.test(r.configRevision)) return 'SEMANTICS_UNAVAILABLE';
   if (r.mode === 'disabled') return null;
+  if (e.eventCount > 4) return 'SEMANTICS_UNAVAILABLE';
   if (r.mode !== 'enforced' || !/^[0-9a-f]{64}$/.test(r.rulesDigest) || !['collision','unknown','no_declared_collision'].includes(r.status)
     || !['unknown','partial','complete'].includes(r.coverage) || !Array.isArray(r.matrix) || r.matrix.length !== 2 ** e.eventCount) return 'SEMANTICS_UNAVAILABLE';
   const events = Array.from({length:e.eventCount},(_,i)=>i).filter(i=>e.scope & (1<<i));
