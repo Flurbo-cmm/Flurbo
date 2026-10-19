@@ -51,3 +51,7 @@
   .has-selection .hybrid-web-panel { display: grid; position: fixed; inset: auto 0 0 0; z-index: 30; max-height: 72vh; overflow-y: auto; border-radius: var(--r-tile) var(--r-tile) 0 0; box-shadow: 0 -8px 24px rgba(20, 39, 29, 0.14); padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) { .web-edge line, .web-square { transition: none; } }
+.web-list-edge { grid-template-columns: minmax(0, 1fr) auto; }
+.web-list-edge > span:nth-child(2) { grid-column: 1; }
+.web-list-edge > strong { grid-column: 2; grid-row: 1 / span 2; }
+.web-list-edge.is-plain { grid-template-columns: minmax(0, 1fr); }

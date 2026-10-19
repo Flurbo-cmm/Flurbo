@@ -83,7 +83,7 @@ export default function MarketShell({ kind, question, lead, status, closes, resu
       <header className="market-head">
         <div className="market-head-main">
           <span className="chip">{kind}</span>
-          <h1 title={question}>{question}</h1>
+          <h1 title={question} className={question.length > 80 ? 'is-long' : undefined}>{question}</h1>
           {lead && <p className="lead">{lead}</p>}
           <div className="market-meta">
             {status}

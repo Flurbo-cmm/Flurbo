@@ -120,7 +120,7 @@ export default function HybridWeb({ poolId, markets, focus }: { poolId: string; 
       <section aria-label="Connections" className="hybrid-web-stage">
         {narrow ? <ol className="web-list">
           {ranked.map(edge => <li key={`${edge.a}-${edge.b}`}><button type="button" className="web-list-edge" onClick={() => setSelection({ kind: 'edge', a: edge.a, b: edge.b })}>
-            <span>{shortTitle(labelFor(edge.a), 8)}</span><span>{shortTitle(labelFor(edge.b), 8)}</span><strong className="num">{signedPercent(edge.difference)}</strong></button></li>)}
+            <span>{labelFor(edge.a)}</span><span>{labelFor(edge.b)}</span><strong className="num">{signedPercent(edge.difference)}</strong></button></li>)}
           {web.nodes.filter(node => !linkedEvents.has(node.event)).map(node => <li key={node.event}><button type="button" className="web-list-edge is-plain" onClick={() => setSelection({ kind: 'node', event: node.event })}>
             <span>{labelFor(node.event)}</span><span className="market-caption">Same pool, not priced together yet</span></button></li>)}
         </ol> : <svg viewBox={`0 0 ${WIDTH} ${SIZE}`} className="web-svg" role="group" aria-label="Map of connected questions">
