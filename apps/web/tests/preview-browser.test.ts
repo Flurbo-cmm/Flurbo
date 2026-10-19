@@ -54,8 +54,20 @@ test('invite flow denies pending accounts, approved directory filters real sched
     await page.locator('.market-card').nth(3).waitFor();
     assert.equal(await page.getByRole('button',{name:'Open',exact:true}).getAttribute('aria-pressed'),'true');
     await page.getByRole('button',{name:'All',exact:true}).click();
+    // The board fits as many cards as the window holds and pages the rest, so every question is read across pages.
+    const everyQuestion=async()=>{
+      const seen=new Set<string>(),pages=await page.locator('.pager-number').count()||1;
+      for(let n=1;n<=pages;n++){
+        if(pages>1){await page.getByRole('button',{name:`Page ${n}`,exact:true}).click();await page.locator('.pager [aria-current="page"]').filter({hasText:String(n)}).waitFor();}
+        for(const question of await page.locator('.market-card .tile-q').allInnerTexts())seen.add(question);
+      }
+      if(pages>1)await page.getByRole('button',{name:'Page 1',exact:true}).click();
+      return [...seen].sort();
+    };
+    const questions=hybridMarkets.map(m=>m.question).sort();
     for(const width of [1440,390]){
-      await page.setViewportSize({width,height:900});await page.locator('.market-card').nth(7).waitFor({timeout:10000}).catch(async(e:Error)=>{throw Error(e.message+'\n'+await page.locator('body').innerText());});
+      await page.setViewportSize({width,height:900});await page.locator('.board-count').filter({hasText:'of 8 markets'}).waitFor({state:'attached',timeout:10000});
+      assert.deepEqual(await everyQuestion(),questions);
       assert.equal(await page.getByLabel('Collection',{exact:true}).count(),0);
       await page.getByRole('button',{name:'Open',exact:true}).click();assert.equal(await page.locator('.market-card').count(),4);
       await page.getByRole('button',{name:'Settled',exact:true}).click();assert.equal(await page.locator('.market-card').count(),4);
