@@ -27,14 +27,15 @@ export function catalog(routes: string[] = ['mechanical', 'mechanical'], actors:
     title: 'Objective source test pool', closesAt: at - 3600, assertionPeriod: 3600,
     challengePeriod: 3600, reportPeriod: 86400, arbitrationPeriod: 30 * 86400,
     bondAtoms: '1000000', liquidityAtoms: '10000000',
-    events: ['first', 'second'].map((id, index) => {
+    events: routes.map((route, index) => {
+      const id = ['first', 'second', 'third'][index];
       const base = { id, question, observationEndsAt: at + 3600, rule: rule(id) };
-      if (routes[index] === 'mechanical') return { ...base, route: 'mechanical' };
+      if (route === 'mechanical') return { ...base, route: 'mechanical' };
       const ruleURI = `https://flurbopm.singu.online/api/hybrid/rules/0x${settlementRuleHash(base.rule)}`;
       return { ...base, route: 'reality', source: { kind: 'reality-sepolia', chainId: 11155111,
         reality: SEPOLIA_REALITY, arbitrator: SEPOLIA_KLEROS, ruleURI,
-        questionId: `0x${['a', 'b'][index].repeat(64)}`, contentHash: `0x${['c', 'd'][index].repeat(64)}`,
-        questionTxHash: `0x${['e', 'f'][index].repeat(64)}`,
+        questionId: `0x${['a', 'b', '1'][index].repeat(64)}`, contentHash: `0x${['c', 'd', '2'][index].repeat(64)}`,
+        questionTxHash: `0x${['e', 'f', '3'][index].repeat(64)}`,
         questionText: realityQuestionText(question, ruleURI), minTimeout: 3600,
         minBond: '100000000000000', openingAt: at + 3600 } };
     }) });

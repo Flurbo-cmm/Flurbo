@@ -17,6 +17,51 @@ import { HUMAN_QUESTION_SCHEMA, validateHumanQuestion } from './create-hybrid-re
 
 const WAITING = new Set(['VALUE_MISSING', 'EVM_BLOCK_NOT_YET_AVAILABLE', 'EVM_NOT_FINAL', 'EXTRACTION_MISSING_FIELD']);
 const iso = seconds => new Date(seconds * 1000).toISOString();
+const FINAL_CHECK = { path: '/dates/0/games/0/status/detailedState', equals: 'Final' };
+
+export function mlbScheduleGame(url) {
+  try {
+    const parsed = new URL(url), gamePk = parsed.searchParams.get('gamePk');
+    return parsed.hostname === 'statsapi.mlb.com' && parsed.pathname === '/api/v1/schedule'
+      && /^[0-9]{5,7}$/.test(gamePk || '') ? gamePk : null;
+  } catch { return null; }
+}
+
+async function readJson(response) {
+  if (typeof response.json === 'function') return response.json();
+  const chunks = [];
+  for await (const chunk of response.body) chunks.push(Buffer.from(chunk));
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+export async function checkMlbScheduleGame({ url, gamePk, rule, request }) {
+  let body;
+  try {
+    const response = await request(url, { redirect: 'error', headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(12000) });
+    if (response.status !== 200) throw Error('status');
+    body = await readJson(response);
+  } catch { return { result: 'subject-unreadable', gamePk, game: null }; }
+  const game = (Array.isArray(body?.dates) ? body.dates : []).flatMap(d => Array.isArray(d?.games) ? d.games : [])
+    .find(g => String(g?.gamePk) === gamePk) ?? null;
+  if (!game) return { result: 'subject-missing', gamePk, game };
+  const state = String(game.status?.detailedState ?? '');
+  if (/^(Postponed|Suspended|Cancelled)/.test(state)) return { result: 'subject-postponed', gamePk, game };
+  if (!(Date.parse(game.gameDate) / 1000 + 4 * 3600 <= rule.timing.publicationCutoff))
+    return { result: 'subject-late', gamePk, game };
+  return { result: 'subject-ok', gamePk, game };
+}
+
+export const SUBJECT_CHECKS = [{ name: 'mlb-schedule-game', matches: mlbScheduleGame, check: checkMlbScheduleGame }];
+
+function subjectMessage({ result, gamePk, game }, cutoff) {
+  if (result === 'subject-missing') return `gamePk ${gamePk} is not in the MLB schedule. The question could never resolve.`;
+  if (result === 'subject-postponed')
+    return `Game ${gamePk} is ${game.status.detailedState}. Write the question for the rescheduled game or drop it.`;
+  if (result === 'subject-late')
+    return `Game ${gamePk} starts at ${game.gameDate}, less than 4 hours before the capture cutoff ${iso(cutoff)}. Move the cutoff or drop the question.`;
+  return `The MLB schedule for game ${gamePk} could not be read. Check it before preparing the market.`;
+}
 
 export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), closesAt = null, request = fetch, proofs = [] } = {}) {
   if (raw?.schema === HUMAN_QUESTION_SCHEMA) {
@@ -60,20 +105,37 @@ export async function checkRule(raw, { now = Math.floor(Date.now() / 1000), clos
       // rules are decided by the first capture inside their window, so an earlier reading is only informational:
       // check that it can still change (a count over a future window, a price, a block not yet produced).
       if (rule.vintage === 'initial' && record.publishedAt < rule.timing.scheduledAt) {
-        row.result = 'already-public'; if (report.status !== 'source-error') report.status = 'already-public';
+        row.result = 'already-public'; if (report.status === 'ok') report.status = 'already-public';
       } else row.result = rule.vintage === 'first-observed-snapshot' && now < rule.timing.scheduledAt ? 'current-reading' : 'value-available';
     } catch (error) {
       const reason = error.reason ?? 'SOURCE_ERROR';
       row.result = WAITING.has(reason) ? 'not-yet-available' : 'source-error';
       row.reason = reason;
-      if (row.result === 'source-error') report.status = 'source-error';
+      if (row.result === 'source-error' && report.status !== 'invalid') report.status = 'source-error';
     }
     report.sources.push(row);
+  }
+  for (const row of report.sources) {
+    if (rule.source.adapter === 'proof-http.v1') break;
+    for (const subject of SUBJECT_CHECKS) {
+      const gamePk = subject.matches(row.url);
+      if (!gamePk) continue;
+      const found = await subject.check({ url: row.url, gamePk, rule, request });
+      row.subject = { result: found.result, gamePk, gameDate: found.game?.gameDate ?? null,
+        detailedState: found.game?.status?.detailedState ?? null };
+      if (found.result !== 'subject-ok' && report.status !== 'invalid') {
+        report.status = 'invalid';
+        report.message = subjectMessage(found, rule.timing.publicationCutoff);
+      }
+      if (!(rule.source.reader.checks || []).some(c => c.path?.endsWith('/status/detailedState') && c.equals === FINAL_CHECK.equals))
+        report.warnings = [`Add a check ${JSON.stringify(FINAL_CHECK)} so a game that is not final reads as missing, not as a result.`];
+    }
   }
   report.meaning = {
     ok: 'Valid. Before the window the value is not public yet, as a prediction market needs.',
     'already-public': 'The answer can already be read. Move the window or pick a period that is not published yet.',
     'source-error': 'The source could not be read or did not match the reader settings. Fix the rule before preparing a market.',
+    invalid: 'The question cannot resolve as written. Fix it before preparing a market.',
   }[report.status];
   return report;
 }

@@ -47,6 +47,16 @@ test('template refuses an unsupported arbitrator and a short title', () => {
     /Choose a title of 8 to 120 characters/);
 });
 
+test('templates default to a 7 day report period and accept 1 to 90 days', () => {
+  const base = { creator, proposer, relay, closesAt: Math.floor(Date.now() / 1000) + 3 * 3600, origin };
+  assert.equal(createHybridRealityPilot(base).draft.reportPeriod, 604800);
+  assert.equal(createHybridRealityPilot({ ...base, reportPeriod: 86400 }).draft.reportPeriod, 86400);
+  assert.equal(createHybridRealityPilot({ ...base, reportPeriod: 90 * 86400 }).draft.reportPeriod, 90 * 86400);
+  assert.equal(createHybridRealityPilot(base).draft.arbitrationPeriod, 90 * 86400);
+  for (const reportPeriod of [3600, 91 * 86400, 1.5])
+    assert.throws(() => createHybridRealityPilot({ ...base, reportPeriod }), /Report period must be 1 to 90 days/);
+});
+
 test('complete draft verifies each creation receipt', async () => {
   const template = created();
   const hashes = txHashes;

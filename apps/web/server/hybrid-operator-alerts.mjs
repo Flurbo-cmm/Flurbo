@@ -4,7 +4,10 @@ import { readHybridSnapshot } from './hybrid-settlement-worker.mjs';
 
 const PREFIX = 'flurbo:hybrid-alert:v1:';
 const TTL = 90 * 86_400, ERROR_WINDOW = 6 * 3600, DAY = 86_400;
-const LOW = { answerer: 2n * 10n ** 15n, keeper: 3n * 10n ** 16n };
+const LOW = { answerer: 2n * 10n ** 15n, keeper: 3n * 10n ** 16n, relay: 3n * 10n ** 17n, proposer: 10n ** 17n };
+const CHAIN = { answerer: 'Sepolia', keeper: 'Sepolia', relay: 'Monad', proposer: 'Monad' };
+const UNIT = { Sepolia: 'Sepolia ETH', Monad: 'MON' };
+const DELIVERY_WEI = 13n * 10n ** 15n;
 const label = ['Waiting', 'No', 'Yes', 'Void'];
 const utc = seconds => new Date(seconds * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const eth = wei => (Number(wei) / 1e18).toFixed(4);
@@ -26,6 +29,14 @@ function voteInstruction(r) {
   return `Find your vote IDs: node apps/web/scripts/inspect-kleros-dispute.mjs ${r.questionId} <juror address>\nThen run the printed castVoteCommand with choice 2 (Yes), 1 (No) or 0 (Void).`;
 }
 
+const humanWaiting = (item, r) => !item.rule && BigInt(r.bondWei || 0) === 0n && !r.finalized && !r.pendingArbitration
+  && r.sourceNow >= r.opensAt;
+
+export function humanQuestionsWaiting(record, state) {
+  const events = record.prepared.draft.events;
+  return state.events.flatMap((event, index) => event.reality && humanWaiting(events[index], event.reality) ? [index] : []);
+}
+
 export function hybridAlertsFor(record, state, origin) {
   const pool = record.pool.toLowerCase(), draft = record.prepared.draft, alerts = [];
   const add = (id, subject, text, action = false) => alerts.push({ id, subject, text, action });
@@ -34,6 +45,10 @@ export function hybridAlertsFor(record, state, origin) {
     const head = `Question ${index + 1} of ${draft.title}:\n"${item.question}"\n`;
     const r = event.reality;
     if (r) {
+      if (humanWaiting(item, r))
+        add(`human:${pool}:${index}`, `Answer needed: question ${index + 1} of ${draft.title}`,
+          `${head}This question has no automatic reader. Its answer window opened at ${utc(r.opensAt)}. Post the first answer from the Timeline tab with a bond of at least ${eth(item.source.minBond)} Sepolia ETH. If nobody answers by ${utc(item.observationEndsAt + draft.reportPeriod)}, it settles Void, and payouts for the whole pool wait until then.
+${url}`, true);
       if (BigInt(r.bondWei || 0) > 0n)
         add(`answered:${pool}:${index}`, `Reality answer posted: ${r.answerLabel || 'unknown'}`,
           `${head}Answer posted on Reality.eth: ${r.answerLabel || 'unknown'}. It can be challenged until ${utc(r.finalizesAt)}.\n${url}`);
@@ -67,10 +82,20 @@ export function hybridAlertsFor(record, state, origin) {
   return alerts;
 }
 
-export async function walletBalances(source, pools) {
-  const record = pools.find(pool => pool.keeper || pool.answerer) || {};
-  const read = async address => address ? BigInt(await source.getBalance({ address })) : null;
-  return { keeper: await read(record.keeper), answerer: await read(record.answerer) };
+export async function walletBalances(source, pools, market = null) {
+  const record = pools.find(pool => pool.keeper || pool.answerer) || {}, prepared = pools[0]?.prepared || {};
+  const read = async (client, address) => client && address
+    ? { address, wei: BigInt(await client.getBalance({ address })) } : null;
+  return { keeper: await read(source, record.keeper), answerer: await read(source, record.answerer),
+    relay: await read(market, prepared.relay), proposer: await read(market, prepared.proposer) };
+}
+
+function balanceText(name, address, wei) {
+  if (name === 'relay')
+    return `The relay wallet ${address} holds ${eth(wei)} MON on Monad testnet, below ${eth(LOW.relay)}. Monad charges the full gas limit, so one reportReality costs about 0.013 MON and this balance covers about ${wei / DELIVERY_WEI} deliveries. Fund it so final answers keep reaching the pools.`;
+  if (name === 'proposer')
+    return `The proposer wallet ${address} holds ${eth(wei)} MON on Monad testnet, below ${eth(LOW.proposer)}. Fund it so mechanical answers can be proposed.`;
+  return `The ${name} wallet ${address} holds ${eth(wei)} ${UNIT[CHAIN[name]]}, below ${eth(LOW[name])}. Fund it so answers and court steps keep running.`;
 }
 
 export function hybridOperatorAlerts({ pools, readPool, command, deliver, from, to, origin, workers = () => ({}),
@@ -79,6 +104,7 @@ export function hybridOperatorAlerts({ pools, readPool, command, deliver, from, 
     || typeof deliver !== 'function' || !Array.isArray(to) || !to.length || !from || !origin?.startsWith('https://'))
     throw Error('Hybrid alert configuration incomplete');
   let timer = null, running = false, cycles = 0, lastResult = null, lastError = null, lastFinishedAt = null, sentTotal = 0;
+  const waiting = new Map();
   const sentKey = id => `${PREFIX}sent:${id}`;
 
   async function operational(t) {
@@ -91,10 +117,10 @@ export function hybridOperatorAlerts({ pools, readPool, command, deliver, from, 
         text: `${name} reported an error:\n${message}\nCheck ${origin}/healthz.`, action: true });
     }
     const wallets = await balances();
-    for (const [name, wei] of Object.entries(wallets || {})) {
-      if (typeof wei !== 'bigint' || !LOW[name] || wei >= LOW[name]) continue;
-      alerts.push({ id: `lowbalance:${name}:${Math.floor(t / DAY)}`, subject: `Low Sepolia balance: ${name}`,
-        text: `The ${name} wallet holds ${eth(wei)} Sepolia ETH, below ${eth(LOW[name])}. Fund it so answers and court steps keep running.`, action: true });
+    for (const [name, wallet] of Object.entries(wallets || {})) {
+      if (!wallet || typeof wallet.wei !== 'bigint' || !LOW[name] || wallet.wei >= LOW[name]) continue;
+      alerts.push({ id: `lowbalance:${name}:${Math.floor(t / DAY)}`, subject: `Low ${CHAIN[name]} balance: ${name}`,
+        text: balanceText(name, wallet.address, wallet.wei), action: true });
     }
     return alerts;
   }
@@ -106,7 +132,9 @@ export function hybridOperatorAlerts({ pools, readPool, command, deliver, from, 
       const t = now(), fresh = [];
       let baselined = 0;
       for (const record of pools) {
-        const alerts = hybridAlertsFor(record, await readPool(record), origin);
+        const state = await readPool(record);
+        waiting.set(record.id, humanQuestionsWaiting(record, state));
+        const alerts = hybridAlertsFor(record, state, origin);
         const baseline = `${PREFIX}baseline:${record.pool.toLowerCase()}`;
         if (await command('GET', baseline) === null) {
           for (const alert of alerts) await command('SET', sentKey(alert.id), String(t), 'NX', 'EX', TTL);
@@ -142,6 +170,7 @@ export function hybridOperatorAlerts({ pools, readPool, command, deliver, from, 
     start() { if (!timer) { timer = setInterval(() => { void tick(); }, intervalMs); timer.unref(); void tick(); } },
     stop() { if (timer) clearInterval(timer); timer = null; },
     status() { return { enabled: Boolean(timer), running, cycles, pools: pools.length, emails: sentTotal,
-      lastResult, lastError, lastFinishedAt }; },
+      lastResult, lastError, lastFinishedAt,
+      waitingForHumanAnswer: Object.fromEntries([...waiting].filter(([, list]) => list.length)) }; },
   };
 }

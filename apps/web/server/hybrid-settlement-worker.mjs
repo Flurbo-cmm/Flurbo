@@ -43,19 +43,40 @@ export function hybridRealityOutcome(answer) {
   const value = BigInt(answer);
   return value === 0n ? 1 : value === 1n ? 2 : 3;
 }
-const publicErrors = new Set(['Hybrid settlement transaction reverted', 'Hybrid settlement transaction hash invalid',
-  'Hybrid proposer needs test AUSD bond', 'Hybrid Reality RPC chain mismatch', 'Hybrid Reality evidence URI mismatch',
-  'Hybrid market RPC chain mismatch', 'Hybrid pool differs from verified catalog',
-  'Hybrid event differs from verified catalog', 'Hybrid case count mismatch',
-  'Automatic answer observation conflict', 'Invalid automatic answer transaction record',
-  'Sepolia answer transaction reverted; manual review required',
-  'Confirmed Sepolia answer has no bond; manual review required',
-  'Sepolia answer transaction missing; manual review required', 'Reality answer bond mismatch',
-  'Sepolia answer signer needs ETH for bond and gas',
-  'Sepolia answer submission uncertain; inspect the signer before retrying',
-  'Reality answer is malformed', 'Reality credit withdrawal reverted']);
-const safeError = error => publicErrors.has(error?.message) ? error.message
-  : 'Hybrid settlement source or transaction request failed';
+const PUBLIC_ERRORS = new Map([
+  ['Hybrid settlement transaction reverted', 'TX_REVERTED'],
+  ['Hybrid settlement transaction hash invalid', 'TX_HASH_INVALID'],
+  ['Hybrid proposer needs test AUSD bond', 'PROPOSER_BOND_LOW'],
+  ['Hybrid Reality RPC chain mismatch', 'SEPOLIA_RPC_WRONG_CHAIN'],
+  ['Hybrid Reality evidence URI mismatch', 'EVIDENCE_URI_MISMATCH'],
+  ['Hybrid market RPC chain mismatch', 'MONAD_RPC_WRONG_CHAIN'],
+  ['Hybrid pool differs from verified catalog', 'POOL_MISMATCH'],
+  ['Hybrid event differs from verified catalog', 'EVENT_MISMATCH'],
+  ['Hybrid case count mismatch', 'CASE_COUNT_MISMATCH'],
+  ['Automatic answer observation conflict', 'OBSERVATION_CONFLICT'],
+  ['Invalid automatic answer transaction record', 'ANSWER_RECORD_INVALID'],
+  ['Sepolia answer transaction reverted; manual review required', 'ANSWER_REVERTED'],
+  ['Confirmed Sepolia answer has no bond; manual review required', 'ANSWER_NO_BOND'],
+  ['Sepolia answer transaction missing; manual review required', 'ANSWER_TX_MISSING'],
+  ['Reality answer bond mismatch', 'ANSWER_BOND_MISMATCH'],
+  ['Sepolia answer signer needs ETH for bond and gas', 'ANSWERER_ETH_LOW'],
+  ['Sepolia answer submission uncertain; inspect the signer before retrying', 'ANSWER_SUBMISSION_UNCERTAIN'],
+  ['Reality answer is malformed', 'REALITY_ANSWER_MALFORMED'],
+  ['Reality credit withdrawal reverted', 'WITHDRAW_REVERTED'],
+  ['Hybrid relay wallet needs MON for gas', 'RELAY_GAS_LOW'],
+  ['Hybrid proposer wallet needs MON for gas', 'PROPOSER_GAS_LOW'],
+  ['Hybrid settlement submission uncertain; inspect the wallet before retrying', 'SUBMISSION_UNCERTAIN']]);
+export function publicHybridError(error, stage) {
+  const code = PUBLIC_ERRORS.get(error?.message);
+  return code ? { code, message: error.message }
+    : { code: `${stage.toUpperCase()}_FAILED`, message: 'Hybrid settlement source or transaction request failed' };
+}
+const REJECTED = new Set(['InsufficientFundsError', 'EstimateGasExecutionError', 'IntrinsicGasTooHighError',
+  'IntrinsicGasTooLowError', 'NonceTooLowError', 'NonceTooHighError', 'FeeCapTooLowError', 'ExecutionRevertedError']);
+function rejection(error) {
+  for (let e = error, depth = 0; e && depth < 8; e = e.cause, depth++) if (REJECTED.has(e.name)) return e.name;
+  return null;
+}
 const key = (pool, action, event) => `flurbo:hybrid-settlement:v1:${pool.toLowerCase()}:${action}:${event}`;
 
 export function hybridSettlementCatalog(value) {
@@ -295,12 +316,20 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
   }
   const answererClient = answerer ? answererWallet || createWalletClient({ account: answerer, chain: sepolia,
     transport: http(sourceRpcUrl, { timeout: 20_000 }) }) : null;
-  const answers = new Map(), errors = new Map(), sweeps = new Map();
+  const answers = new Map(), eventErrors = new Map(), sweeps = new Map();
   const proposerClient = proposerWallet || createWalletClient({ account: proposer, chain: monad,
     transport: http(marketRpcUrl, { timeout: 20_000 }) });
   const relayClient = relayWallet || createWalletClient({ account: relay, chain: monad,
     transport: http(marketRpcUrl, { timeout: 20_000 }) });
   let timer = null, running = false, cycles = 0, lastError = null, lastFinishedAt = null;
+
+  const gasError = account => Error(same(account.address, relay.address)
+    ? 'Hybrid relay wallet needs MON for gas' : 'Hybrid proposer wallet needs MON for gas');
+  async function requireGas(account, tx) {
+    const [gas, price, balance] = await Promise.all([market.estimateContractGas(tx), market.getGasPrice(),
+      market.getBalance({ address: account.address })]);
+    if (balance < gas * price * 12n / 10n) throw gasError(account);
+  }
 
   async function send(record, action, event, wallet, account, target, abi, functionName, args) {
     const journal = key(record.pool, action, event);
@@ -317,40 +346,50 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     }
     const tx = { account, chain: monad, address: getAddress(target), abi, functionName, args };
     await market.simulateContract(tx);
+    await requireGas(account, tx);
     if (await command('SET', journal, 'preparing', 'EX', 900, 'NX') !== 'OK') return 'pending';
-    const hash = same(account.address, relay.address)
-      ? await relaySend(() => wallet.writeContract(tx)) : await wallet.writeContract(tx);
+    let hash;
+    try {
+      hash = same(account.address, relay.address) ? await relaySend(() => wallet.writeContract(tx)) : await wallet.writeContract(tx);
+    } catch (error) {
+      const rejected = rejection(error);
+      if (!rejected) throw Error('Hybrid settlement submission uncertain; inspect the wallet before retrying', { cause: error });
+      await command('DEL', journal);
+      throw rejected === 'InsufficientFundsError' ? gasError(account) : error;
+    }
     if (!hash32(hash)) throw Error('Hybrid settlement transaction hash invalid');
     await command('SET', journal, hash, 'EX', 86400);
     return 'submitted';
   }
 
-  async function collect(record, snapshot) {
+  async function collect(record, snapshot, fail) {
     for (let event = 0; event < snapshot.states.length; event++) {
-      const item = record.prepared.draft.events[event];
-      if ((item.route !== 'mechanical' && !item.rule) || Number(snapshot.states[event].phase) !== 0) continue;
-      const rule = item.rule, at = now(), ruleHash = settlementRuleHash(rule);
-      const retained = at >= rule.timing.scheduledAt && at <= rule.timing.publicationCutoff
-        && rule.vintage === 'first-observed-snapshot'
-        && (await captureStore.list(ruleHash)).some(capture => {
-          try { parseSettlementCapture(rule, capture, at); return true; } catch { return false; }
-        });
-      const step = hybridCaptureStep(rule, at, retained);
-      if (step === 'proof-pending') {
-        await captureStore.recordAttempt(ruleHash, { at, ok: false, issues: ['PROOF_CAPTURE_PENDING'] });
-        continue;
-      }
-      if (step !== 'fetch') continue;
-      const issues = [];
-      for (const url of rule.source.urls) {
-        try {
-          const capture = await retrieveSettlementCapture(rule, url, { request, now });
-          parseSettlementCapture(rule, capture, now());
-          await captureStore.put(ruleHash, capture);
-        } catch (error) { issues.push(/^[A-Z0-9_]{1,96}$/.test(error?.reason || '')
-          ? error.reason : 'SOURCE_CAPTURE_FAILED'); }
-      }
-      await captureStore.recordAttempt(ruleHash, { at: now(), ok: !issues.length, issues: [...new Set(issues)] });
+      try {
+        const item = record.prepared.draft.events[event];
+        if ((item.route !== 'mechanical' && !item.rule) || Number(snapshot.states[event].phase) !== 0) continue;
+        const rule = item.rule, at = now(), ruleHash = settlementRuleHash(rule);
+        const retained = at >= rule.timing.scheduledAt && at <= rule.timing.publicationCutoff
+          && rule.vintage === 'first-observed-snapshot'
+          && (await captureStore.list(ruleHash)).some(capture => {
+            try { parseSettlementCapture(rule, capture, at); return true; } catch { return false; }
+          });
+        const step = hybridCaptureStep(rule, at, retained);
+        if (step === 'proof-pending') {
+          await captureStore.recordAttempt(ruleHash, { at, ok: false, issues: ['PROOF_CAPTURE_PENDING'] });
+          continue;
+        }
+        if (step !== 'fetch') continue;
+        const issues = [];
+        for (const url of rule.source.urls) {
+          try {
+            const capture = await retrieveSettlementCapture(rule, url, { request, now });
+            parseSettlementCapture(rule, capture, now());
+            await captureStore.put(ruleHash, capture);
+          } catch (error) { issues.push(/^[A-Z0-9_]{1,96}$/.test(error?.reason || '')
+            ? error.reason : 'SOURCE_CAPTURE_FAILED'); }
+        }
+        await captureStore.recordAttempt(ruleHash, { at: now(), ok: !issues.length, issues: [...new Set(issues)] });
+      } catch (error) { fail(event, 'capture', error); }
     }
   }
 
@@ -506,44 +545,70 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     return 'submitted';
   }
 
+  const STAGE = { reality: 'report', propose: 'propose', finalize: 'finalize', deliver: 'deliver' };
+  const line = (id, { event, stage, code, message }) =>
+    `${id}${event === null ? '' : ` event ${event}`} ${stage} ${code}: ${message}`;
+  const ordered = failures => [...failures].sort(([a], [b]) => a === 'pool' ? -1 : b === 'pool' ? 1 : Number(a) - Number(b));
+
+  function remember(id, failures) {
+    const before = eventErrors.get(id) || new Map(), after = new Map();
+    for (const [slot, failure] of ordered(failures)) {
+      const old = before.get(slot);
+      const kept = old && old.stage === failure.stage && old.code === failure.code;
+      after.set(slot, { ...failure, since: kept ? old.since : new Date().toISOString() });
+      if (!kept || old.message !== failure.message) console.error(`Hybrid settlement ${line(id, failure)}`);
+    }
+    if (after.size) eventErrors.set(id, after); else eventErrors.delete(id);
+  }
+
   async function tick() {
     if (running) return;
     running = true; cycles++;
     try {
       for (const record of pools) {
+        const failures = new Map();
+        const fail = (event, stage, error) => failures.set(event === null ? 'pool' : String(event),
+          { event, stage, ...publicHybridError(error, stage) });
         try {
           const snapshot = await readHybridSnapshot(record, market);
           if (!snapshot.delivered && !snapshot.resolved) {
-            await collect(record, snapshot);
+            await collect(record, snapshot, fail);
+            let monadSent = false;
             for (const action of nextHybridActions(snapshot)) {
-              const item = action.event === undefined ? null : record.prepared.draft.events[action.event];
-              if (action.kind === 'reality' && item.rule) await answer(record, action.event);
-              const result = action.kind === 'propose' ? await propose(record, action.event)
-                : action.kind === 'reality' ? await reportReality(record, action.event)
-                  : await send(record, action.kind, action.event ?? 'all', relayClient, relay,
-                    record.resolver, resolverAbi, action.kind, action.event === undefined ? [] : [action.event]);
-              if (result === 'submitted' || result === 'pending') break;
+              const event = action.event ?? null, item = event === null ? null : record.prepared.draft.events[event];
+              let stage = action.kind === 'reality' && item.rule ? 'answer' : STAGE[action.kind];
+              try {
+                if (action.kind === 'reality' && item.rule) await answer(record, event);
+                if (monadSent) continue;
+                stage = STAGE[action.kind];
+                const result = action.kind === 'propose' ? await propose(record, event)
+                  : action.kind === 'reality' ? await reportReality(record, event)
+                    : await send(record, action.kind, event ?? 'all', relayClient, relay, record.resolver, resolverAbi,
+                      action.kind, event === null ? [] : [event]);
+                if (result === 'submitted') monadSent = true;
+              } catch (error) { fail(event, stage, error); }
             }
           }
           if (isLsPrepared(record.prepared) && snapshot.now >= record.prepared.draft.closesAt) {
-            const surplus = await market.readContract({ address: getAddress(record.pool), abi: poolAbi, functionName: 'surplus' });
-            sweeps.set(record.id, surplus < minSweepAtoms ? 'idle' : await send(record, 'sweep',
-              snapshot.resolved ? 'settled' : 'closed', relayClient, relay, record.pool, poolAbi, 'withdrawSurplus', []));
+            try {
+              const surplus = await market.readContract({ address: getAddress(record.pool), abi: poolAbi, functionName: 'surplus' });
+              sweeps.set(record.id, surplus < minSweepAtoms ? 'idle' : await send(record, 'sweep',
+                snapshot.resolved ? 'settled' : 'closed', relayClient, relay, record.pool, poolAbi, 'withdrawSurplus', []));
+            } catch (error) { fail(null, 'sweep', error); }
           }
-          errors.delete(record.id);
-        } catch (error) {
-          const message = safeError(error);
-          if (errors.get(record.id) !== message) console.error(`Hybrid settlement ${record.id}: ${message}`);
-          errors.set(record.id, message);
-        }
+        } catch (error) { fail(null, 'snapshot', error); }
+        remember(record.id, failures);
       }
       if (answerer) {
-        try { await withdrawRealityCredit(); errors.delete('answerer-withdraw'); }
-        catch (error) { errors.set('answerer-withdraw', safeError(error)); }
+        const failures = new Map();
+        try { await withdrawRealityCredit(); }
+        catch (error) { failures.set('pool', { event: null, stage: 'withdraw', ...publicHybridError(error, 'withdraw') }); }
+        remember('answerer', failures);
       }
-      lastError = [...errors].map(([id, message]) => `${id}: ${message}`).join('; ') || null;
+      lastError = [...pools.map(record => record.id), 'answerer'].filter(id => eventErrors.has(id))
+        .flatMap(id => [...eventErrors.get(id).values()].map(failure => line(id, failure))).join('; ') || null;
     } catch (error) {
-      lastError = safeError(error);
+      lastError = publicHybridError(error, 'worker').message;
       console.error(lastError);
     } finally { running = false; lastFinishedAt = new Date().toISOString(); }
   }
@@ -553,6 +618,8 @@ export function hybridSettlementWorker({ pools, market, source, command, archive
     stop() { if (timer) clearInterval(timer); timer = null; },
     status() { return { enabled: Boolean(timer), running, cycles, pools: pools.length,
       proposer: proposer.address, relay: relay.address, answerer: answerer?.address ?? null,
-      answers: Object.fromEntries(answers), sweeps: Object.fromEntries(sweeps), lastError, lastFinishedAt }; },
+      answers: Object.fromEntries(answers), sweeps: Object.fromEntries(sweeps), lastError, lastFinishedAt,
+      events: Object.fromEntries([...eventErrors].map(([id, failures]) => [id, Object.fromEntries(
+        [...failures].map(([slot, { stage, code, since }]) => [slot, { stage, code, since }]))])) }; },
   };
 }
