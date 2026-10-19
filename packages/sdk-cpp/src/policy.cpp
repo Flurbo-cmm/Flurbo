@@ -126,13 +126,23 @@ i128 worst_case_loss(const PolicyInput& in) {
   }
   add(in.candidate.claim, in.candidate.quantity_atoms);
   cost += in.candidate.limit_atoms;
+  std::set<unsigned> touched;
+  for (const auto& [k, q] : positions)
+    if (q > 0)
+      for (unsigned e : scope_events(k.first)) touched.insert(e);
+  std::vector<unsigned> events(touched.begin(), touched.end());
   std::optional<i128> floor;
-  for (unsigned state = 0; state < (1u << in.market.event_count); ++state) {
-    i128 payout = 0;
-    for (const auto& [k, q] : positions)
-      if (q > 0 && pays_in(k.first, k.second, state)) payout += q;
-    if (!floor || payout < *floor) floor = payout;
-  }
+  if (events.size() > 16) floor = 0;
+  else
+    for (unsigned local = 0; local < (1u << events.size()); ++local) {
+      unsigned state = 0;
+      for (size_t i = 0; i < events.size(); ++i)
+        if ((local >> i) & 1u) state |= 1u << events[i];
+      i128 payout = 0;
+      for (const auto& [k, q] : positions)
+        if (q > 0 && pays_in(k.first, k.second, state)) payout += q;
+      if (!floor || payout < *floor) floor = payout;
+    }
   return cost - floor.value_or(0);
 }
 

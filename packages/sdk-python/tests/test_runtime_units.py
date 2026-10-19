@@ -21,7 +21,9 @@ from flurbo_sdk.runtime.cli import main
 from flurbo_sdk.runtime.headless import RuntimeApiError, RuntimeClient
 from flurbo_sdk.runtime.journal import FileJournal
 from flurbo_sdk.runtime.research import AnthropicMessages, FixtureForecaster, FixtureRetriever, HttpRetriever, OpenAICompatible, ProviderError, Researcher, extract_text
-from flurbo_sdk.runtime.runner import default_config, listed_events_match, parse_config
+from flurbo_sdk.policy import worst_case_loss
+from flurbo_sdk.protocol import parse_deployment
+from flurbo_sdk.runtime.runner import default_config, listed_events_match, pairs_for_cycle, parse_config
 from flurbo_sdk.runtime.signer import LocalKeySigner, signer_from_env
 
 TOKEN = "fla1_0123456789abcdef_" + "A" * 43
@@ -243,3 +245,43 @@ class MarketDetailTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WidePools(unittest.TestCase):
+    def test_parse_deployment_accepts_2_to_32_events(self):
+        base = {"schema": "flurbo.agent-deployment.v1", "interface": "flurbo.pilot-pool.v1", "namespace": NS, "chainId": 10143,
+                "pool": "0x" + "22" * 20, "resolver": "0x" + "33" * 20, "collateral": {"address": "0xa9012a055bd4e0edff8ce09f960291c09d5322dc", "decimals": 6},
+                "codeHashes": {"pool": "0x" + "44" * 32, "resolver": "0x" + "55" * 32}, "rulesHash": "0x" + "66" * 32, "closesAt": 1_800_000_000,
+                "eventCount": 16, "limits": {"maxQuantityAtoms": "100000000", "maxLimitAtoms": "100000000", "slippageBps": [10, 50, 100], "maxDeadlineSeconds": 300}}
+        self.assertEqual(parse_deployment(base)["eventCount"], 16)
+        self.assertEqual(parse_deployment({**base, "eventCount": 32})["eventCount"], 32)
+        for count in (33, 1, True):
+            with self.assertRaises(FlurboError):
+                parse_deployment({**base, "eventCount": count})
+
+    def test_worst_case_loss_wide_pool(self):
+        ns = "practice-" + "22" * 20
+
+        def bought(i, scope, mask, quantity, cost):
+            return {"id": i, "action": "buy", "namespace": ns, "claim": {"scope": scope, "mask": mask}, "quantityAtoms": quantity,
+                    "limitAtoms": cost, "costAtoms": cost, "status": "confirmed", "plannedAt": 1}
+
+        def inp(journal, claim):
+            return {"market": {"namespace": ns, "pool": "0x" + "22" * 20, "eventCount": 32}, "journal": journal,
+                    "candidate": {"claim": claim, "quantityAtoms": "1000000", "limitAtoms": "600000"}}
+        journal = [bought("a", 1, "2", "1000000", "500000"), bought("b", 2 ** 15, "2", "2000000", "900000"), bought("c", 2 ** 31, "1", "3000000", "1200000")]
+        self.assertEqual(worst_case_loss(inp(journal, {"scope": 2 ** 31, "mask": "2"})), 2_200_000)
+        spread = [bought(f"e{i}", 2 ** i, "2", "1000000", "100000") for i in range(17)]
+        self.assertEqual(worst_case_loss(inp(spread, {"scope": 1, "mask": "2"})), 2_300_000)
+
+    def test_pairs_for_cycle(self):
+        all4 = [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)]
+        self.assertEqual(pairs_for_cycle(4, 0), (all4, 0))
+        self.assertEqual(pairs_for_cycle(4, 5), (all4, 0))
+        self.assertEqual(pairs_for_cycle(16, 0), ([(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6)], 6))
+        self.assertEqual(pairs_for_cycle(16, 117), ([(13, 14), (13, 15), (14, 15), (0, 1), (0, 2), (0, 3)], 3))
+        seen, cursor = [], 0
+        for _ in range(20):
+            pairs, cursor = pairs_for_cycle(16, cursor)
+            seen += pairs
+        self.assertEqual(sorted(seen), [(a, b) for a in range(16) for b in range(a + 1, 16)])

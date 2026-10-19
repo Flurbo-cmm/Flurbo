@@ -14,6 +14,16 @@ namespace flurbo {
 
 using json::Value;
 
+std::pair<std::vector<std::pair<size_t, size_t>>, size_t> pairs_for_cycle(size_t event_count, size_t cursor, size_t limit) {
+  std::vector<std::pair<size_t, size_t>> pairs, out;
+  for (size_t a = 0; a < event_count; ++a)
+    for (size_t b = a + 1; b < event_count; ++b) pairs.push_back({a, b});
+  if (pairs.size() <= limit) return {pairs, 0};
+  size_t start = cursor % pairs.size();
+  for (size_t i = 0; i < limit; ++i) out.push_back(pairs[(start + i) % pairs.size()]);
+  return {out, (start + limit) % pairs.size()};
+}
+
 bool listed_events_match(const Value& listed, size_t event_count) {
   if (!listed.is_array() || listed.size() != event_count) return false;
   for (size_t i = 0; i < event_count; ++i) {
@@ -405,11 +415,12 @@ void AgentRunner::market_cycle(const Deployment& d) {
       } catch (const Error&) {
       }
   if (!listed_events_match((*detail)["events"], d.event_count) || events.size() != d.event_count) return shared_->log("market_detail_mismatch", ns);
-  for (size_t a = 0; a < events.size(); ++a)
-    for (size_t b = a + 1; b < events.size(); ++b) {
-      if (blocked_by() || stop_requested()) return;
-      decide_pair(d, *detail, events, a, b, market, head);
-    }
+  auto [pairs, next] = pairs_for_cycle(events.size(), pair_cursor_[d.namespace_]);
+  pair_cursor_[d.namespace_] = next;
+  for (const auto& [a, b] : pairs) {
+    if (blocked_by() || stop_requested()) return;
+    decide_pair(d, *detail, events, a, b, market, head);
+  }
 }
 
 static Value with(const Value& base, std::initializer_list<std::pair<const char*, Value>> extra) {

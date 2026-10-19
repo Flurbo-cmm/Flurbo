@@ -9,11 +9,12 @@ import { claimAnalytics } from './claim-analytics.mjs';
 import { isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
 import { depthRateWad } from '../shared/ls-lmsr.mjs';
 
-// Hybrid pools with two to four questions, served to agents and SDKs as protocol v1 pools under the namespace
+// Hybrid pools with two to thirty-two questions, served to agents and SDKs as protocol v1 pools under the namespace
 // practice-<pool address without 0x>. The manifest is synthetic: it keeps the legacy schema and status names the
 // browser review and the agent code check, and is built only from the verified catalog and the chain anchor.
 export const AGENT_MIN_QUESTIONS = 2;
-export const AGENT_MAX_QUESTIONS = 4;
+export const AGENT_MAX_QUESTIONS = 32;
+export const ANALYTICS_MAX_QUESTIONS = 4;
 export const agentNamespace = pool => `practice-${pool.toLowerCase().slice(2)}`;
 
 const address = value => {
@@ -214,7 +215,7 @@ export async function hybridAgentPools({ catalog, rpc, indexes=new Map(), readAn
       const service=hybridPoolService({manifest,rpc,now,snapshotReuseMs}), index=indexes.get(pool), namespace=agentNamespace(pool);
       if(index?.history)service.index=index.history;
       if(index?.payouts)service.payouts=index.payouts;
-      if(analytics){service.analytics=pairAnalytics({service,rpc});service.claimAnalytics=claimAnalytics({service,rpc});}
+      if(analytics&&record.prepared.draft.events.length<=ANALYTICS_MAX_QUESTIONS){service.analytics=pairAnalytics({service,rpc});service.claimAnalytics=claimAnalytics({service,rpc});}
       services.set(namespace,service);
       collections.push({namespace,label:record.prepared.draft.title,pool,closesAt:record.prepared.draft.closesAt});
       return true;

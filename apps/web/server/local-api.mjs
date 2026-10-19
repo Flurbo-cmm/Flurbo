@@ -31,7 +31,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   // Operator addresses of every catalog pool, plus FLURBO_AGENT_RESERVED_WALLETS, can never be agent wallets.
   const reservedWallets=new Set((process.env.FLURBO_AGENT_RESERVED_WALLETS||'').split(',').map(x=>x.trim().toLowerCase()).filter(x=>/^0x[0-9a-f]{40}$/.test(x)));
   for(const a of agentPools?.reservedAddresses??[])reservedWallets.add(a.toLowerCase());
-  // Hybrid pools with two to four questions, served to agents as practice-<pool address without 0x>.
+  // Hybrid pools with two to thirty-two questions, served to agents as practice-<pool address without 0x>.
   const agentServices=agentPools?.services??new Map();
   const labelOf=namespace=>agentPools?.collections?.find(c=>c.namespace===namespace)?.label??namespace;
   const previewAllows=previewAccess||applications?async account=>{

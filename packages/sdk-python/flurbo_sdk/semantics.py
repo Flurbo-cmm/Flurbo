@@ -4,7 +4,7 @@ import re
 
 def semantic_error(r, deployment, claim, quantity, now):
     try:
-        if type(deployment['eventCount']) is not int or not 2 <= deployment['eventCount'] <= 4:
+        if type(deployment['eventCount']) is not int or not 2 <= deployment['eventCount'] <= 32:
             return 'SEMANTICS_UNAVAILABLE'
         if (r['schema'] != 'flurbo.semantic-assessment.v1' or r['pool'] != deployment['pool'] or r['rulesHash'] != deployment['rulesHash']
                 or r['scope'] != claim['scope'] or r['mask'] != str(claim['mask']) or r['quantityAtoms'] != str(quantity)
@@ -14,6 +14,8 @@ def semantic_error(r, deployment, claim, quantity, now):
         # A valid, claim-bound "disabled" answer proceeds without semantic assurance; anything else that is not "enforced" is unavailable.
         if r['mode'] == 'disabled':
             return None
+        if deployment['eventCount'] > 4:
+            return 'SEMANTICS_UNAVAILABLE'
         if (r['mode'] != 'enforced' or type(r['rulesDigest']) is not str
                 or not re.fullmatch('[0-9a-f]{64}', r['rulesDigest']) or r['status'] not in ('collision', 'unknown', 'no_declared_collision')
                 or r['coverage'] not in ('unknown', 'partial', 'complete') or len(r['matrix']) != 2 ** deployment['eventCount']):

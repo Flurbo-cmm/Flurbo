@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <thread>
 
 #include "check.hpp"
@@ -536,6 +538,72 @@ TEST(market_detail_must_list_exactly_the_deployed_events) {
   for (int64_t i = 0; i < 5000; ++i) many.push(ev(i));
   CHECK(!listed_events_match(many, 4));
   CHECK(!listed_events_match(Value(), 2));
+}
+
+TEST(deployment_accepts_2_to_32_events) {
+  auto deployment = [](int64_t events) {
+    return json::parse(R"({"schema":"flurbo.agent-deployment.v1","interface":"flurbo.pilot-pool.v1","namespace":"practice-2222222222222222222222222222222222222222",
+      "chainId":10143,"pool":"0x2222222222222222222222222222222222222222","resolver":"0x3333333333333333333333333333333333333333",
+      "collateral":{"address":"0xa9012a055bd4e0edff8ce09f960291c09d5322dc","decimals":6},
+      "codeHashes":{"pool":"0x4444444444444444444444444444444444444444444444444444444444444444","resolver":"0x5555555555555555555555555555555555555555555555555555555555555555"},
+      "rulesHash":"0x6666666666666666666666666666666666666666666666666666666666666666","closesAt":1800000000,"eventCount":)" + std::to_string(events) +
+      R"(,"limits":{"maxQuantityAtoms":"100000000","maxLimitAtoms":"100000000","slippageBps":[10,50,100],"maxDeadlineSeconds":300}})");
+  };
+  CHECK_EQ(parse_deployment(deployment(16)).event_count, 16u);
+  CHECK_EQ(parse_deployment(deployment(32)).event_count, 32u);
+  CHECK_THROWS(parse_deployment(deployment(33)));
+  CHECK_THROWS(parse_deployment(deployment(1)));
+}
+
+TEST(worst_case_loss_wide_pool) {
+  std::ifstream file("../../protocol/fixtures/policy.json", std::ios::binary);
+  std::stringstream text;
+  text << file.rdbuf();
+  Value base = json::parse(text.str())["cases"].as_array()[0]["input"];
+  auto bought = [](const std::string& id, int64_t scope, const std::string& mask, const std::string& quantity, const std::string& cost) {
+    return json::parse(R"({"id":")" + id + R"(","action":"buy","namespace":")" + NS + R"(","claim":{"scope":)" + std::to_string(scope) + R"(,"mask":")" + mask +
+                       R"("},"quantityAtoms":")" + quantity + R"(","limitAtoms":")" + cost + R"(","costAtoms":")" + cost + R"(","status":"confirmed","plannedAt":1})");
+  };
+  auto input = [&](const Value& journal, int64_t scope) {
+    Value v = base;
+    v.get_or_add("market").set("namespace", NS);
+    v.get_or_add("market").set("eventCount", Value(int64_t{32}));
+    v.set("journal", journal);
+    Value& c = v.get_or_add("candidate");
+    c.set("namespace", NS);
+    c.set("claim", json::parse(R"({"scope":)" + std::to_string(scope) + R"(,"mask":"2"})"));
+    c.set("quantityAtoms", std::string("1000000"));
+    c.set("limitAtoms", std::string("600000"));
+    return PolicyInput::from_json(v);
+  };
+  Value journal = Value::array();
+  journal.push(bought("a", 1, "2", "1000000", "500000"));
+  journal.push(bought("b", int64_t{1} << 15, "2", "2000000", "900000"));
+  journal.push(bought("c", int64_t{1} << 31, "1", "3000000", "1200000"));
+  CHECK(worst_case_loss(input(journal, int64_t{1} << 31)) == 2'200'000);
+  Value spread = Value::array();
+  for (int e = 0; e < 17; ++e) spread.push(bought("e" + std::to_string(e), int64_t{1} << e, "2", "1000000", "100000"));
+  CHECK(worst_case_loss(input(spread, 1)) == 2'300'000);
+}
+
+TEST(pairs_for_cycle_rotates_through_every_pair) {
+  using Pairs = std::vector<std::pair<size_t, size_t>>;
+  Pairs all4{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}};
+  CHECK(pairs_for_cycle(4, 0) == std::make_pair(all4, size_t{0}));
+  CHECK(pairs_for_cycle(4, 5) == std::make_pair(all4, size_t{0}));
+  CHECK(pairs_for_cycle(16, 0) == std::make_pair(Pairs{{0, 1}, {0, 2}, {0, 3}, {0, 4}, {0, 5}, {0, 6}}, size_t{6}));
+  CHECK(pairs_for_cycle(16, 117) == std::make_pair(Pairs{{13, 14}, {13, 15}, {14, 15}, {0, 1}, {0, 2}, {0, 3}}, size_t{3}));
+  Pairs seen, expected;
+  size_t cursor = 0;
+  for (int i = 0; i < 20; ++i) {
+    auto [pairs, next] = pairs_for_cycle(16, cursor);
+    seen.insert(seen.end(), pairs.begin(), pairs.end());
+    cursor = next;
+  }
+  std::sort(seen.begin(), seen.end());
+  for (size_t a = 0; a < 16; ++a)
+    for (size_t b = a + 1; b < 16; ++b) expected.push_back({a, b});
+  CHECK(seen == expected);
 }
 
 int main(int argc, char** argv) {

@@ -307,7 +307,7 @@ HttpResponse http_request(const HttpRequest& req) {
   }
   bool default_port = (u->scheme == "https" && u->port == "443") || (u->scheme == "http" && u->port == "80");
   std::string host = (u->host.find(':') != std::string::npos ? "[" + u->host + "]" : u->host) + (default_port ? "" : ":" + u->port);
-  std::string head = req.method + " " + u->path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\nUser-Agent: flurbo-sdk-cpp/0.2.0\r\n";
+  std::string head = req.method + " " + u->path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\nUser-Agent: flurbo-sdk-cpp/0.3.0\r\n";
   for (const auto& [k, v] : req.headers) head += k + ": " + v + "\r\n";
   if (!req.body.empty() || req.method == "POST") head += "Content-Length: " + std::to_string(req.body.size()) + "\r\n";
   c.send_all(head + "\r\n" + req.body);

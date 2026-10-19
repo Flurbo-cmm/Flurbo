@@ -220,7 +220,7 @@ class Executor:
             stop = False
             try:
                 r = self.client.execution(e["hash"]) if e["report"]["status"] == "accepted" else self.client.report_execution(
-                    {"namespace": e["namespace"], "hash": e["hash"], "intent": _report_intent(e), "decisionId": e["decisionId"], "nonce": e["nonce"], "sdk": {"language": "python", "version": "0.2.0"}})
+                    {"namespace": e["namespace"], "hash": e["hash"], "intent": _report_intent(e), "decisionId": e["decisionId"], "nonce": e["nonce"], "sdk": {"language": "python", "version": "0.3.0"}})
                 status = {"status": "accepted", "flurboStatus": (r or {}).get("status")}
             except RuntimeApiError as err:
                 status = {"status": "rejected" if err.api_code == "HASH_CONFLICT" else "pending", "flurboStatus": err.api_code}

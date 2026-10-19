@@ -352,3 +352,18 @@ test('heartbeats are shown at once but written to Redis only on a visible change
   // Another server instance (or a restart) sees the stored stop.
   assert.equal((await s.call(alice,'GET',`/api/agents/${agent.id}`)).body.runtime.connection.state,'stopped');
 });
+
+test('a 16 question pool is served to runtimes without analytics',async()=>{
+  const s=setup({count:16}),ns=s.f.namespace;
+  const agent=await runtimeAgent(s,alice,'Wide agent',[ns]),{token}=await credential(s,agent.id);
+  const deployments=(await rt(s,token,'GET','deployments')).body.deployments;
+  assert.equal(deployments.find((d:any)=>d.namespace===ns).eventCount,16);
+  const market=(await rt(s,token,'GET','markets/'+ns)).body;
+  assert.equal(market.events.length,16);
+  const quote=(await rt(s,token,'POST','markets/'+ns+'/quote',{side:'buy',scope:32768,mask:'2',quantityAtoms:'1000000'})).body;
+  assert.equal(quote.status,'ok',JSON.stringify(quote));
+  const pair=await rt(s,token,'POST','markets/'+ns+'/pair-analytics',{a:0,b:15});
+  assert.equal(pair.status,503);assert.equal(pair.body.code,'UNAVAILABLE');
+  const semantics=await rt(s,token,'POST','markets/'+ns+'/validate-trade',{scope:32768,mask:'2',quantityAtoms:'1000000'});
+  assert.equal(semantics.status,200,JSON.stringify(semantics.body));assert.equal(semantics.body.mode,'disabled');
+});

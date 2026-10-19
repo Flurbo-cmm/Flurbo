@@ -10,7 +10,7 @@ const schemas = {
     properties: { schema: { const: 'flurbo.agent-deployment.v1' }, interface: { const: 'flurbo.pilot-pool.v1' }, namespace: { type: 'string', pattern: '^(pilot|practice-[0-9a-f]{40})$' },
       chainId: { const: 10143 }, pool: addr, resolver: addr,
       collateral: { type: 'object', required: ['address', 'decimals'], properties: { address: { const: '0xa9012a055bd4e0edff8ce09f960291c09d5322dc' }, decimals: { const: 6 } } },
-      codeHashes: { type: 'object', required: ['pool', 'resolver'], properties: { pool: hash, resolver: hash } }, rulesHash: hash, closesAt: { type: 'integer' }, eventCount: { enum: [2, 3, 4] },
+      codeHashes: { type: 'object', required: ['pool', 'resolver'], properties: { pool: hash, resolver: hash } }, rulesHash: hash, closesAt: { type: 'integer' }, eventCount: { type: 'integer', minimum: 2, maximum: 32 },
       limits: { type: 'object', required: ['maxQuantityAtoms', 'maxLimitAtoms', 'slippageBps', 'maxDeadlineSeconds'],
         properties: { maxQuantityAtoms: { const: '100000000' }, maxLimitAtoms: { const: '100000000' }, slippageBps: { const: [10, 50, 100] }, maxDeadlineSeconds: { const: 300 } } } } },
   'market.v1.json': { title: 'flurbo.agent-market.v1', type: 'object',

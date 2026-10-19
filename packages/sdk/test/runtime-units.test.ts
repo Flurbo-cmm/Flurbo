@@ -10,8 +10,9 @@ import { runtimeClient, RuntimeApiError } from '../src/node/headless.ts';
 import { FileJournal } from '../src/node/journal.ts';
 import { localKeySigner, signerFromEnv } from '../src/node/signer.ts';
 import { main } from '../src/node/cli.ts';
-import { parseConfig, defaultConfig, listedEventsMatch } from '../src/node/runner.ts';
+import { parseConfig, defaultConfig, listedEventsMatch, pairsForCycle, MAX_PAIRS_PER_CYCLE } from '../src/node/runner.ts';
 import { MODEL_SCHEMA } from '../src/research.ts';
+import { parseDeployment, DEPLOYMENT_INTERFACE, COLLATERAL } from '../src/protocol.ts';
 import { evidenceFixture } from './evidence-fixture.ts';
 
 const TOKEN = 'fla1_0123456789abcdef_' + 'A'.repeat(43);
@@ -158,4 +159,28 @@ test('a market detail must list exactly the deployed events', () => {
   assert.equal(listedEventsMatch([ev(0), ev('1')], 2), false);
   assert.equal(listedEventsMatch(Array.from({ length: 5000 }, (_, i) => ev(i)), 4), false);
   assert.equal(listedEventsMatch(undefined, 2), false);
+});
+
+test('parseDeployment accepts 2 to 32 events', () => {
+  const base = { schema: 'flurbo.agent-deployment.v1', interface: DEPLOYMENT_INTERFACE, namespace: NS, chainId: 10143,
+    pool: '0x' + '22'.repeat(20), resolver: '0x' + '33'.repeat(20), collateral: { address: COLLATERAL, decimals: 6 },
+    codeHashes: { pool: '0x' + '44'.repeat(32), resolver: '0x' + '55'.repeat(32) }, rulesHash: '0x' + '66'.repeat(32),
+    closesAt: 1_800_000_000, eventCount: 16,
+    limits: { maxQuantityAtoms: '100000000', maxLimitAtoms: '100000000', slippageBps: [10, 50, 100], maxDeadlineSeconds: 300 } };
+  assert.equal(parseDeployment(base).eventCount, 16);
+  assert.equal(parseDeployment({ ...base, eventCount: 32 }).eventCount, 32);
+  for (const eventCount of [33, 1, 2.5]) assert.throws(() => parseDeployment({ ...base, eventCount }), (e: any) => e.code === 'invalid_response');
+});
+
+test('pairsForCycle researches at most six pairs per market and rotates through every pair', () => {
+  assert.equal(MAX_PAIRS_PER_CYCLE, 6);
+  const all4 = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+  assert.deepEqual(pairsForCycle(4, 0), { pairs: all4, next: 0 });
+  assert.deepEqual(pairsForCycle(4, 5), { pairs: all4, next: 0 });
+  assert.deepEqual(pairsForCycle(16, 0), { pairs: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6]], next: 6 });
+  assert.deepEqual(pairsForCycle(16, 117), { pairs: [[13, 14], [13, 15], [14, 15], [0, 1], [0, 2], [0, 3]], next: 3 });
+  const seen: string[] = [];
+  let cursor = 0;
+  for (let i = 0; i < 20; i++) { const { pairs, next } = pairsForCycle(16, cursor); seen.push(...pairs.map(p => p.join(':'))); cursor = next; }
+  assert.equal(seen.length, 120); assert.equal(new Set(seen).size, 120);
 });

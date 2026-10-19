@@ -1,6 +1,6 @@
 {
   "name": "@flurbo/sdk",
-  "version": "0.2.0-beta.0",
+  "version": "0.3.0-beta.0",
   "private": true,
   "description": "Flurbo agent SDK and reference runtime: protocol-conformant market reads, claims, research interfaces, strategy, policy, signing, journaled execution and recovery. Monad testnet only.",
   "type": "module",

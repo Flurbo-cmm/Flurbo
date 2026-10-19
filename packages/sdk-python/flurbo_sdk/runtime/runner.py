@@ -24,7 +24,7 @@ from .research import AnthropicMessages, FixtureForecaster, HttpRetriever, OpenA
 from .rpc import json_rpc
 from .signer import signer_from_env
 
-SDK_VERSION = "0.2.0"
+SDK_VERSION = "0.3.0"
 
 DEFAULT_CONFIG = {
     "schema": "flurbo.agent-config.v1",
@@ -76,6 +76,18 @@ def parse_config(c: dict) -> dict:
         if len({row["event"] for row in rows}) != len(rows):
             bad("duplicate event evidence requirement.")
     return c
+
+
+MAX_PAIRS_PER_CYCLE = 6
+
+
+def pairs_for_cycle(event_count: int, cursor: int, limit: int = MAX_PAIRS_PER_CYCLE) -> tuple[list[tuple[int, int]], int]:
+    """The question pairs to research this cycle: all of them for a small pool, else `limit` pairs from the cursor, wrapping."""
+    pairs = [(a, b) for a in range(event_count) for b in range(a + 1, event_count)]
+    if len(pairs) <= limit:
+        return pairs, 0
+    start = cursor % len(pairs)
+    return [pairs[(start + i) % len(pairs)] for i in range(limit)], (start + limit) % len(pairs)
 
 
 def listed_events_match(listed, event_count: int) -> bool:
@@ -155,6 +167,7 @@ class AgentRunner:
         self.strategy = strategy or JointEdgeStrategy(config["strategy"])
         self.flurbo, self.read_at, self.blocked_by, self.last_cycle_at, self.last_error = None, None, None, None, None
         self.verified: set[str] = set()
+        self.pair_cursor: dict[str, int] = {}
         self.executor = Executor(self.chain, self.signer, self.journal, self.client, self._policy_now, self._live_allowed, self.now,
                                  config["schedule"]["waitSeconds"], 1.0, self.log, self._stop) if self.signer else None
 
@@ -262,76 +275,76 @@ class AgentRunner:
             self.log("too_close_to_close", {"namespace": d["namespace"]})
             return
         events = [{"index": e["index"], "question": e["question"], "yesRule": e["yesRule"], "noRule": e["noRule"], "observationEndsAt": e["observationEndsAt"]} for e in detail["events"]]
-        for a in range(len(events)):
-            for b in range(a + 1, len(events)):
-                if self.blocked_by or self.stop_file.exists():
-                    return
-                pair = sorted([events[a], events[b]], key=lambda event: event["index"])
-                indices = tuple(event["index"] for event in pair)
-                decision_id = f"d-{uuid.uuid4()}"
-                sources = [{"event": e["index"], "url": e["source"]["referenceUrl"]} for e in detail["events"] if e["index"] in indices and (e.get("source") or {}).get("referenceUrl")]
-                sources += [s for s in self.config["research"]["retriever"].get("extraSources", {}).get(d["namespace"], []) if s["event"] in indices]
-                base = {"schema": "flurbo.agent-runtime-decision.v1", "decisionId": decision_id, "namespace": d["namespace"], "createdAt": self.now()}
-                requirements = self.config["research"].get("evidenceRequirements", {}).get(d["namespace"], [])
-                found = self.researcher.research(d["pool"], detail.get("title", ""), d["eventCount"], pair, sources,
-                                                 [r for r in requirements if r["event"] in indices])
-                provenance = found.get("provenance") or {"kind": "custom", "name": "unconfigured"}
-                if provenance["kind"] not in ("model", "fixture", "custom"):
-                    provenance = {"kind": "custom", "name": provenance["name"]}
-                if found["status"] == "abstain":
-                    self.log("research_abstained", {"namespace": d["namespace"], "events": list(indices), "reason": found["reason"]})
-                    self._report_decision({**base, "outcome": "abstain", "reasons": [found["reason"]], "provenance": provenance, "summary": found["detail"][:600]})
-                    continue
+        pairs, self.pair_cursor[d["namespace"]] = pairs_for_cycle(len(events), self.pair_cursor.get(d["namespace"], 0))
+        for a, b in pairs:
+            if self.blocked_by or self.stop_file.exists():
+                return
+            pair = sorted([events[a], events[b]], key=lambda event: event["index"])
+            indices = tuple(event["index"] for event in pair)
+            decision_id = f"d-{uuid.uuid4()}"
+            sources = [{"event": e["index"], "url": e["source"]["referenceUrl"]} for e in detail["events"] if e["index"] in indices and (e.get("source") or {}).get("referenceUrl")]
+            sources += [s for s in self.config["research"]["retriever"].get("extraSources", {}).get(d["namespace"], []) if s["event"] in indices]
+            base = {"schema": "flurbo.agent-runtime-decision.v1", "decisionId": decision_id, "namespace": d["namespace"], "createdAt": self.now()}
+            requirements = self.config["research"].get("evidenceRequirements", {}).get(d["namespace"], [])
+            found = self.researcher.research(d["pool"], detail.get("title", ""), d["eventCount"], pair, sources,
+                                             [r for r in requirements if r["event"] in indices])
+            provenance = found.get("provenance") or {"kind": "custom", "name": "unconfigured"}
+            if provenance["kind"] not in ("model", "fixture", "custom"):
+                provenance = {"kind": "custom", "name": provenance["name"]}
+            if found["status"] == "abstain":
+                self.log("research_abstained", {"namespace": d["namespace"], "events": list(indices), "reason": found["reason"]})
+                self._report_decision({**base, "outcome": "abstain", "reasons": [found["reason"]], "provenance": provenance, "summary": found["detail"][:600]})
+                continue
 
-                def quote(claims, quantity):
-                    out = {}
-                    for scope, mask in claims:
-                        amount = self.chain.quote(d["pool"], "buy", scope, mask, quantity, head)
-                        if amount is not None and 0 < amount <= quantity:
-                            out[claim_key(10143, d["pool"], scope, mask)] = {"amountAtoms": amount, "expiresAt": head["timestamp"] + 60, "blockHash": head["hash"]}
-                    return out
-                forecast = {"events": found["output"]["events"], "statesPpm": found["output"]["statesPpm"], "freshEvidence": found["freshEvidence"]}
-                decision = self.strategy.decide({"market": market, "forecast": forecast, "now": self.now(), "quote": quote})
-                if decision["outcome"] == "abstain" or not decision.get("proposal"):
-                    self.log("strategy_abstained", {"namespace": d["namespace"], "events": list(indices), "reasons": decision["reasons"]})
-                    self._report_decision({**base, "outcome": "abstain", "reasons": decision["reasons"] or ["strategy_abstained"], "provenance": provenance, "forecast": found["forecast"],
-                                           "summary": decision["explanation"][:600]})
+            def quote(claims, quantity):
+                out = {}
+                for scope, mask in claims:
+                    amount = self.chain.quote(d["pool"], "buy", scope, mask, quantity, head)
+                    if amount is not None and 0 < amount <= quantity:
+                        out[claim_key(10143, d["pool"], scope, mask)] = {"amountAtoms": amount, "expiresAt": head["timestamp"] + 60, "blockHash": head["hash"]}
+                return out
+            forecast = {"events": found["output"]["events"], "statesPpm": found["output"]["statesPpm"], "freshEvidence": found["freshEvidence"]}
+            decision = self.strategy.decide({"market": market, "forecast": forecast, "now": self.now(), "quote": quote})
+            if decision["outcome"] == "abstain" or not decision.get("proposal"):
+                self.log("strategy_abstained", {"namespace": d["namespace"], "events": list(indices), "reasons": decision["reasons"]})
+                self._report_decision({**base, "outcome": "abstain", "reasons": decision["reasons"] or ["strategy_abstained"], "provenance": provenance, "forecast": found["forecast"],
+                                       "summary": decision["explanation"][:600]})
+                continue
+            p = decision["proposal"]
+            if p["slippageBps"] not in (10, 50, 100):
+                raise FlurboError("invalid_input", "The strategy chose an unsupported slippage.")
+            candidate = {"claim": {"scope": p["scope"], "mask": str(p["mask"])}, "quantityAtoms": str(p["quantityAtoms"]), "quoteAtoms": str(p["quoteAtoms"]),
+                         "slippageBps": p["slippageBps"], "edgeAtoms": None if p.get("edgeAtoms") is None else str(p["edgeAtoms"]), "edgeBps": p.get("edgeBps"), "quoteBlock": str(head["number"])}
+            if self.config["mode"] == "paper":
+                from ..semantics import semantic_error, semantics_disabled
+                reason = 'SEMANTICS_UNAVAILABLE'
+                try:
+                    assessment = self.client.validate_trade(d['namespace'], candidate['claim'], p['quantityAtoms'])
+                    reason = semantic_error(assessment, d, candidate['claim'], p['quantityAtoms'], self.now())
+                    if reason is None and semantics_disabled(assessment):
+                        self.log('SEMANTICS_DISABLED', {'namespace': d['namespace']})
+                except Exception:
+                    pass
+                if reason:
+                    self.log(reason, {'namespace': d['namespace']})
+                    self._report_decision({**base, 'outcome':'abstain', 'reasons':[reason], 'provenance':provenance, 'forecast':found['forecast'], 'candidate':candidate, 'summary':'The purchase did not pass outcome compatibility checks.'})
                     continue
-                p = decision["proposal"]
-                if p["slippageBps"] not in (10, 50, 100):
-                    raise FlurboError("invalid_input", "The strategy chose an unsupported slippage.")
-                candidate = {"claim": {"scope": p["scope"], "mask": str(p["mask"])}, "quantityAtoms": str(p["quantityAtoms"]), "quoteAtoms": str(p["quoteAtoms"]),
-                             "slippageBps": p["slippageBps"], "edgeAtoms": None if p.get("edgeAtoms") is None else str(p["edgeAtoms"]), "edgeBps": p.get("edgeBps"), "quoteBlock": str(head["number"])}
-                if self.config["mode"] == "paper":
-                    from ..semantics import semantic_error, semantics_disabled
-                    reason = 'SEMANTICS_UNAVAILABLE'
-                    try:
-                        assessment = self.client.validate_trade(d['namespace'], candidate['claim'], p['quantityAtoms'])
-                        reason = semantic_error(assessment, d, candidate['claim'], p['quantityAtoms'], self.now())
-                        if reason is None and semantics_disabled(assessment):
-                            self.log('SEMANTICS_DISABLED', {'namespace': d['namespace']})
-                    except Exception:
-                        pass
-                    if reason:
-                        self.log(reason, {'namespace': d['namespace']})
-                        self._report_decision({**base, 'outcome':'abstain', 'reasons':[reason], 'provenance':provenance, 'forecast':found['forecast'], 'candidate':candidate, 'summary':'The purchase did not pass outcome compatibility checks.'})
-                        continue
-                    r = self.paper.fill({"decisionId": decision_id, "namespace": d["namespace"], "claim": candidate["claim"], "quantityAtoms": candidate["quantityAtoms"],
-                                         "costAtoms": candidate["quoteAtoms"], "snapshotBlock": candidate["quoteBlock"], "filledAt": self.now()})
-                    self.log("paper_trade" if r["ok"] else "paper_skipped", {"namespace": d["namespace"], "claim": candidate["claim"], **({} if r["ok"] else {"reason": r["reason"]})})
-                    self._report_decision({**base, "outcome": "paper" if r["ok"] else "abstain", "reasons": [] if r["ok"] else [r["reason"]], "provenance": provenance,
-                                           "forecast": found["forecast"], "candidate": candidate, "summary": decision["explanation"][:600]})
-                    continue
-                self.refresh_policy()
-                result = self.executor.execute({"decisionId": decision_id, "deployment": d, "action": "buy", "claim": {"scope": p["scope"], "mask": int(p["mask"])},
-                                                "quantityAtoms": p["quantityAtoms"], "slippageBps": p["slippageBps"], "quoteAtoms": p["quoteAtoms"], "quoteBlock": head})
-                self.log("execution", {"namespace": d["namespace"], "status": result["status"], **({"hash": result["hash"]} if result.get("hash") else {}),
-                                       **({"violations": result["violations"]} if "violations" in result else {})})
-                rejected = result["status"] in ("rejected_by_policy", "blocked")
-                reasons = result.get("violations") or ([result["reason"]] if result["status"] == "blocked" else [])
-                self._report_decision({**base, "outcome": "rejected_by_policy" if rejected else "trade", "reasons": reasons, "provenance": provenance, "forecast": found["forecast"],
-                                       "candidate": candidate, **({"violations": result["violations"]} if "violations" in result else {}),
-                                       **({"execution": {"hash": result["hash"], "status": result["status"]}} if result.get("hash") else {}), "summary": decision["explanation"][:600]})
+                r = self.paper.fill({"decisionId": decision_id, "namespace": d["namespace"], "claim": candidate["claim"], "quantityAtoms": candidate["quantityAtoms"],
+                                     "costAtoms": candidate["quoteAtoms"], "snapshotBlock": candidate["quoteBlock"], "filledAt": self.now()})
+                self.log("paper_trade" if r["ok"] else "paper_skipped", {"namespace": d["namespace"], "claim": candidate["claim"], **({} if r["ok"] else {"reason": r["reason"]})})
+                self._report_decision({**base, "outcome": "paper" if r["ok"] else "abstain", "reasons": [] if r["ok"] else [r["reason"]], "provenance": provenance,
+                                       "forecast": found["forecast"], "candidate": candidate, "summary": decision["explanation"][:600]})
+                continue
+            self.refresh_policy()
+            result = self.executor.execute({"decisionId": decision_id, "deployment": d, "action": "buy", "claim": {"scope": p["scope"], "mask": int(p["mask"])},
+                                            "quantityAtoms": p["quantityAtoms"], "slippageBps": p["slippageBps"], "quoteAtoms": p["quoteAtoms"], "quoteBlock": head})
+            self.log("execution", {"namespace": d["namespace"], "status": result["status"], **({"hash": result["hash"]} if result.get("hash") else {}),
+                                   **({"violations": result["violations"]} if "violations" in result else {})})
+            rejected = result["status"] in ("rejected_by_policy", "blocked")
+            reasons = result.get("violations") or ([result["reason"]] if result["status"] == "blocked" else [])
+            self._report_decision({**base, "outcome": "rejected_by_policy" if rejected else "trade", "reasons": reasons, "provenance": provenance, "forecast": found["forecast"],
+                                   "candidate": candidate, **({"violations": result["violations"]} if "violations" in result else {}),
+                                   **({"execution": {"hash": result["hash"], "status": result["status"]}} if result.get("hash") else {}), "summary": decision["explanation"][:600]})
 
     def cycle(self) -> None:
         self.researcher.reset_cycle()

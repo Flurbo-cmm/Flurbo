@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <bit>
 #include <set>
 
 namespace flurbo {
@@ -203,11 +204,11 @@ bool rule_matches(const std::string& rule, const std::vector<bool>& matches) {
 
 std::vector<unsigned> validate_claim(int64_t scope, const std::string& mask, int64_t events) {
   bool mask_ok = !mask.empty() && mask.size() <= 3 && mask[0] != '0' && digits(mask);
-  if (events < 2 || events > 4 || !mask_ok) throw unsupported("Invalid claim.");
-  if (scope <= 0 || scope >= 16) throw unsupported("Invalid claim scope.");
+  if (events < 2 || events > 32 || !mask_ok) throw unsupported("Invalid claim.");
+  if (scope <= 0 || scope >= (int64_t{1} << 32)) throw unsupported("Invalid claim scope.");
   std::vector<unsigned> legs;
-  for (unsigned i = 0; i < 4; ++i)
-    if (scope & (1 << i)) legs.push_back(i);
+  for (unsigned i = 0; i < 32; ++i)
+    if (scope & (int64_t{1} << i)) legs.push_back(i);
   uint64_t m = std::stoull(mask);
   if (scope >= (int64_t{1} << events) || legs.size() > 3 || m >= (uint64_t{1} << (1u << legs.size())) - 1) throw unsupported("Unsupported claim.");
   return legs;
@@ -264,7 +265,7 @@ std::string claim_key(uint64_t chain_id, const std::string& pool, unsigned scope
 
 std::vector<unsigned> scope_events(unsigned scope) {
   std::vector<unsigned> out;
-  for (unsigned i = 0; i < 31; ++i)
+  for (unsigned i = 0; i < 32; ++i)
     if (scope & (1u << i)) out.push_back(i);
   return out;
 }
@@ -279,16 +280,21 @@ bool pays_in(unsigned scope, unsigned mask, unsigned state) {
 }
 
 std::pair<uint64_t, uint64_t> payout_fraction(unsigned scope, unsigned mask, unsigned event_count, unsigned yes_mask, unsigned void_mask) {
-  unsigned full = (1u << event_count) - 1;
+  if (event_count < 1 || event_count > 32) throw invalid("Invalid resolution.");
+  uint64_t full = (uint64_t{1} << event_count) - 1;
   if ((yes_mask & void_mask) || yes_mask > full || void_mask > full) throw invalid("Invalid resolution.");
-  unsigned known = full ^ void_mask;
+  auto events = scope_events(scope);
   uint64_t n = 0, d = 0;
-  for (unsigned state = 0; state <= full; ++state) {
-    if ((state & known) != yes_mask) continue;
+  for (unsigned local = 0; local < (1u << events.size()); ++local) {
+    bool consistent = true;
+    for (size_t i = 0; i < events.size(); ++i)
+      if (!((void_mask >> events[i]) & 1u) && ((yes_mask >> events[i]) & 1u) != ((local >> i) & 1u)) consistent = false;
+    if (!consistent) continue;
     ++d;
-    if (pays_in(scope, mask, state)) ++n;
+    if ((mask >> local) & 1u) ++n;
   }
-  return {n, d};
+  uint64_t den = uint64_t{1} << std::popcount(void_mask);
+  return {n * den / d, den};
 }
 
 static size_t position(const std::vector<unsigned>& events, unsigned e) {
@@ -503,7 +509,7 @@ Deployment parse_deployment(const json::Value& d) {
   for (const auto& h : {out.pool_code_hash, out.resolver_code_hash, out.rules_hash})
     if (!is_lower_hex(h, 64)) throw bad("hashes");
   int64_t events = d.integer("eventCount", 0);
-  if (!d["closesAt"].is_integer() || d["closesAt"].as_int() < 0 || events < 2 || events > 4) throw bad("market shape");
+  if (!d["closesAt"].is_integer() || d["closesAt"].as_int() < 0 || events < 2 || events > 32) throw bad("market shape");
   out.closes_at = static_cast<uint64_t>(d["closesAt"].as_int());
   out.event_count = static_cast<unsigned>(events);
   const auto& l = d["limits"];

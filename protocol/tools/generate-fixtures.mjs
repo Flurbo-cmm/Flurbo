@@ -56,9 +56,11 @@ function claims() {
   probe(1, '2', 2); probe(1, '3', 2, 'single event, every state'); probe(4, '1', 2, 'scope outside a two-event pool');
   probe(7, '254', 3); probe(7, '255', 3, 'pays in every state'); probe(15, '1', 4, 'four events'); probe(8, '2', 4);
   probe(3, '01', 2, 'leading zero'); probe(3, '1.0', 2, 'not an integer'); probe(3, '-1', 2, 'negative'); probe(0, '1', 2, 'empty scope');
-  probe(3, '1', 5, 'pools have two to four events');
+  probe(3, '1', 5, 'five-event pool'); probe(2 ** 31, '2', 32, 'event 31 in a thirty-two event pool');
+  probe(2 ** 31 + 2 ** 15 + 1, '254', 32, 'three events across a wide pool'); probe(3, '1', 33, 'pools have two to thirty-two events');
+  probe(3, '1', 1, 'pools have at least two events');
   const decode = [];
-  for (const [scope, events] of [[3, 2], [5, 3], [7, 3], [14, 4]]) {
+  for (const [scope, events] of [[3, 2], [5, 3], [7, 3], [14, 4], [2 ** 31 + 2 ** 15 + 1, 32]]) {
     const k = scope.toString(2).replace(/0/g, '').length;
     for (let mask = 1n; mask < (1n << BigInt(2 ** k)) - 1n; mask++) {
       const named = decodeClaim(scope, String(mask), events);
@@ -68,7 +70,8 @@ function claims() {
   const keys = [{ chainId: 10143, pool: POOL.toUpperCase().replace('0X', '0x'), scope: 3, mask: '8', key: `10143:${POOL}:3:8` }];
   const payouts = [];
   for (const [scope, mask, events, yesMask, voidMask] of [[3, '8', 2, 3, 0], [3, '8', 2, 1, 0], [3, '8', 2, 1, 2], [3, '6', 2, 0, 3], [7, '128', 3, 7, 0],
-    [7, '254', 3, 0, 1], [5, '10', 3, 1, 4], [1, '2', 2, 0, 1], [1, '2', 2, 1, 0], [14, '8', 4, 6, 8], [7, '150', 3, 2, 5]]) {
+    [7, '254', 3, 0, 1], [5, '10', 3, 1, 4], [1, '2', 2, 0, 1], [1, '2', 2, 1, 0], [14, '8', 4, 6, 8], [7, '150', 3, 2, 5],
+    [2 ** 31 + 1, '8', 32, 2 ** 31 + 1, 0], [2 ** 31, '2', 32, 0, 2 ** 31]]) {
     const f = payoutFraction({ chainId: 10143, pool: POOL, scope, mask: BigInt(mask) }, events, { yesMask, voidMask });
     payouts.push({ scope, mask, events, yesMask, voidMask, numerator: f.numerator, denominator: f.denominator,
       quantityAtoms: '2500000', payoutAtoms: (2_500_000n * f.numerator / f.denominator).toString() });

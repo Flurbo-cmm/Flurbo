@@ -81,6 +81,8 @@ std::optional<u128> gas_with_margin(u128 estimate);
 std::optional<i128> fee_wei(u128 gas, u128 max_fee_per_gas);
 // The market detail lists exactly the deployment's events, with indices 0..event_count in order.
 bool listed_events_match(const json::Value& listed, size_t event_count);
+// The question pairs to research this cycle: all of them for a small pool, else `limit` pairs from the cursor, wrapping.
+std::pair<std::vector<std::pair<size_t, size_t>>, size_t> pairs_for_cycle(size_t event_count, size_t cursor, size_t limit = 6);
 
 struct Block {
   uint64_t number = 0;
@@ -198,7 +200,7 @@ class FileJournal {
 
 // ---- execution ----
 constexpr const char* SDK_LANGUAGE = "cpp";
-constexpr const char* SDK_VERSION = "0.2.0";
+constexpr const char* SDK_VERSION = "0.3.0";
 
 // What the executor asks its runner.
 class Controls {
@@ -466,6 +468,7 @@ class AgentRunner {
   int64_t started_at_ = 0;
   std::optional<int64_t> last_cycle_at_;
   std::vector<std::string> verified_;
+  std::map<std::string, size_t> pair_cursor_;
   template <typename F>
   auto api(F f) -> std::optional<decltype(f(std::declval<RuntimeClient&>()))>;
   void accept(const json::Value& p);

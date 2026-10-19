@@ -688,3 +688,63 @@ fn default_config_names_no_market_and_init_requires_markets() {
     assert_eq!(written["policy"]["markets"], json!([NS]));
     let _ = std::fs::remove_dir_all(&d);
 }
+
+#[test]
+fn parse_deployment_accepts_2_to_32_events() {
+    use flurbo_sdk::protocol::parse_deployment;
+    let base = json!({"schema": "flurbo.agent-deployment.v1", "interface": "flurbo.pilot-pool.v1", "namespace": format!("practice-{}", "22".repeat(20)),
+        "chainId": 10143, "pool": format!("0x{}", "22".repeat(20)), "resolver": format!("0x{}", "33".repeat(20)),
+        "collateral": {"address": "0xa9012a055bd4e0edff8ce09f960291c09d5322dc", "decimals": 6},
+        "codeHashes": {"pool": format!("0x{}", "44".repeat(32)), "resolver": format!("0x{}", "55".repeat(32))}, "rulesHash": format!("0x{}", "66".repeat(32)),
+        "closesAt": 1_800_000_000u64, "eventCount": 16,
+        "limits": {"maxQuantityAtoms": "100000000", "maxLimitAtoms": "100000000", "slippageBps": [10, 50, 100], "maxDeadlineSeconds": 300}});
+    assert_eq!(parse_deployment(&base).unwrap().event_count, 16);
+    for (count, ok) in [(32, true), (33, false), (1, false)] {
+        let mut d = base.clone();
+        d["eventCount"] = json!(count);
+        assert_eq!(parse_deployment(&d).is_ok(), ok, "{count}");
+    }
+}
+
+#[test]
+fn worst_case_loss_wide_pool() {
+    use flurbo_sdk::policy::{worst_case_loss, PolicyInput};
+    let f: Value = serde_json::from_str(include_str!("../../../protocol/fixtures/policy.json")).unwrap();
+    let ns = format!("practice-{}", "22".repeat(20));
+    let bought = |id: &str, scope: u64, mask: &str, quantity: &str, cost: &str| json!({"id": id, "action": "buy", "namespace": ns, "claim": {"scope": scope, "mask": mask},
+        "quantityAtoms": quantity, "limitAtoms": cost, "costAtoms": cost, "status": "confirmed", "plannedAt": 1});
+    let input = |journal: Vec<Value>, scope: u64| {
+        let mut v = f["cases"][0]["input"].clone();
+        v["market"]["namespace"] = json!(ns);
+        v["market"]["eventCount"] = json!(32);
+        v["journal"] = json!(journal);
+        v["candidate"]["namespace"] = json!(ns);
+        v["candidate"]["claim"] = json!({"scope": scope, "mask": "2"});
+        v["candidate"]["quantityAtoms"] = json!("1000000");
+        v["candidate"]["limitAtoms"] = json!("600000");
+        serde_json::from_value::<PolicyInput>(v).unwrap()
+    };
+    let journal = vec![bought("a", 1, "2", "1000000", "500000"), bought("b", 1 << 15, "2", "2000000", "900000"), bought("c", 1 << 31, "1", "3000000", "1200000")];
+    assert_eq!(worst_case_loss(&input(journal, 1 << 31)), 2_200_000);
+    let spread: Vec<Value> = (0..17).map(|e| bought(&format!("e{e}"), 1 << e, "2", "1000000", "100000")).collect();
+    assert_eq!(worst_case_loss(&input(spread, 1)), 2_300_000);
+}
+
+#[test]
+fn pairs_for_cycle_rotates_through_every_pair() {
+    use flurbo_sdk::runtime::runner::pairs_for_cycle;
+    let all4 = vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)];
+    assert_eq!(pairs_for_cycle(4, 0, 6), (all4.clone(), 0));
+    assert_eq!(pairs_for_cycle(4, 5, 6), (all4, 0));
+    assert_eq!(pairs_for_cycle(16, 0, 6), (vec![(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6)], 6));
+    assert_eq!(pairs_for_cycle(16, 117, 6), (vec![(13, 14), (13, 15), (14, 15), (0, 1), (0, 2), (0, 3)], 3));
+    let (mut seen, mut cursor) = (Vec::new(), 0);
+    for _ in 0..20 {
+        let (pairs, next) = pairs_for_cycle(16, cursor, 6);
+        seen.extend(pairs);
+        cursor = next;
+    }
+    seen.sort();
+    let expected: Vec<(usize, usize)> = (0..16).flat_map(|a| (a + 1..16).map(move |b| (a, b))).collect();
+    assert_eq!(seen, expected);
+}

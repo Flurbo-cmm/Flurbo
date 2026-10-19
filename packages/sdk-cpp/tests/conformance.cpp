@@ -44,8 +44,9 @@ static std::string s(i128 v) { return to_string(v); }
 
 TEST(semantic_conformance) {
   auto f = fixture("semantics");
-  Deployment d; d.pool=f["deployment"].str("pool"); d.rules_hash=f["deployment"].str("rulesHash"); d.event_count=2;
+  Deployment d; d.pool=f["deployment"].str("pool"); d.rules_hash=f["deployment"].str("rulesHash");
   for (const auto& c : f["cases"].as_array()) {
+    d.event_count=c["deployment"].is_object()?static_cast<unsigned>(c["deployment"].integer("eventCount",2)):2;
     const auto& claim=c["claim"];
     CHECK_EQ(semantic_error(c["result"], d, claim.integer("scope"), std::stoul(claim.str("mask")), claim.str("quantityAtoms"), f.integer("now")), c.str("error"));
   }

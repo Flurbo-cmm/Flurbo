@@ -26,13 +26,13 @@ def rule_matches(rule: str, matches: list[bool]) -> bool:
 
 
 def claim_events(scope: int) -> list[int]:
-    if not isinstance(scope, int) or isinstance(scope, bool) or scope <= 0 or scope >= 16:
+    if not isinstance(scope, int) or isinstance(scope, bool) or scope <= 0 or scope >= 1 << 32:
         raise FlurboError("unsupported_claim", "Invalid claim scope.")
-    return [i for i in range(4) if scope & (1 << i)]
+    return [i for i in range(32) if scope & (1 << i)]
 
 
 def validate_claim(scope: int, mask: str, events: int) -> list[int]:
-    if events not in (2, 3, 4) or not isinstance(mask, str) or not _MASK.match(mask):
+    if not isinstance(events, int) or isinstance(events, bool) or not 2 <= events <= 32 or not isinstance(mask, str) or not _MASK.match(mask):
         raise FlurboError("unsupported_claim", "Invalid claim.")
     legs = claim_events(scope)
     if scope >= 2**events or len(legs) > 3 or int(mask) >= (1 << (2 ** len(legs))) - 1:
@@ -88,7 +88,7 @@ def claim_key(chain_id: int, pool: str, scope: int, mask: int | str) -> str:
 
 
 def scope_events(scope: int) -> list[int]:
-    return [i for i in range(31) if scope & (1 << i)]
+    return [i for i in range(32) if scope & (1 << i)]
 
 
 def pays_in(scope: int, mask: int, state: int) -> bool:
@@ -102,18 +102,19 @@ def pays_in(scope: int, mask: int, state: int) -> bool:
 
 def payout_fraction(scope: int, mask: int, event_count: int, yes_mask: int, void_mask: int) -> tuple[int, int]:
     """As PilotPool.payoutFraction: VOID events are averaged over both answers. VOID is not No."""
-    full = 2**event_count - 1
+    full = (1 << event_count) - 1
     if yes_mask & void_mask or yes_mask > full or void_mask > full:
         raise FlurboError("invalid_input", "Invalid resolution.")
-    known = full ^ void_mask
-    numerator = denominator = 0
-    for state in range(full + 1):
-        if (state & known) != yes_mask:
+    events = scope_events(scope)
+    local_num = local_den = 0
+    for local in range(1 << len(events)):
+        if any(not void_mask >> e & 1 and bool(yes_mask >> e & 1) != bool(local >> i & 1) for i, e in enumerate(events)):
             continue
-        denominator += 1
-        if pays_in(scope, mask, state):
-            numerator += 1
-    return numerator, denominator
+        local_den += 1
+        if mask >> local & 1:
+            local_num += 1
+    den = 1 << bin(void_mask).count("1")
+    return local_num * den // local_den, den
 
 
 def claim_probability(joint_events: list[int], states: list[int], scope: int, mask: int) -> int:

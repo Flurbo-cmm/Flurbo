@@ -49,10 +49,10 @@ pub fn rule_matches(rule: &str, matches: &[bool]) -> Result<bool> {
 }
 
 pub fn claim_events(scope: i64) -> Result<Vec<u32>> {
-    if scope <= 0 || scope >= 16 {
+    if scope <= 0 || scope >= (1i64 << 32) {
         return Err(unsupported("Invalid claim scope."));
     }
-    Ok((0..4).filter(|i| scope & (1 << i) != 0).collect())
+    Ok((0..32).filter(|i| scope & (1i64 << i) != 0).collect())
 }
 
 fn mask_text_ok(mask: &str) -> bool {
@@ -61,7 +61,7 @@ fn mask_text_ok(mask: &str) -> bool {
 }
 
 pub fn validate_claim(scope: i64, mask: &str, events: i64) -> Result<Vec<u32>> {
-    if !(2..=4).contains(&events) || !mask_text_ok(mask) {
+    if !(2..=32).contains(&events) || !mask_text_ok(mask) {
         return Err(unsupported("Invalid claim."));
     }
     let legs = claim_events(scope)?;
@@ -125,7 +125,7 @@ pub fn claim_key(chain_id: u64, pool: &str, scope: u32, mask: u32) -> String {
 }
 
 pub fn scope_events(scope: u32) -> Vec<u32> {
-    (0..31).filter(|i| scope & (1 << i) != 0).collect()
+    (0..32).filter(|i| scope & (1u32 << i) != 0).collect()
 }
 
 /// Does the claim pay in a full-pool assignment (bit i = event i is Yes)?
@@ -141,22 +141,27 @@ pub fn pays_in(scope: u32, mask: u32, state: u32) -> bool {
 
 /// As PilotPool.payoutFraction: VOID events are averaged over both answers. VOID is not No.
 pub fn payout_fraction(scope: u32, mask: u32, event_count: u32, yes_mask: u32, void_mask: u32) -> Result<(u64, u64)> {
-    let full = (1u32 << event_count) - 1;
-    if yes_mask & void_mask != 0 || yes_mask > full || void_mask > full {
+    if !(1..=32).contains(&event_count) {
         return Err(FlurboError::invalid("Invalid resolution."));
     }
-    let known = full ^ void_mask;
-    let (mut numerator, mut denominator) = (0u64, 0u64);
-    for state in 0..=full {
-        if state & known != yes_mask {
+    let full = (1u64 << event_count) - 1;
+    if yes_mask & void_mask != 0 || yes_mask as u64 > full || void_mask as u64 > full {
+        return Err(FlurboError::invalid("Invalid resolution."));
+    }
+    let events = scope_events(scope);
+    let (mut local_num, mut local_den) = (0u64, 0u64);
+    for local in 0u32..(1 << events.len()) {
+        let consistent = events.iter().enumerate().all(|(i, e)| void_mask >> e & 1 == 1 || (yes_mask >> e & 1 == 1) == (local >> i & 1 == 1));
+        if !consistent {
             continue;
         }
-        denominator += 1;
-        if pays_in(scope, mask, state) {
-            numerator += 1;
+        local_den += 1;
+        if mask >> local & 1 == 1 {
+            local_num += 1;
         }
     }
-    Ok((numerator, denominator))
+    let den = 1u64 << void_mask.count_ones();
+    Ok((local_num * den / local_den, den))
 }
 
 fn position(joint_events: &[u32], event: u32) -> usize {

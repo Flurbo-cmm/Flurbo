@@ -1,5 +1,5 @@
 import { FlurboError } from './errors.ts';
-import { paysIn } from './claims.ts';
+import { paysIn, scopeEvents } from './claims.ts';
 
 // Deterministic execution policy (protocol/specs/transactions.md). Software checks in a compliant runtime:
 // they bound what this runtime does, not what the wallet key can do.
@@ -80,8 +80,9 @@ export function evaluatePolicy(input: PolicyInput): { ok: boolean; violations: V
   return { ok: violations.length === 0, violations };
 }
 
-// Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome of its events,
-// counting only positions the journal shows the agent took (plus the candidate).
+// Agent cost basis in this pool minus the lowest total payout over every Yes/No outcome of the events its
+// positions touch, counting only positions the journal shows the agent took (plus the candidate). Above 16
+// touched events the floor is taken as 0, which overstates the loss.
 export function worstCaseLoss(input: PolicyInput): bigint {
   const { market, journal, candidate: c } = input;
   const positions = new Map<string, { scope: number; mask: bigint; quantity: bigint }>();
@@ -97,10 +98,14 @@ export function worstCaseLoss(input: PolicyInput): bigint {
     else if ((e.action === 'sell' || e.action === 'redeem') && e.status === 'confirmed') add(e.claim, -n(e.quantityAtoms));
   }
   add(c.claim, n(c.quantityAtoms)); cost += n(c.limitAtoms);
-  let floor: bigint | null = null;
-  for (let state = 0; state < 2 ** market.eventCount; state++) {
+  const live = [...positions.values()].filter(p => p.quantity > 0n);
+  const events = [...new Set(live.flatMap(p => scopeEvents(p.scope)))].sort((a, b) => a - b);
+  let floor: bigint | null = events.length > 16 ? 0n : null;
+  if (floor === null) for (let local = 0; local < 2 ** events.length; local++) {
+    let state = 0;
+    events.forEach((event, i) => { if (local & (1 << i)) state += 2 ** event; });
     let payout = 0n;
-    for (const pos of positions.values()) if (pos.quantity > 0n && paysIn({ chainId: 10143, pool: market.pool, scope: pos.scope, mask: pos.mask }, state)) payout += pos.quantity;
+    for (const pos of live) if (paysIn({ chainId: 10143, pool: market.pool, scope: pos.scope, mask: pos.mask }, state)) payout += pos.quantity;
     if (floor === null || payout < floor) floor = payout;
   }
   return cost - (floor ?? 0n);

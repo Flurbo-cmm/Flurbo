@@ -79,11 +79,9 @@
       "type": "integer"
     },
     "eventCount": {
-      "enum": [
-        2,
-        3,
-        4
-      ]
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 32
     },
     "limits": {
       "type": "object",
