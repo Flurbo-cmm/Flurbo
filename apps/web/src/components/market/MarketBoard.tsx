@@ -20,7 +20,7 @@ const SORTS: [BoardSort, string][] = [['closing', 'Closing soon'], ['name', 'A t
 const VIEWS: ['questions' | 'pools', string][] = [['questions', 'Questions'], ['pools', 'Pools']];
 const VIEW_KEY = 'flurbo.board.view';
 const readView = (): 'questions' | 'pools' => { try { return sessionStorage.getItem(VIEW_KEY) === 'pools' ? 'pools' : 'questions'; } catch { return 'questions'; } };
-const LEGEND = 'Prices are the cost of one share in test AUSD, including price impact. A correct share pays 1.000. Prices are not probabilities.';
+const LEGEND = `Prices are the cost of one share in test AUSD, including price impact. A correct share pays 1.000. Prices are not probabilities. A question nobody has traded yet costs a little over 0.500: the pool's commission lifts Yes and No together, so the pair sums to about 1.05, and buying one share moves the price.`;
 
 function PressedGroup<T extends string>({ label, options, value, onChange, disabled = false, className = '' }: { label: string; options: [T, string][]; value: T; onChange(value: T): void; disabled?: boolean; className?: string }) {
   const id = useId();

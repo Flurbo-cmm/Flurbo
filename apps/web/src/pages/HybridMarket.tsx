@@ -21,7 +21,9 @@ import { walletRejected } from '../wallet-errors';
 import { useCostBasis } from '../position-basis-client';
 import { positionKey, sellOutcome } from '../position-basis';
 import { encodeClaim } from '../../shared/claims.mjs';
-import { APPROVAL_LABEL, balanceLabel, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../ticket-copy';
+import { APPROVAL_LABEL, balanceLabel, comboHelp, comboSummary, monadTxUrl, quoteErrorMessage, quoteWaitText, ruleHelp, sellBlockedMessage,
+  tradeSummary } from '../ticket-copy';
+import { awaitingAnswer } from '../settlement-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { credentialedReader, readerName } from '../reader-names';
@@ -132,6 +134,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [combinationLink] = useState(() => new URLSearchParams(location.search).has('other'));
   const [approvalReady, setApprovalReady] = useState<string | null>(null);
   const [completed, setCompleted] = useState('');
+  const [completedHash, setCompletedHash] = useState('');
   const [tradeText, setTradeText] = useState('');
   const [comboOpen, setComboOpen] = useState(() => new URLSearchParams(location.search).has('other'));
   const pollCount = useRef(0);
@@ -144,6 +147,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   });
   const [quote, setQuote] = useState<{ key: string; value: Quote } | null>(null);
   const [quoteError, setQuoteError] = useState('');
+  const [quoteSlow, setQuoteSlow] = useState(false);
   const [combinedPosition, setCombinedPosition] = useState<PositionRead | null>(null);
   const [extra1, setExtra1] = useState(() => {
     const requested = new URLSearchParams(location.search).get('other');
@@ -217,6 +221,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const quoteKey = `${selectionKey}:${refresh}`;
   const currentQuote = quote?.key === quoteKey ? quote.value : null;
   useEffect(() => {
+    setQuoteSlow(false);
+    if (!owner || currentQuote || quoteError) return;
+    const timer = setTimeout(() => setQuoteSlow(true), 10_000);
+    return () => clearTimeout(timer);
+  }, [owner, currentQuote, quoteError]);
+  useEffect(() => {
     if (!market) return;
     const params = new URLSearchParams(location.search);
     params.set('answer', side); params.set('shares', shares);
@@ -233,6 +243,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   useEffect(() => {
     setPlan(null);
     setCompleted('');
+    setCompletedHash('');
     if (approvalReady && approvalReady !== selectionKey) setApprovalReady(null);
   }, [selectionKey]);
   useEffect(() => { pollCount.current = 0; setPollPaused(false); }, [pending?.hash]);
@@ -364,8 +375,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           const events = markets.filter(item => item.pool.toLowerCase() === tradedPool.toLowerCase()).length;
           if (pending.claim && events) rememberClaimHint(namespace, tradedPool, pending.owner, events, pending.claim);
         }
-        if (['buy', 'sell', 'redeem'].includes(pending.action) && pending.id === id)
-          setCompleted(pending.action);
+        if (['buy', 'sell', 'redeem'].includes(pending.action) && pending.id === id) {
+          setCompleted(pending.action); setCompletedHash(pending.hash);
+        }
         setNotice(pending.action === 'approve' ? 'Payment approval confirmed. Preparing the purchase.'
           : 'Transaction confirmed. Your position is being refreshed.');
       } else {
@@ -419,12 +431,14 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const step = (key: string, title: string, meta: string, index: number): Step => ({ key, title, meta,
     state: index < stage ? 'done' : index === stage ? 'current' : 'upcoming' });
   const readerLabel = snapshot?.automaticAnswer ? labels[snapshot.automaticAnswer.outcome] : null;
+  const waiting = reality && snapshot ? awaitingAnswer({ automatic: !!snapshot.ruleAdapter, opensAt: reality.opensAt, now: reality.sourceNow,
+    reportDeadline: snapshot.reportDeadline, format: date }) : null;
   const steps: Step[] = reality ? [
     step('trading', 'Trading', market ? `Closes ${date(market.closesAt)}` : '', 0),
     step('source', 'Source observed', market ? `Reader window ends ${date(market.observationEndsAt)}` : '', 1),
     step('proposal', hasRealityAnswer ? 'Answer posted' : 'Awaiting answer',
       readerLabel ? `Flurbo reader answered ${readerLabel}` : hasRealityAnswer
-        ? 'A bonded answer was posted on Reality.eth' : 'An answerer must post a Sepolia ETH bond', 2),
+        ? 'A bonded answer was posted on Reality.eth' : waiting!.meta, 2),
     step('challenge', 'Challenge window', reality.finalizesAt > 0 ? `Until ${date(reality.finalizesAt)}`
       : 'Opens when the first answer is posted', 3),
     ...(disputed ? [step('court', 'Kleros review', reality.court
@@ -500,6 +514,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     {reality?.court && <p className="market-caption">Kleros case #{reality.court.disputeId}: {reality.court.periodLabel}.
       {reality.court.periodEndsAt ? ` Ends ${date(reality.court.periodEndsAt)}.` : ''}
       {reality.court.period === 2 && reality.court.votesCast < reality.court.votesNeeded ? ' Waiting for the juror vote.' : ''}</p>}
+    {reality && waiting && !hasRealityAnswer && !reality.finalized && <p className="market-caption">{waiting.caption}</p>}
     {reality && <p className="market-caption settlement-links">
       <a className="text-link" href={reality.links.reality} target="_blank" rel="noreferrer">Reality.eth question <ArrowUpRight size={14}/></a>
       {reality.links.courtContract && <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court contract on Etherscan <ArrowUpRight size={14}/></a>}
@@ -594,10 +609,10 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }} block/>
         <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>
         <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
-        {others.length > 0 && <details className="oracle-combination" open={comboOpen || !!extra1} onToggle={event => setComboOpen(event.currentTarget.open)}><summary>Combine with another prediction</summary><ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
+        {others.length > 0 && <details className="oracle-combination" open={comboOpen || !!extra1} onToggle={event => setComboOpen(event.currentTarget.open)}><summary>{comboSummary(mode)}</summary>{comboHelp(mode) && <p className="field-help">{comboHelp(mode)}</p>}<ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
         {extra1 && <><SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/><p className="field-help">{ruleHelp(combinationRule)}</p></>}
         {owner && <div className="ticket-quote-state" aria-live="polite">
-          {!currentQuote && <p className="ticket-status" role="status">{quoteError || 'Reading the current pool quote...'}</p>}
+          {!currentQuote && <p className="ticket-status" role="status">{quoteError || quoteWaitText(quoteSlow)}</p>}
           <button type="button" className="text-link ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
         </div>}
         {currentQuote && !plan && <div className="ticket-review ticket-quote" aria-label="Current prediction quote">
@@ -624,11 +639,11 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         </div>}</>}
       <TransactionSheet phase={tradePhase} hash={tradePending?.hash}
         title={tradePending ? 'Waiting for confirmation' : tradePlan ? (tradePlan.action === 'approve' ? 'Step 1 of 2: allow this payment' : tradePlan.action === 'buy' ? 'Review your purchase' : tradePlan.action === 'sell' ? 'Review your sale' : 'Review your payout') : completed === 'buy' ? 'Purchase complete' : completed === 'sell' ? 'Sale complete' : 'Payout collected'}
-        onDismiss={tradePlan ? () => setPlan(null) : completed ? () => setCompleted('') : undefined} alert={tradePhase !== 'closed' ? errorAlert : undefined}
+        onDismiss={tradePlan ? () => setPlan(null) : completed ? () => { setCompleted(''); setCompletedHash(''); } : undefined} alert={tradePhase !== 'closed' ? errorAlert : undefined}
         steps={tradePlan?.action === 'approve' ? [{ label: 'Allow payment', current: true }, { label: `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}`, current: false }] : undefined}
         actions={tradePending ? pendingActions(tradePending)
           : tradePlan ? <><button className="btn btn-ghost" disabled={busy} onClick={() => setPlan(null)}>Cancel review</button><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{tradePlan.action === 'approve' ? 'Allow payment' : tradePlan.action === 'buy' ? `Buy ${shares} ${Number(shares) === 1 ? 'share' : 'shares'}` : tradePlan.action === 'sell' ? 'Sell shares' : 'Collect payout'}</button></>
-          : completed ? <><button className="btn btn-secondary" onClick={() => setCompleted('')}>Make another trade</button><Link href="/portfolio" className="btn btn-primary">View portfolio</Link></> : null}>
+          : completed ? <><button className="btn btn-secondary" onClick={() => { setCompleted(''); setCompletedHash(''); }}>Make another trade</button><Link href="/portfolio" className="btn btn-primary">View portfolio</Link></> : null}>
         {tradePending ? <section aria-label="Pending transaction">{pendingBody(tradePending)}</section>
           : tradePlan ? <section aria-label="Transaction review">
             <p className="review-claim">{tradePlan.reason}</p>
@@ -641,7 +656,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
             {tradePlan.expiresAt && <p className="market-caption">Review expires {date(tradePlan.expiresAt)}.</p>}
             <details><summary>Transaction details</summary><p>Network: {tradePlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</p><p>Destination: <span className="mono-break">{tradePlan.transaction.to}</span></p></details>
           </section>
-          : completed ? <section className="ticket-done"><p>Your transaction is confirmed. The position is refreshing.</p>{tradeText && <p className="review-claim">{completed === 'sell' ? 'Sold' : 'Bought'}: {tradeText}</p>}<p className="market-caption"><a className="text-link" href="/access#notices">Email me when this settles</a></p></section> : null}
+          : completed ? <section className="ticket-done"><p>Your transaction is confirmed. The position is refreshing.</p>{tradeText && <p className="review-claim">{completed === 'sell' ? 'Sold' : 'Bought'}: {tradeText}</p>}{monadTxUrl(completedHash) && <p className="market-caption"><a className="text-link" href={monadTxUrl(completedHash)!} target="_blank" rel="noreferrer">View transaction on Monadscan <ArrowUpRight size={14}/></a></p>}<p className="market-caption"><a className="text-link" href="/access#notices">Email me when this settles</a></p></section> : null}
       </TransactionSheet>
       {snapshot?.resolved && owner && <><p>Your Yes: {cash(snapshot.user?.yesShares || '0')} shares · No: {cash(snapshot.user?.noShares || '0')} shares.</p>
         {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
