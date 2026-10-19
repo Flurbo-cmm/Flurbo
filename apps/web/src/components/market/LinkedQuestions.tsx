@@ -33,7 +33,7 @@ export default function LinkedQuestions({ current, items, children }: { current:
       <div className="linked-diagram" ref={host}>
         <div className="linked-node" ref={node}><p>This question</p><span className="num">Yes <Price atoms={current.yes} fallback="no quote" /></span></div>
         <ul className="linked-list" aria-label="Linked questions in this pool">
-          {items.map((item) => <li key={item.key}><Link className="linked-row" href={item.href}><span>{item.question}</span><span className="linked-price"><span className="muted">Yes</span> <Price atoms={item.yes} fallback="Quote" /></span></Link></li>)}
+          {items.map((item) => <li key={item.key}><Link className="linked-row" href={item.href}><span>{item.question}</span><span className="linked-price"><span className="muted">Yes</span> <Price atoms={item.yes} fallback={<span title="The pool did not return a one-share quote just now">No quote</span>} /></span></Link></li>)}
         </ul>
         {lines.length > 0 && <svg className="linked-lines" aria-hidden="true">
           {lines.map((l, i) => <m.line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ ...DRAW, delay: 0.03 * i }} />)}

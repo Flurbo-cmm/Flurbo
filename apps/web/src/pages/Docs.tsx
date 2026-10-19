@@ -231,6 +231,8 @@ export default function Docs() {
           <p>A combination is quoted from the same pool as the single questions. An AND usually costs less than either answer alone because more has to go right, which does not make it better value. <a href="#pricing">How prices behave</a> shows how the two are related.</p>
           <h3>When a combination has no quote</h3>
           <p>The combinations already bought in a pool decide which new ones it can price. If a new combination would tie its questions together more closely than the pool supports, the ticket shows that a current quote is unavailable. Every single question and every combination already bought stays tradable. In a pool of two questions, every combination is always available.</p>
+          <h3>Sharing a combination</h3>
+          <p>A combined ticket can be shared as a link. The page address carries this question's answer (<code>answer</code>), the second question (<code>other</code>, <code>otherAnswer</code>), an optional third (<code>third</code>, <code>thirdAnswer</code>), the rule (<code>rule=AND</code>, <code>OR</code> or <code>EXACTLY_ONE</code>), the number of shares (<code>shares</code>) and <code>trade=sell</code> for a sale, for example <code>?other=6&amp;otherAnswer=no&amp;rule=OR</code>. Questions are numbered from 0 in pool order. Opening the link fills the ticket; nothing is traded until you review and confirm in your wallet.</p>
           <h3>Collecting a combined prediction</h3>
           <p>After settlement, open Collect a combined prediction on the market page and select the same answers and rule you bought. The Collect on market page link in <a href="#portfolio">Portfolio</a> fills these in for you.</p>
         </section>

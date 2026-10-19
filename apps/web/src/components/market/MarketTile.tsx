@@ -19,7 +19,7 @@ function MarketTile({ row, now, delta, watched, onWatch, onFocusGroup }: {
   const fresh = age !== null && age < STALE_SECONDS;
   const minutes = age === null ? 0 : Math.max(1, Math.round(age / 60));
   const price = (atoms: string | null | undefined) => <Price atoms={atoms} stale={!fresh}
-    staleLabel={atoms ? `last seen ${formatAtoms(atoms)}, ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago` : undefined} fallback="Quote" />;
+    staleLabel={atoms ? `last seen ${formatAtoms(atoms)}, ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago` : undefined} fallback={<span title="The pool did not return a one-share quote just now">No quote</span>} />;
   return (
     <article className="market-card" data-group={row.groupKey} data-key={row.key}
       onPointerEnter={() => onFocusGroup(row.groupKey)} onPointerLeave={() => onFocusGroup(null)} onFocus={() => onFocusGroup(row.groupKey)}>

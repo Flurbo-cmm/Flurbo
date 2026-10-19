@@ -30,3 +30,12 @@ export const balanceLabel = ({ owner, snapshotLoaded, cashAtoms, error }: { owne
   !owner ? 'MetaMask signs each trade and bond you review'
     : snapshotLoaded && cashAtoms !== null ? `${shareText(BigInt(cashAtoms))} test AUSD`
       : error ? 'Balance unavailable. Refresh.' : 'Reading balance...';
+
+export const comboSummary = (mode: 'buy' | 'sell') => mode === 'sell' ? 'Sell a combined position' : 'Combine with another prediction';
+export const comboHelp = (mode: 'buy' | 'sell') => mode === 'sell'
+  ? 'Pick the same questions, answers and rule as the combined position you hold.' : null;
+
+export const monadTxUrl = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash) ? `https://testnet.monadscan.com/tx/${hash}` : null;
+
+export const quoteWaitText = (slow: boolean) => slow
+  ? 'Still reading the pool quote. Monad may be slow; this retries on its own.' : 'Reading the current pool quote...';

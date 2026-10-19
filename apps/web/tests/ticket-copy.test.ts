@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { APPROVAL_LABEL, balanceLabel, quoteErrorMessage, ruleHelp, sellBlockedMessage, tradeSummary } from '../src/ticket-copy.ts';
+import { APPROVAL_LABEL, balanceLabel, comboHelp, comboSummary, monadTxUrl, quoteErrorMessage, quoteWaitText, ruleHelp, sellBlockedMessage,
+  tradeSummary } from '../src/ticket-copy.ts';
 
 test('a failed quote says whether the pool cannot price the combination', () => {
   assert.match(quoteErrorMessage(true), /cannot price this combination/i);
@@ -39,4 +40,22 @@ test('the balance line reads, fails and loads in plain words', () => {
   assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: false, cashAtoms: null, error: true }), 'Balance unavailable. Refresh.');
   assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: true, cashAtoms: '10500000', error: false }), '10.5 test AUSD');
   assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: true, cashAtoms: '0', error: true }), '0 test AUSD');
+});
+
+test('the combine panel says what a sale of a combined position needs', () => {
+  assert.equal(comboSummary('buy'), 'Combine with another prediction');
+  assert.equal(comboSummary('sell'), 'Sell a combined position');
+  assert.equal(comboHelp('buy'), null);
+  assert.equal(comboHelp('sell'), 'Pick the same questions, answers and rule as the combined position you hold.');
+});
+
+test('a completed trade links its transaction only for a full hash', () => {
+  assert.equal(monadTxUrl('0x' + 'ab'.repeat(32)), 'https://testnet.monadscan.com/tx/0x' + 'ab'.repeat(32));
+  assert.equal(monadTxUrl('0x12'), null);
+  assert.equal(monadTxUrl(''), null);
+});
+
+test('a slow quote says it is still loading and retries', () => {
+  assert.equal(quoteWaitText(false), 'Reading the current pool quote...');
+  assert.equal(quoteWaitText(true), 'Still reading the pool quote. Monad may be slow; this retries on its own.');
 });
