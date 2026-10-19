@@ -1,7 +1,7 @@
 import { Link } from 'wouter';
 import { strongestLinks } from '../../../shared/pool-web.mjs';
 import { useWeb } from '../../pool-web-client';
-import { shortTitle, signedPercent } from '../../web-layout';
+import { signedPercent } from '../../web-layout';
 
 // The Linked tab: a short read of how this question connects to the rest of its pool. The full map lives on its own page.
 export default function LinkedSummary({ marketId, pool, event, questions }: { marketId: string; pool: string; event: number; questions: string[] }) {
@@ -19,7 +19,7 @@ export default function LinkedSummary({ marketId, pool, event, questions }: { ma
         {top.length > 0 && <>
           <h3>This question moves most with</h3>
           <ul className="linked-summary-list">{top.map(link => <li key={link.other}>
-            <Link href={`/markets/hybrid/${pool}/web?focus=${link.other}`} className="linked-summary-row"><span>{shortTitle(questions[link.other] ?? `Question ${link.other + 1}`, 10)}</span>
+            <Link href={`/markets/hybrid/${pool}/web?focus=${link.other}`} className="linked-summary-row"><span>{questions[link.other] ?? `Question ${link.other + 1}`}</span>
               <span className="num">{signedPercent(link.difference)}</span></Link></li>)}</ul></>}
       </>}
     <p className="linked-thesis"><Link href={mapHref} className="btn btn-primary">Open connections</Link>

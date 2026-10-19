@@ -8,7 +8,8 @@
 .market-watch[aria-pressed="true"] svg { fill: currentColor; }
 .market-head { display: grid; gap: var(--s-5); align-items: end; padding: var(--s-2) 0 var(--s-5); border-bottom: 1px solid var(--rule); }
 .market-head-main { display: grid; gap: var(--s-3); justify-items: start; min-width: 0; }
-.market-head h1 { max-width: 26ch; font-size: var(--text-h1); line-height: 1.12; font-weight: 500; letter-spacing: -0.015em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.market-head h1 { max-width: 26ch; font-size: var(--text-h1); line-height: 1.12; font-weight: 500; letter-spacing: -0.015em; overflow-wrap: anywhere; }
+.market-head h1.is-long { max-width: 52ch; font-size: clamp(20px, 2.2vw, 28px); line-height: 1.25; letter-spacing: -0.005em; }
 .market-head .lead { font-size: 15px; max-width: 68ch; }
 .market-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--s-4); color: var(--ink-2); font-size: 13px; }
 .market-meta time { font-family: var(--font-num); color: var(--ink); }
