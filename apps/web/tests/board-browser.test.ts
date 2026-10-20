@@ -79,6 +79,7 @@ test('categories, pages, search and keys keep their state in the URL', { skip },
     await page.waitForURL(url => new URL(url).searchParams.get('page') === '2');
     assert.deepEqual(await tileLinks(page), second);
 
+    await page.waitForFunction(() => { const grid = document.querySelector('.board-grid'); const style = grid && getComputedStyle(grid); return !!style && style.opacity === '1' && style.transform === 'none'; });
     await page.locator('body').press('/');
     assert.equal(await page.getByRole('textbox', { name: 'Search markets' }).evaluate((e: HTMLInputElement) => e === document.activeElement), true);
     await page.keyboard.type('night');

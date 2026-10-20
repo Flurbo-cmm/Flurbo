@@ -55,13 +55,22 @@ test('invite flow denies pending accounts, approved directory filters real sched
     assert.equal(await page.getByRole('button',{name:'Open',exact:true}).getAttribute('aria-pressed'),'true');
     await page.getByRole('button',{name:'All',exact:true}).click();
     // The board fits as many cards as the window holds and pages the rest, so every question is read across pages.
+    // The board re-measures after a resize and animates between pages; read only once its count and pager stop changing.
+    const settle=async()=>{
+      let last='',same=0;
+      for(let i=0;i<80&&same<3;i++){
+        const now=JSON.stringify([await page.locator('.board-count').innerText().catch(()=>''),await page.locator('.pager-number').count()]);
+        same=now===last?same+1:0;last=now;await page.waitForTimeout(150);
+      }
+    };
     const everyQuestion=async()=>{
+      await settle();
       const seen=new Set<string>(),pages=await page.locator('.pager-number').count()||1;
       for(let n=1;n<=pages;n++){
-        if(pages>1){await page.getByRole('button',{name:`Page ${n}`,exact:true}).click();await page.locator('.pager [aria-current="page"]').filter({hasText:String(n)}).waitFor();}
+        if(pages>1){await page.getByRole('button',{name:`Page ${n}`,exact:true}).click();await page.locator('.pager [aria-current="page"]').filter({hasText:String(n)}).waitFor();await settle();}
         for(const question of await page.locator('.market-card .tile-q').allInnerTexts())seen.add(question);
       }
-      if(pages>1)await page.getByRole('button',{name:'Page 1',exact:true}).click();
+      if(pages>1){await settle();await page.getByRole('button',{name:'Page 1',exact:true}).click();await settle();}
       return [...seen].sort();
     };
     const questions=hybridMarkets.map(m=>m.question).sort();
