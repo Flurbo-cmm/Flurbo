@@ -24,7 +24,7 @@ One shared pool prices single questions and their combinations together, so the 
 ## Operating Context
 
 - Monad testnet preview with test AUSD and test MON only. A Sepolia leg exists for Reality.eth answers and Kleros arbitration.
-- Members sign in with a Mera passkey bound to `flurbopm.singu.online`, then link one or more MetaMask trading wallets with a signature. Every trade, approval, bond, challenge, appeal and payout is a wallet transaction the member confirms.
+- Members sign in with a Mera passkey bound to `flurbopm.singu.online` (also used from `flurbo.tech` through WebAuthn related origins), then link one or more MetaMask trading wallets with a signature. Every trade, approval, bond, challenge, appeal and payout is a wallet transaction the member confirms.
 - Markets come from registries (`config/oracle-markets.json`, `config/hybrid-markets.json`). Two market kinds share one directory: oracle pools answered on Reality.eth with Kleros arbitration and a relay to Monad; hybrid pools that route each question to a mechanical source reader or Reality.eth, with any challenge going to Kleros.
 - A shared pool pays only when every question in it is final.
 - Agents can trade on a member's behalf through the API and SDKs (TypeScript, Python, Rust, C++), in paper mode or with explicit approval for live testnet trades.

@@ -31,7 +31,7 @@ cd packages/sdk && npm ci
 node bin/flurbo-agent.ts init --config flurbo-agent.json --markets <names from the agent's Setup page>   # paper mode, no secrets
 ```
 
-On the agent page (flurbopm.singu.online/agents): register the agent, link its dedicated wallet (`flurbo-agent sign-message --file message.txt` signs the ownership message with the agent key), issue a credential, and later allow live trades. Then set secrets in the environment, never in files:
+On the agent page (flurbo.tech/agents): register the agent, link its dedicated wallet (`flurbo-agent sign-message --file message.txt` signs the ownership message with the agent key), issue a credential, and later allow live trades. Then set secrets in the environment, never in files:
 
 ```bash
 export FLURBO_AGENT_TOKEN=fla1_...            # the credential, shown once on the agent page

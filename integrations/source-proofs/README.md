@@ -29,7 +29,7 @@ Set them in the shell without echoing, for example `read -rs FLURBO_PROOF_CREDEN
 Prove a listed pool event inside its capture window, verify it locally, and upload it:
 
 ```bash
-node prove.mjs --catalog ../../config/hybrid-markets.json --pool <pool id> --event <index> --submit https://flurbopm.singu.online --watch
+node prove.mjs --catalog ../../config/hybrid-markets.json --pool <pool id> --event <index> --submit https://flurbo.tech --watch
 ```
 
 `--watch` tries again every 600 seconds until the upload returns `stored` or the window closes. Without `--submit` the proof is only made and checked.

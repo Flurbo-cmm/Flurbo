@@ -22,7 +22,10 @@ export function readerProvider(url) {
   return host === 'monad-testnet.g.alchemy.com' ? 'alchemy' : host.endsWith('.monad-testnet.quiknode.pro') ? 'quicknode' : 'public';
 }
 
-export const HOSTED_ORIGINS = new Set(['https://flurbo.singu.online', 'https://flurbopm.singu.online']);
+export const COMPANY_ORIGIN = 'https://flurbo.tech';
+export const COMPANY_LEGACY_ORIGIN = 'https://flurbopm.singu.online';
+export const COMPANY_ORIGINS = new Set([COMPANY_ORIGIN, COMPANY_LEGACY_ORIGIN]);
+export const HOSTED_ORIGINS = new Set(['https://flurbo.singu.online', ...COMPANY_ORIGINS]);
 
 export function hostedConfig(env = process.env) {
   if (!HOSTED_ORIGINS.has(env.FLURBO_ORIGIN)) throw new Error('Set FLURBO_ORIGIN to an approved HTTPS origin');
@@ -30,10 +33,16 @@ export function hostedConfig(env = process.env) {
   const rpc = new URL(env.FLURBO_ALCHEMY_TESTNET_RPC_URL || TESTNET.rpc);
   if (rpc.protocol !== 'https:' || rpc.username || rpc.password || rpc.hash || rpc.port ||
       !testnetRpcHost(rpc.hostname)) throw new Error('Unsupported public testnet RPC');
+  // Evidence, packet and rule URIs are content addressed and already recorded on chain under the old host, so they keep
+  // being minted and checked against it until FLURBO_EVIDENCE_ORIGIN says otherwise. The old host serves them directly.
+  const primary = env.FLURBO_ORIGIN === COMPANY_ORIGIN;
+  const evidenceOrigin = env.FLURBO_EVIDENCE_ORIGIN || (primary ? COMPANY_LEGACY_ORIGIN : env.FLURBO_ORIGIN);
+  if (!HOSTED_ORIGINS.has(evidenceOrigin)) throw new Error('Set FLURBO_EVIDENCE_ORIGIN to an approved HTTPS origin');
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Invalid server port');
   const testFaucet = env.FLURBO_TEST_AUSD_FAUCET?.toLowerCase() || null;
   const testingOperatorAccount = env.FLURBO_TESTING_OPERATOR_ACCOUNT?.toLowerCase();
   for (const address of [testFaucet, testingOperatorAccount]) if (address && (!/^0x[0-9a-f]{40}$/.test(address) || /^0x0{40}$/.test(address))) throw Error('Invalid faucet or testing operator address');
-  return { origin: env.FLURBO_ORIGIN, rpcUrl: rpc.href, port, testFaucet, testingOperatorAccount, previewAccess:previewAccess(env) };
+  return { origin: env.FLURBO_ORIGIN, evidenceOrigin, legacyOrigins: primary ? [COMPANY_LEGACY_ORIGIN] : [],
+    relatedOrigins: primary ? [COMPANY_ORIGIN] : [], rpcUrl: rpc.href, port, testFaucet, testingOperatorAccount, previewAccess:previewAccess(env) };
 }
