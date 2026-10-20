@@ -5,9 +5,11 @@ import { prepareHybridPilot, hybridRulesHash } from '../scripts/prepare-hybrid-p
 import { hybridMarketService } from '../server/hybrid-market-service.mjs';
 import { TEST_AUSD } from '../server/oracle-integration.mjs';
 import { runPairModel } from '../server/pair-analytics.mjs';
-import { certifiedClaim, certifiedPair } from '../server/pair-math.mjs';
+import { certifiedCells, certifiedClaim, certifiedPair, certifiedScenario } from '../server/pair-math.mjs';
 import { simulatePairPurchase } from '../server/pair-sensitivity.mjs';
+import { encodeClaim } from '../shared/claims.mjs';
 import { depthRateWad, lsAnalyticsState } from '../shared/ls-lmsr.mjs';
+import { hybridRecord } from './hybrid-catalog-fixture.ts';
 import { rustExample } from './rust-example.ts';
 
 const at = 1_800_000_000;
@@ -252,4 +254,177 @@ test('web returns schema flurbo.hybrid-web.v1 with block number and at most 32 n
 test('web fails closed when the on-chain depth differs', async () => {
   await assert.rejects(lsMarket({ depth: lsMarket().expected.depthWad + 1n }).service.web(`${pool}-0`),
     /Hybrid (connections unavailable|pool differs from verified catalog)/);
+});
+
+type Table = { scope: number; values: bigint[] };
+const chainTables = (count: number): Table[] => Array.from({ length: count - 1 }, (_, i) =>
+  ({ scope: 3 * 2 ** i, values: [0n, 0n, 0n, BigInt((i % 5 + 1) * 1_000_000)] }));
+const realModel = (input: string) => runPairModel(input, { file: rustExample('pair_analytics') });
+
+function wideMarket({ count = 16, tables = chainTables(count), commissionBps = 500 as number | null, pairModel = realModel, closed = false } = {}) {
+  const record: any = hybridRecord({ count, pool, resolver, commissionBps });
+  const catalog = { schema: 'flurbo.hybrid-catalog.v1', pools: [record] };
+  const order = Array.from({ length: count }, (_, i) => i);
+  const strings = tables.map(t => ({ scope: t.scope, values: t.values.map(String) }));
+  const lsState = commissionBps === null ? null : lsAnalyticsState({ events: count, a: 0, b: 1, initialDepthAtoms: '10000000',
+    commissionBps, order, factors: strings });
+  const state = lsState ? lsState.state : { events: count, a: 0, b: 1, liquidity: '10000000', order, factors: strings };
+  const reads: { functionName: string; blockNumber?: bigint }[] = [];
+  const values: Record<string, unknown> = { rulesHash: record.rulesHash, draftHash: record.prepared.draftHash,
+    pool, proposer: record.prepared.proposer, relay: record.prepared.relay, bond: 1000000n,
+    eventCount: BigInt(count), resolver, settlementRulesHash: record.rulesHash, collateral: TEST_AUSD, funded: true,
+    resolved: closed, delivered: closed, liquidity: 10000000n, commissionBps: commissionBps ?? 0, sponsor: record.prepared.creator,
+    depth: lsState?.depthWad ?? 0n, eliminationOrder: order, factors: tables,
+    observationEnds: BigInt(record.prepared.draft.events[0].observationEndsAt), routes: 0n, payoutFraction: [1n, 1n], holdings: 0n,
+    caseState: { phase: 0n, proposal: 0n, counter: 0n, result: 0n, challengeUntil: 0n, arbitrationUntil: 0n,
+      requestId: `0x${'0'.repeat(64)}`, sourceCaseId: `0x${'0'.repeat(64)}` } };
+  const market = {
+    getChainId: async () => 10143,
+    getBlock: async () => ({ hash: `0x${'9'.repeat(64)}`, number: 200n, timestamp: BigInt(closed ? at + 86400 : at - 7200) }),
+    readContract: async ({ address, functionName, args = [], blockNumber }: any) => {
+      reads.push({ functionName, blockNumber });
+      if (functionName === 'protocolVersion') return address.toLowerCase() === pool.toLowerCase() ? (commissionBps === null ? 3n : 5n) : 4n;
+      if (functionName === 'quoteBuy') return BigInt(args[2]) / 2n;
+      if (functionName === 'eventHashes') return record.prepared.eventHashes[Number(args[0])];
+      if (!(functionName in values)) throw Error(`Unexpected ${functionName}`);
+      return values[functionName];
+    },
+  };
+  const service = hybridMarketService({ catalog, market, source: {}, evidence: {}, origin: 'https://example.org', pairModel });
+  return { service, state, reads };
+}
+const leg = (eventIndex: number, side: 'yes' | 'no') => ({ eventIndex, side });
+
+test('analysis serves a 16-question pool and matches the certified pair', async () => {
+  const { service, state } = wideMarket();
+  for (const [a, b] of [[0, 7], [3, 4], [15, 2]]) {
+    const analysis = await service.analysis(`${pool}-${a}`, { a, b, quantity: '1000000' });
+    assert.equal(analysis.schema, 'flurbo.hybrid-analysis.v1');
+    assert.deepEqual(analysis.values, certifiedPair({ ...state, a, b }).values, `${a}-${b}`);
+    assert.equal(analysis.outcomes.length, 4);
+    assert.ok(analysis.values.a !== null && analysis.values.joint !== null);
+  }
+});
+
+test('what-if returns every question with and without up to three assumptions', async () => {
+  const { service, state } = wideMarket();
+  const result = await service.whatIf(`${pool}-0`, { given: [leg(3, 'no'), leg(0, 'yes'), leg(9, 'yes')] });
+  const certified = certifiedScenario(state, [{ event: 0, yes: true }, { event: 3, yes: false }, { event: 9, yes: true }]);
+  assert.equal(result.schema, 'flurbo.hybrid-what-if.v1');
+  assert.equal(result.pool, pool);
+  assert.equal(result.blockNumber, '200');
+  assert.equal(result.blockHash, `0x${'9'.repeat(64)}`);
+  assert.equal(result.unit, 'tenths_of_percentage_point');
+  assert.equal(result.closed, false);
+  assert.deepEqual(result.given, [leg(0, 'yes'), leg(3, 'no'), leg(9, 'yes')]);
+  assert.equal(result.givenChance, certified.values.given);
+  assert.equal(result.questions.length, 16);
+  assert.deepEqual(result.questions, certified.questions.map(q => ({ eventIndex: q.event, yes: q.yes, givenYes: q.givenYes, assumed: q.assumed })));
+  assert.equal(result.claim, null);
+  const lone = await service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] });
+  const next = lone.questions.find((q: any) => q.eventIndex === 1);
+  assert.equal(lone.questions.find((q: any) => q.eventIndex === 0).givenYes, 1000);
+  assert.ok(next.givenYes > next.yes);
+});
+
+test('what-if prices a three-question combination against independence with its outcome cells', async () => {
+  const { service, state } = wideMarket();
+  const legs = [leg(5, 'yes'), leg(0, 'yes'), leg(1, 'no')];
+  const result = await service.whatIf(`${pool}-0`, { claim: { legs, rule: 'OR' } });
+  const encoded = encodeClaim({ events: 16, rule: 'OR', legs: [{ event: 0, yes: true }, { event: 1, yes: false }, { event: 5, yes: true }] });
+  const certified = certifiedClaim(state, encoded.scope, encoded.mask);
+  assert.deepEqual(result.given, []);
+  assert.equal(result.givenChance, null);
+  assert.deepEqual(result.questions, []);
+  const claim = result.claim;
+  assert.equal(claim.scope, encoded.scope);
+  assert.equal(claim.mask, encoded.mask);
+  assert.equal(claim.rule, 'OR');
+  assert.deepEqual(claim.legs, [leg(0, 'yes'), leg(1, 'no'), leg(5, 'yes')]);
+  assert.deepEqual([claim.chance, claim.independent, claim.difference], [certified.values.market, certified.values.independent, certified.values.difference]);
+  const cells = certifiedCells(state, encoded.scope);
+  assert.equal(claim.cells.length, 8);
+  claim.cells.forEach((cell: any, i: number) => {
+    assert.equal(cell.state, i);
+    assert.equal(cell.chance, cells[i].chance);
+    assert.equal(cell.pays, Boolean(BigInt(encoded.mask) >> BigInt(i) & 1n));
+    assert.deepEqual(cell.answers, [leg(0, i & 1 ? 'yes' : 'no'), leg(1, i & 2 ? 'yes' : 'no'), leg(5, i & 4 ? 'yes' : 'no')]);
+  });
+  assert.equal(claim.priceable, true);
+  assert.deepEqual(claim.addable, []);
+  const pair = await service.whatIf(`${pool}-0`, { claim: { legs: [leg(0, 'yes'), leg(1, 'yes')] } });
+  assert.equal(pair.claim.rule, 'AND');
+  assert.equal(pair.claim.cells.length, 4);
+  assert.ok(pair.claim.addable.length > 0 && !pair.claim.addable.includes(0) && !pair.claim.addable.includes(1));
+  const single = await service.whatIf(`${pool}-0`, { claim: { legs: [leg(2, 'no')] } });
+  assert.equal(single.claim.cells.length, 2);
+  assert.equal(single.claim.rule, 'AND');
+});
+
+test('what-if marks a combination the pool cannot price and lists only questions that can still be added', async () => {
+  const tables: Table[] = [{ scope: 7, values: Array.from({ length: 8 }, (_, i) => BigInt(i * 100_000)) },
+    { scope: 12, values: [0n, 0n, 0n, 500_000n] }, { scope: 24, values: [0n, 0n, 0n, 500_000n] }];
+  const { service } = wideMarket({ count: 5, tables, commissionBps: null });
+  const ask = (legs: ReturnType<typeof leg>[]) => service.whatIf(`${pool}-0`, { claim: { legs } }).then((r: any) => r.claim);
+  const unpriceable = await ask([leg(0, 'yes'), leg(4, 'yes')]);
+  assert.equal(unpriceable.priceable, false);
+  assert.equal(unpriceable.cells.length, 4);
+  const linked = await ask([leg(0, 'yes'), leg(1, 'yes')]);
+  assert.equal(linked.priceable, true);
+  assert.deepEqual(linked.addable, [2]);
+  assert.ok(!linked.addable.includes(4));
+  assert.deepEqual((await ask([leg(3, 'no'), leg(4, 'yes')])).addable, [2]);
+  const named = await ask([leg(0, 'yes'), leg(1, 'yes'), leg(2, 'no')]);
+  assert.equal(named.priceable, true);
+  assert.deepEqual(named.addable, []);
+});
+
+test('what-if rejects empty, duplicate, out-of-pool, four-leg and unknown-key input', async () => {
+  const { service } = wideMarket({ count: 5, tables: chainTables(5), commissionBps: null });
+  const ask = (input: unknown) => service.whatIf(`${pool}-0`, input as never);
+  const cases: [unknown, string][] = [
+    [null, 'Invalid what-if input'], [[], 'Invalid what-if input'], ['x', 'Invalid what-if input'],
+    [{}, 'Choose an assumption or a combination'], [{ given: [] }, 'Choose an assumption or a combination'],
+    [{ given: [leg(0, 'yes')], extra: 1 }, 'Invalid what-if input'],
+    [{ claim: { legs: [leg(0, 'yes')], rule: 'AND', extra: 1 } }, 'Invalid what-if input'],
+    [{ given: [leg(0, 'yes'), leg(0, 'no')] }, 'Choose up to three assumptions'],
+    [{ given: [leg(9, 'yes')] }, 'Choose up to three assumptions'],
+    [{ given: [leg(0, 'yes'), leg(1, 'yes'), leg(2, 'yes'), leg(3, 'yes')] }, 'Choose up to three assumptions'],
+    [{ given: [{ eventIndex: 0, side: 'maybe' }] }, 'Choose up to three assumptions'],
+    [{ given: [{ eventIndex: 0.5, side: 'yes' }] }, 'Choose up to three assumptions'],
+    [{ given: 'x' }, 'Choose up to three assumptions'],
+    [{ claim: { legs: [] } }, 'Choose up to three answers'],
+    [{ claim: { legs: [leg(1, 'yes'), leg(1, 'no')] } }, 'Choose up to three answers'],
+    [{ claim: { legs: [leg(7, 'yes')] } }, 'Choose up to three answers'],
+    [{ claim: { legs: [leg(0, 'yes'), leg(1, 'yes'), leg(2, 'yes'), leg(3, 'yes')] } }, 'Choose up to three answers'],
+    [{ claim: { legs: [leg(0, 'yes'), leg(1, 'yes')], rule: 'AT_LEAST_TWO' } }, 'Choose a supported combination'],
+    [{ claim: { legs: [leg(0, 'yes'), leg(1, 'yes')], rule: 'MAYBE' } }, 'Choose a supported combination'],
+  ];
+  for (const [input, message] of cases) await assert.rejects(ask(input), { message }, JSON.stringify(input));
+  await assert.rejects(service.whatIf(`${pool}-9`, { given: [leg(0, 'yes')] }), /Hybrid market not found/);
+});
+
+test('what-if fails closed when the reference model disagrees', async () => {
+  const shifted = async (input: string) => {
+    const result = await realModel(input);
+    return { ...result, givenYes: result.givenYes.map((v: number) => v + 0.01) };
+  };
+  await assert.rejects(wideMarket({ pairModel: shifted }).service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] }), /Hybrid comparison unavailable/);
+  const moved = async (input: string) => ({ ...(await realModel(input)), given: 0.9 });
+  await assert.rejects(wideMarket({ pairModel: moved }).service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] }), /Hybrid comparison unavailable/);
+  const broken = async () => ({ given: 0.5, yes: [], givenYes: [] });
+  await assert.rejects(wideMarket({ pairModel: broken as never }).service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] }), /Hybrid comparison unavailable/);
+  const fine = await wideMarket().service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] });
+  assert.equal(fine.questions.length, 16);
+});
+
+test('analysis, web and what-if read the pool state once per block within six seconds', async () => {
+  const { service, reads } = wideMarket();
+  await service.analysis(`${pool}-0`, { a: 0, b: 1, quantity: '1000000' });
+  await service.web(`${pool}-0`);
+  await service.whatIf(`${pool}-0`, { given: [leg(0, 'yes')] });
+  await service.whatIf(`${pool}-4`, { claim: { legs: [leg(4, 'yes'), leg(5, 'no')] } });
+  const pinned = (name: string) => reads.filter(r => r.functionName === name && r.blockNumber !== undefined);
+  for (const name of ['liquidity', 'eliminationOrder', 'factors', 'depth', 'commissionBps']) assert.equal(pinned(name).length, 1, name);
+  assert.ok(pinned('factors').every(r => r.blockNumber === 200n));
 });

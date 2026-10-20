@@ -14,7 +14,7 @@ import { depthRateWad } from '../shared/ls-lmsr.mjs';
 // browser review and the agent code check, and is built only from the verified catalog and the chain anchor.
 export const AGENT_MIN_QUESTIONS = 2;
 export const AGENT_MAX_QUESTIONS = 32;
-export const ANALYTICS_MAX_QUESTIONS = 4;
+export const ANALYTICS_MAX_QUESTIONS = 32;
 export const agentNamespace = pool => `practice-${pool.toLowerCase().slice(2)}`;
 
 const address = value => {

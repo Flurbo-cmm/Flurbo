@@ -6,5 +6,5 @@ export function poolWeb(input: { events: number; factors: { scope: number; value
   marginals: (number | null)[]; joint: (a: number, b: number) => PairValues }): PoolWeb;
 export function strongestLinks(web: PoolWeb, event: number, limit?: number):
   { other: number; difference: number | null; edge: PoolWebEdge }[];
-export function estimatePairs(state: { events: number; liquidity: string | bigint; factors: { scope: number; values: (string | bigint)[] }[] },
+export function estimatePairs(state: { events: number; liquidity: string | bigint; order: number[]; factors: { scope: number; values: (string | bigint)[] }[] },
   pairs: [number, number][]): { marginals: number[]; pairs: Map<string, { joint: number; independent: number; difference: number }> } | null;

@@ -39,7 +39,7 @@ const batched = (rpc: (method: string, params?: any[]) => Promise<any>) => {
 };
 
 test('agent pool constants and namespace', () => {
-  assert.equal(AGENT_MIN_QUESTIONS, 2); assert.equal(AGENT_MAX_QUESTIONS, 32); assert.equal(ANALYTICS_MAX_QUESTIONS, 4);
+  assert.equal(AGENT_MIN_QUESTIONS, 2); assert.equal(AGENT_MAX_QUESTIONS, 32); assert.equal(ANALYTICS_MAX_QUESTIONS, 32);
   assert.equal(agentNamespace('0xB5CE32DE7A8631960dd26ab46bB20524d1fF9a44'), 'practice-b5ce32de7a8631960dd26ab46bb20524d1ff9a44');
 });
 
@@ -284,7 +284,7 @@ test('positions read holdings and payouts in one verified snapshot, batched or n
   await assert.rejects(f.service.positions('0x1234', claims), /^Error: Invalid wallet$/);
 });
 
-test('agent pools: 2 to 32 question pools are served, analytics only up to 4, unreadable anchors stay pending and are retried', async () => {
+test('agent pools: 2 to 32 question pools are served with analytics, unreadable anchors stay pending and are retried', async () => {
   const addr = (d: string) => '0x' + d.repeat(40);
   const records = [hybridRecord({ count: 2, pool: addr('a'), resolver: addr('b') }), hybridRecord({ count: 4, pool: addr('c'), resolver: addr('d') }),
     hybridRecord({ count: 16, pool: addr('e'), resolver: addr('f') })];
@@ -303,7 +303,7 @@ test('agent pools: 2 to 32 question pools are served, analytics only up to 4, un
   assert.deepEqual(pools.collections, [{ namespace: agentNamespace(addr('a')), label: 'Explicit test fixtures', pool: addr('a'), closesAt: records[0].prepared.draft.closesAt },
     { namespace: agentNamespace(addr('e')), label: 'Explicit test fixtures', pool: addr('e'), closesAt: records[2].prepared.draft.closesAt }]);
   const wide: any = pools.services.get(agentNamespace(addr('e')));
-  assert.equal(wide.analytics, undefined); assert.equal(wide.claimAnalytics, undefined);
+  assert.equal(typeof wide.analytics, 'function'); assert.equal(typeof wide.claimAnalytics, 'function');
   const served: any = pools.services.get(agentNamespace(addr('a')));
   assert.equal(served.index, history); assert.equal(served.payouts, payouts);
   assert.equal(typeof served.analytics, 'function'); assert.equal(typeof served.claimAnalytics, 'function');
@@ -325,6 +325,19 @@ test('agent pools: 2 to 32 question pools are served, analytics only up to 4, un
   const plain = await hybridAgentPools({ catalog, rpc: async () => { throw Error('no chain'); }, readAnchor: async ({ record }: any) => anchorFor(record), analytics: false });
   assert.equal((plain.services.get(agentNamespace(addr('a'))) as any).analytics, undefined);
   await assert.rejects(hybridAgentPools({ catalog: { schema: 'flurbo.hybrid-catalog.v1', pools: [{ ...records[0], rulesHash: rules }] }, rpc: async () => null }), /commitment/);
+});
+
+test('a 16-question hybrid pool is served pair and claim analytics', async () => {
+  const addr = (d: string) => '0x' + d.repeat(40);
+  const record: any = hybridRecord({ count: 16, pool: addr('e'), resolver: addr('f') });
+  const catalog = { schema: 'flurbo.hybrid-catalog.v1', pools: [record] };
+  const pools = await hybridAgentPools({ catalog, rpc: async () => { throw Error('no chain'); }, readAnchor: async ({ record: r }: any) => anchorFor(r) });
+  const served: any = pools.services.get(agentNamespace(addr('e')));
+  assert.equal(served.manifest.publication.draft.events.length, 16);
+  assert.equal(typeof served.analytics, 'function');
+  assert.equal(typeof served.claimAnalytics, 'function');
+  const plain = await hybridAgentPools({ catalog, rpc: async () => { throw Error('no chain'); }, readAnchor: async ({ record: r }: any) => anchorFor(r), analytics: false });
+  assert.equal((plain.services.get(agentNamespace(addr('e'))) as any).analytics, undefined);
 });
 
 test('v5 manifests carry the pricing model, initial depth, commission and rate', () => {

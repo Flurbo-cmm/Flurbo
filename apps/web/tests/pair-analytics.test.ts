@@ -26,7 +26,7 @@ test('Rust factor elimination matches independently enumerated high-precision fi
 });
 test('invalid tables, graph width, pair, atoms and domain fail closed',()=>{
   const base=fixtures[0].state;
-  for(const change of [{a:1,b:1},{b:4},{events:5},{order:[0,0,2,3]},{liquidity:'0'},{liquidity:'-1'},
+  for(const change of [{a:1,b:1},{b:4},{events:5},{events:33},{order:[0,0,2,3]},{liquidity:'0'},{liquidity:'-1'},
     {factors:[{scope:3,values:['0']}]},{factors:[{scope:16,values:['0','1']}]},
     {factors:[{scope:1,values:['0',String(2n**128n)]}]},
     {factors:[{scope:1,values:['0','1000000001']}]},
