@@ -17,6 +17,7 @@ import MarketShell, { type MarketTab } from '../components/market/MarketShell';
 import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
 import CombinationSlip from '../components/market/CombinationSlip';
+import WhatIfScenario from '../components/market/WhatIfScenario';
 import HeldPositions, { describeHoldings, type HeldRow } from '../components/market/HeldPositions';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
@@ -25,9 +26,9 @@ import { positionKey, sellOutcome } from '../position-basis';
 import { encodeClaim } from '../../shared/claims.mjs';
 import { APPROVAL_LABEL, RULE_OPTIONS, TICKET_INTRO, balanceLabel, monadTxUrl, positionLine, quoteErrorMessage, quoteWaitText, rulePhrase, sellBlockedMessage,
   tradeSummary } from '../ticket-copy';
-import { addExtra, claimToCombo, legCount, readComboSearch, writeComboSearch } from '../combo-picker-model';
+import { addExtra, claimToCombo, legCount, legsToCombo, readComboSearch, writeComboSearch } from '../combo-picker-model';
 import { useWeb } from '../pool-web-client';
-import { useWhatIf } from '../what-if-client';
+import { useWhatIf, type WhatIfLeg } from '../what-if-client';
 import { usePoolHoldings } from '../pool-holdings';
 import { strongestLinks } from '../../shared/pool-web.mjs';
 
@@ -495,6 +496,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     setFocusLeg({ event: eventIndex, id: Date.now() });
     if (window.innerWidth < 1024) document.querySelector('.market-sidebar')?.scrollIntoView({ block: 'start' });
   };
+  const combineScenario = (legs: WhatIfLeg[]) => {
+    const next = legsToCombo(legs, market.eventIndex, others);
+    setMode('buy'); setPlan(null); setSide(next.side); setCombo(next.combo);
+    setFocusLeg({ event: legs[legs.length - 1].eventIndex, id: Date.now() });
+    if (window.innerWidth < 1024) document.querySelector('.market-sidebar')?.scrollIntoView({ block: 'start' });
+  };
   const pickHeld = (row: HeldRow) => {
     const next = claimToCombo(row.scope, row.mask, holdingsEvents, market.eventIndex, others);
     if (!next) return;
@@ -617,6 +624,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     ]}/>
   </div> : <p role="status" className="sr-only">Reading this market...</p>;
   const linked = others.length > 0 ? <LinkedSummary pool={market.pool} event={market.eventIndex} web={web.web} error={web.error} retry={web.retry}
+    scenario={<WhatIfScenario key={market.id} market={market} markets={markets} initial={[{ eventIndex: market.eventIndex, side: 'yes' }]} onCombine={combineScenario}/>}
     onCombine={combine} chosen={[extra1, extra2].flatMap(id => others.filter(item => item.id === id).map(item => item.eventIndex))} full={legCount(combo) >= 3}
     questions={Array.from({ length: others.length + 1 }, (_, i) => markets.find(item => item.pool.toLowerCase() === market.pool.toLowerCase() && item.eventIndex === i)?.question ?? `Question ${i + 1}`)}/> : undefined;
   const ticket = <>

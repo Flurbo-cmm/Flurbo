@@ -26,3 +26,36 @@
 .hybrid-thesis .btn { justify-self: start; }
 @media (min-width: 860px) { .hybrid-thesis-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
 @media (max-width: 560px) { .hybrid-outcomes > div { grid-template-columns: 1fr; } }
+
+/* What if: assumptions on top, then every other question as a shift row (chance now, a dumbbell, chance if assumed). */
+.what-if { display: grid; gap: var(--s-3); min-width: 0; padding-top: var(--s-5); border-top: var(--hairline); }
+.what-if h2 { margin: 0; font-size: 18px; }
+.what-if h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.what-if-intro { margin: 0; color: var(--ink-2); font-size: 14px; }
+.what-if-assumptions { display: grid; margin: 0; padding: 0; list-style: none; }
+.what-if-assumption { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: var(--hairline); min-width: 0; }
+.what-if-body { display: grid; gap: 8px; min-width: 0; }
+.what-if .slip-toggle { justify-self: start; }
+.what-if-results { display: grid; gap: var(--s-3); min-width: 0; padding-top: var(--s-3); border-top: var(--hairline); }
+.shift-head { display: flex; gap: 0; margin: 0; padding-left: 36px; color: var(--ink-3); font: 500 11px/1.2 var(--font-num); letter-spacing: 0.04em; text-transform: uppercase; }
+.shift-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.shift-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 10px 0; border-top: var(--hairline); min-width: 0; }
+.shift-question { margin: 0; color: var(--ink) !important; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
+.shift-figures { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font: 500 13px/1.3 var(--font-num); font-variant-numeric: tabular-nums; }
+.shift-row > .btn { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+.shift-delta { margin-left: auto; font-weight: 500; }
+.shift-track { flex: none; overflow: visible; }
+.shift-figures > span.num { min-width: 46px; }
+.shift-head span:first-child { min-width: 46px; margin-right: 140px; }
+.shift-rail { stroke: var(--rule-strong); stroke-width: 1; }
+.shift-link { stroke: var(--ink); stroke-width: 1.5; }
+.shift-now { fill: var(--surface); stroke: var(--ink); stroke-width: 1; }
+.shift-then { fill: var(--lime); stroke: var(--ink); stroke-width: 1; }
+@media (max-width: 520px) {
+  .shift-row { grid-template-columns: 24px minmax(0, 1fr); }
+  .shift-row > .btn { grid-column: 2; grid-row: auto; justify-self: start; }
+  .shift-delta { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .shift-row { animation: shift-in 160ms var(--ease-out); } }
+@keyframes shift-in { from { opacity: 0; } }
+@media (max-width: 520px) { .shift-head { display: none; } }

@@ -62,7 +62,7 @@ test('web page lists every question and its links', { skip }, async () => {
     assert.equal(await page.locator('.web-edge').count(), 3);
     await page.locator('#web-node-0').click();
     await page.getByRole('heading', { name: 'Moves most with' }).waitFor();
-    await page.getByRole('button', { name: /second value.*\+6\.0%/ }).waitFor();
+    await page.getByRole('button', { name: /second value.*\+6\.0 pts/ }).waitFor();
     await page.getByRole('link', { name: 'Open this market' }).waitFor();
   });
 });
@@ -70,7 +70,7 @@ test('web page lists every question and its links', { skip }, async () => {
 test('selecting an edge shows What if figures', { skip }, async () => {
   await open({ width: 1440, height: 1000 }, links, async page => {
     await page.locator('#web-node-0').click();
-    await page.getByRole('button', { name: /second value.*\+6\.0%/ }).click();
+    await page.getByRole('button', { name: /second value.*\+6\.0 pts/ }).click();
     await page.getByText('If the other answer is Yes').waitFor();
     await page.getByText('72.0%').waitFor();
     await page.getByRole('link', { name: 'Build your thesis' }).waitFor();

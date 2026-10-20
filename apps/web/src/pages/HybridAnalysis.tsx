@@ -66,8 +66,10 @@ export function WhatIfPanel({ market, other, fallback = null }: { market: Hybrid
   return <div className="hybrid-analysis-body">
     <div className="hybrid-analysis-head"><div><h3>What if?</h3><p>How does the pool price this question when {other.question} is assumed to resolve a certain way?</p></div><span className="chip">Read-only</span></div>
     <button className="btn btn-secondary btn-sm" disabled={loading} onClick={refresh}><RefreshCw size={15}/>Refresh comparison</button>
-    {loading && <p role="status">Reading the shared pool...</p>}{error && <p role="alert" className="state-inline error">{error}</p>}
+    {loading && <p role="status">Reading the shared pool...</p>}
     {error && fallback && <p>{fallback}</p>}
+    {error && (fallback ? <p role="alert" className="market-caption">{error} <button type="button" className="text-link" onClick={refresh}>Try again</button></p>
+      : <p role="alert" className="state-inline error">{error} <button type="button" className="text-link" onClick={refresh}>Try again</button></p>)}
     {result && <>
       <div className="hybrid-conditional"><div><span>{market.question}</span><strong>Yes, without an assumption: {pct(result.values.a)}</strong></div>
         <div><span>If the other answer is Yes</span><strong>{pct(result.values.givenYes)}</strong></div>

@@ -261,6 +261,12 @@ Nearly square. Tags have 2px corners; controls and tiles 4px; panels and sheets 
 - **Two lines:** a 2x2 grid with the first line on the rows. **Three lines:** eight cells in two rows of four, each headed by Y or N for every line in question order. Each cell shows the pool's chance for that outcome.
 - **Marks:** outcomes that pay take the lime fill with an ink outline (what is true if the prediction pays); the rest are dashed and quiet. Without a pool reading the cells say Pays or No payout.
 
+### What if shift rows
+- **Anatomy:** assumptions sit on top as lines with a Q tag, the full question and a Yes or No control (up to three, each removable). Below, one row per other question: Q tag, full question, the chance now, a dumbbell, the chance if assumed, the signed shift in points, and a Combine button.
+- **Dumbbell:** a 120px hairline track with a hollow raised-paper square for the chance now and a lime square for the chance if assumed (lime marks what holds if the assumptions hold), joined by a 1.5px ink line. It carries a text alternative that states both chances and the direction of the shift.
+- **Order:** largest absolute shift first, then question number; the top five are shown and the rest sit behind "All N questions". When the assumptions are too unlikely to condition on, the rows are replaced by one sentence.
+- **Motion:** none beyond a 160ms fade of a new row, which reduced motion removes.
+
 ### Inputs
 - **Style:** 1px control-stroke border, raised paper, 4px corners, 44px tall, 16px text on phones.
 - **Focus:** ink outline with the lime ring.

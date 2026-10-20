@@ -22,5 +22,5 @@ export const SHOT_SIZE: Record<string, { width: number; height: number }> = {
   'ticket-buy': { width: 364, height: 1274 },
   'ticket-combination': { width: 408, height: 1547 },
   'ticket-no-hash': { width: 520, height: 387 },
-  'what-if': { width: 792, height: 1273 },
+  'what-if': { width: 792, height: 487 },
 };
