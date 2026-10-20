@@ -179,6 +179,50 @@ export function marketFixture(now: number) {
         { answer: 'no', costAtoms: atoms(buyCost(pb - joint, 1)), values: values(-0.009) }] : [] };
   }
 
+  const tenths = (value: number) => Math.round(value * 1000);
+  const legsMatch = (legs: { eventIndex: number; side: Side }[]) => (state: number) => legs.every(leg => answered(state, leg.eventIndex, leg.side));
+
+  function web(id: string) {
+    const { p } = find(id)!;
+    const edges = [];
+    for (let a = 0; a < p.questions.length; a++) for (let b = a + 1; b < p.questions.length; b++) {
+      const joint = tenths(chance(p.joint, s => !!(s & (1 << a)) && !!(s & (1 << b)))), independent = tenths(marginal(p, a) * marginal(p, b));
+      edges.push({ a, b, joint, independent, difference: joint - independent, scope: (1 << a) | (1 << b) });
+    }
+    return { schema: 'flurbo.hybrid-web.v1', pool: p.pool, title: p.title, closesAt: p.closesAt, blockNumber: '4012345', blockHash: '0x' + 'ab'.repeat(32),
+      observedAt: now, estimated: true, questions: p.questions, nodes: p.questions.map((_, event) => ({ event, yes: tenths(marginal(p, event)) })), edges };
+  }
+
+  function whatIf(id: string, input: any) {
+    const { p } = find(id)!;
+    const given = (input.given ?? []) as { eventIndex: number; side: Side }[];
+    const head = { schema: 'flurbo.hybrid-what-if.v1', pool: p.pool, blockNumber: '4012345', blockHash: '0x' + 'ab'.repeat(32), observedAt: now, closed: !open(p),
+      unit: 'tenths_of_percentage_point', given, reasons: {} };
+    const pGiven = given.length ? chance(p.joint, legsMatch(given)) : 1;
+    const questions = given.length ? p.questions.map((_, eventIndex) => {
+      const leg = given.find(item => item.eventIndex === eventIndex);
+      const givenYes = leg ? (leg.side === 'yes' ? 1000 : 0) : tenths(chance(p.joint, s => legsMatch(given)(s) && answered(s, eventIndex, 'yes')) / pGiven);
+      return { eventIndex, yes: tenths(marginal(p, eventIndex)), givenYes, assumed: !!leg };
+    }) : [];
+    const legs = ((input.claim?.legs ?? []) as { eventIndex: number; side: Side }[]).slice().sort((x, y) => x.eventIndex - y.eventIndex);
+    let claim = null;
+    if (input.claim) {
+      const rule = (input.claim.rule || 'AND') as Rule, pays = claimPays(legs, rule);
+      const cells = Array.from({ length: 2 ** legs.length }, (_, local) => {
+        const answers = legs.map((leg, i) => ({ eventIndex: leg.eventIndex, side: (local >> i & 1 ? 'yes' : 'no') as Side }));
+        return { state: local, answers, pays: pays(legs.reduce((state, leg, i) => state | (local >> i & 1 ? 1 << leg.eventIndex : 0), 0)) || false,
+          chance: tenths(chance(p.joint, legsMatch(answers))) };
+      });
+      const independent = tenths(cells.reduce((sum, cell) => sum + (cell.pays ? cell.answers.reduce((prod, a) => prod * (a.side === 'yes' ? marginal(p, a.eventIndex) : 1 - marginal(p, a.eventIndex)), 1) : 0), 0));
+      const chanceValue = cells.filter(cell => cell.pays).reduce((sum, cell) => sum + cell.chance, 0);
+      const chosen = new Set(legs.map(leg => leg.eventIndex));
+      claim = { scope: legs.reduce((sum, leg) => sum + 2 ** leg.eventIndex, 0), mask: String(cells.reduce((mask, cell) => mask | (cell.pays ? 1 << cell.state : 0), 0)), rule, legs,
+        chance: chanceValue, independent, difference: chanceValue - independent, cells, priceable: true,
+        addable: legs.length >= 3 ? [] : p.questions.map((_, i) => i).filter(i => !chosen.has(i)) };
+    }
+    return { ...head, givenChance: given.length ? tenths(pGiven) : null, questions, claim };
+  }
+
   // Portfolio: an individual and a combined position in the open pool, and a settled position ready to collect.
   const hash = (digit: string) => '0x' + digit.repeat(64);
   const held: Record<string, Record<string, [string, string]>> = {
@@ -210,13 +254,15 @@ export function marketFixture(now: number) {
     if (path === '/api/market-directory') return { schema: 'flurbo.market-directory.v1', markets: [], oracleMarkets: [], hybridMarkets: markets };
     const portfolioBody = portfolio(path, body);
     if (portfolioBody) return portfolioBody;
-    const match = path.match(/^\/api\/hybrid\/(0x[0-9a-f]{40}-\d+)(?:\/(market|price-history|action|analysis))?$/i);
+    const match = path.match(/^\/api\/hybrid\/(0x[0-9a-f]{40}-\d+)(?:\/(market|price-history|action|analysis|web|what-if))?$/i);
     if (!match || !find(match[1])) return undefined;
     const [, id, op] = match;
     if (!op) return snapshot(id, search.has('wallet'));
     if (op === 'market') return summary(id);
     if (op === 'price-history') return history(id);
     if (op === 'action') return action(id, body);
+    if (op === 'web') return web(id);
+    if (op === 'what-if') return whatIf(id, body);
     return analysis(id, body);
   }
   return { markets, serve };

@@ -88,3 +88,14 @@ export function availableToAdd(others: Other[], value: ComboState, search = '') 
   const needle = search.trim().toLowerCase();
   return others.filter(item => item.id !== value.extra1 && item.id !== value.extra2 && (!needle || item.question.toLowerCase().includes(needle)));
 }
+
+// A set of answers (for example a scenario's assumptions) as the ticket's state. The page's question supplies the main
+// answer, Yes when the answers do not name it; the rest become the added lines in order.
+export function legsToCombo(legs: { eventIndex: number; side: 'yes' | 'no' }[], anchor: number, others: Located[]): { side: 'yes' | 'no'; combo: ComboState } {
+  const own = legs.find(leg => leg.eventIndex === anchor);
+  const rest = legs.filter(leg => leg.eventIndex !== anchor).flatMap(leg => {
+    const item = others.find(other => other.eventIndex === leg.eventIndex);
+    return item ? [{ id: item.id, side: leg.side }] : [];
+  }).slice(0, 2);
+  return { side: own?.side ?? 'yes', combo: { extra1: rest[0]?.id ?? '', extra1Side: rest[0]?.side ?? 'yes', extra2: rest[1]?.id ?? '', extra2Side: rest[1]?.side ?? 'yes' } };
+}

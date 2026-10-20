@@ -1,12 +1,13 @@
+import type { ReactNode } from 'react';
 import { Link } from 'wouter';
 import { strongestLinks } from '../../../shared/pool-web.mjs';
 import type { WebResponse } from '../../pool-web-client';
 import { signedPoints } from '../../web-layout';
 
 // The Linked tab: a short read of how this question connects to the rest of its pool. The full map lives on its own page.
-export default function LinkedSummary({ pool, event, questions, web, error, retry, onCombine, chosen = [], full = false }: {
+export default function LinkedSummary({ pool, event, questions, web, error, retry, onCombine, chosen = [], full = false, scenario = null }: {
   pool: string; event: number; questions: string[]; web: WebResponse | null; error: string; retry(): void;
-  onCombine?(eventIndex: number): void; chosen?: number[]; full?: boolean;
+  onCombine?(eventIndex: number): void; chosen?: number[]; full?: boolean; scenario?: ReactNode;
 }) {
   const mapHref = `/markets/hybrid/${pool}/web?focus=${event}`;
   const linked = web ? new Set(web.edges.flatMap(edge => [edge.a, edge.b])).size : 0;
@@ -32,5 +33,6 @@ export default function LinkedSummary({ pool, event, questions, web, error, retr
       </>}
     <p className="linked-thesis"><Link href={mapHref} className="btn btn-primary">Open connections</Link>
       <Link href={`/markets/hybrid/${pool}/${event}/thesis`} className="btn btn-secondary">Build your thesis</Link></p>
+    {scenario}
   </section>;
 }

@@ -239,14 +239,15 @@ export default function Docs() {
 
         <section id="what-if" aria-labelledby="what-if-title">
           <h2 id="what-if-title">What if</h2>
-          <p>On the Linked tab, Open connections shows a map of the questions in the pool. Select a line between two questions to ask the pool how it prices one when the other answer is assumed. It is read-only: nothing is traded or saved.</p>
-          <Shot name="what-if" src={whatIfShot} alt="What if panel showing the chance of this question without an assumption, if the other answer is Yes and if it is No, both Yes against the independent baseline, all four combinations and the effect of one combined trade" caption="What if, for two linked example questions. Example values."/>
+          <p>On the Linked tab, What if starts from this question: choose up to three answers to assume and the pool shows how its chance for every other question moves, largest shift first. Each row is one tap from becoming a combined prediction in the ticket. Open connections shows the same view for any question on the map, and selecting a line there compares one pair of questions. It is read-only: nothing is traded or saved.</p>
+          <Shot name="what-if" src={whatIfShot} alt="What if on the Linked tab with this question assumed Yes, and the other questions listed by how far the pool's chance moves, each with its chance now, a small dumbbell, its chance if assumed and a Combine button" caption="What if, for three linked example questions. Example values."/>
           <dl className="docs-definitions">
-            <div><dt>Without an assumption</dt><dd>The pool's chance of this question's Yes, on its own.</dd></div>
-            <div><dt>If the other answer is Yes, or No</dt><dd>The pool's chance of Yes assuming the other answer. For example, P(A given B) = P(A and B) / P(B).</dd></div>
-            <div><dt>Both Yes, and if they were independent</dt><dd>The pool's chance of both answers together, beside P(A) × P(B), the value it would have if the questions were unrelated.</dd></div>
-            <div><dt>All four combinations</dt><dd>The chance of each pair of answers and the cost of one combined share on it. The four chances add up to 100%.</dd></div>
-            <div><dt>What could one combined trade change?</dt><dd>How the numbers would move after one combined share is bought from this snapshot, holding everything else fixed.</dd></div>
+            <div><dt>Assumptions</dt><dd>Up to three answers you suppose are true. The pool recomputes every other chance as if they held.</dd></div>
+            <div><dt>Chance now</dt><dd>The pool's chance of each other question's Yes, with no assumption.</dd></div>
+            <div><dt>If assumed</dt><dd>The pool's chance of Yes given the assumptions. For example, P(A given B) = P(A and B) / P(B).</dd></div>
+            <div><dt>The shift</dt><dd>The difference in percentage points. A hollow square marks the chance now and a lime square the chance if assumed, joined by a line. Rows are ordered by the largest shift.</dd></div>
+            <div><dt>Combine</dt><dd>Adds the assumptions and that question to the ticket as a combined prediction, up to three answers, ready for a fresh quote.</dd></div>
+            <div><dt>Very unlikely assumptions</dt><dd>When the assumptions together have less than a one in a billion chance, the pool shows no conditional chances.</dd></div>
           </dl>
           <p>These are the pool's estimates at the block shown, not independent evidence. A relationship between two questions does not mean that one causes the other.</p>
         </section>

@@ -214,16 +214,13 @@ try{
   // A combined prediction in the ticket.
   page=await openMarkets({width:1280,height:1600});await page.goto(marketPath(POOLS.rates,0,'?shares=4&other=1&otherAnswer=yes&rule=AND'));await ready(page);
   const combo=page.getByRole('region',{name:'Trade this market'});
-  await combo.locator('details.oracle-combination').evaluate((d:any)=>{d.open=true;});
   await combo.getByText('Review AUSD approval').waitFor();await page.waitForTimeout(600);
   await shot(page,'ticket-combination',page.locator('section.detail-trade'));await page.close();
 
   // What if: the linked tab with the pool comparison open, then the proof tab.
   page=await openMarkets({width:1280,height:1800});await page.goto(marketPath(POOLS.rates,0,'?tab=linked'));await ready(page);
-  await page.locator('details.hybrid-connect > summary').click();
-  await page.getByText('All four combinations').waitFor();
-  await page.locator('details.hybrid-connect details.disclosure').evaluate((d:any)=>{d.open=true;});await page.waitForTimeout(500);
-  await shot(page,'what-if',page.locator('details.hybrid-connect'));
+  await page.locator('.what-if .shift-row').first().waitFor();await page.waitForTimeout(600);
+  await shot(page,'what-if',page.locator('section.what-if'));
   await page.getByRole('tab',{name:'Proof'}).click();await page.waitForTimeout(500);
   await shot(page,'proof',page.locator('.proof-panel'));await page.close();
 

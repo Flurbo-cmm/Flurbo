@@ -5,7 +5,9 @@ import { useWeb } from '../pool-web-client';
 import { shortTime } from '../format';
 import type { HybridMarket } from '../market-directory';
 import { strongestLinks, type PoolWebEdge } from '../../shared/pool-web.mjs';
-import { ringLayout, shortTitle, signedPercent } from '../web-layout';
+import { ringLayout, shortTitle, signedPoints } from '../web-layout';
+import { legsToCombo, writeComboSearch } from '../combo-picker-model';
+import WhatIfScenario from '../components/market/WhatIfScenario';
 import { WhatIfPanel } from './HybridAnalysis';
 import './hybrid-web.css';
 
@@ -69,7 +71,7 @@ export default function HybridWeb({ poolId, markets, focus }: { poolId: string; 
   };
   const linkRow = (edge: PoolWebEdge, from: number) => <li key={`${edge.a}-${edge.b}`}>
     <button type="button" className="web-link-row" onClick={() => setSelection({ kind: 'edge', a: edge.a, b: edge.b })}>
-      <span>{labelFor(edge.a === from ? edge.b : edge.a)}</span><span className="num">{signedPercent(edge.difference)}</span></button></li>;
+      <span>{labelFor(edge.a === from ? edge.b : edge.a)}</span><span className="num">{signedPoints(edge.difference)}</span></button></li>;
 
   let panel;
   if (!web) panel = <p className="market-caption">Reading the pool.</p>;
@@ -94,7 +96,14 @@ export default function HybridWeb({ poolId, markets, focus }: { poolId: string; 
         <ul className="web-links">{strongestLinks(web, selection.event, 3).map(link => linkRow(link.edge, selection.event))}</ul>
         {all.length > 3 && <details className="disclosure"><summary>All {all.length} links</summary>
           <ul className="web-links">{all.map(edge => linkRow(edge, selection.event))}</ul></details>}
-        <p className="market-caption">The percent is how far the pool's chance of both Yes sits from the chance if the two were independent. A plus sign means they tend to move together, a minus sign against each other.</p></>}
+        <p className="market-caption">The figure is in percentage points: how far the pool's chance of both Yes sits from the chance if the two were independent. A plus sign means they tend to move together, a minus sign against each other.</p></>}
+      {market && <WhatIfScenario key={market.id} compact market={market} markets={members} initial={[{ eventIndex: market.eventIndex, side: 'yes' }]}
+        combineHref={legs => {
+          const others = members.filter(item => item.id !== market.id);
+          const next = legsToCombo(legs, market.eventIndex, others), params = new URLSearchParams();
+          writeComboSearch(params, { ...next, rule: 'AND' }, others);
+          return `/markets/hybrid/${market.pool}/${market.eventIndex}?${params}`;
+        }}/>}
       {market && <Link href={`/markets/hybrid/${market.pool}/${market.eventIndex}`} className="btn btn-primary">Open this market</Link>}
     </>;
   } else panel = <>
@@ -120,7 +129,7 @@ export default function HybridWeb({ poolId, markets, focus }: { poolId: string; 
       <section aria-label="Connections" className="hybrid-web-stage">
         {narrow ? <ol className="web-list">
           {ranked.map(edge => <li key={`${edge.a}-${edge.b}`}><button type="button" className="web-list-edge" onClick={() => setSelection({ kind: 'edge', a: edge.a, b: edge.b })}>
-            <span>{labelFor(edge.a)}</span><span>{labelFor(edge.b)}</span><strong className="num">{signedPercent(edge.difference)}</strong></button></li>)}
+            <span>{labelFor(edge.a)}</span><span>{labelFor(edge.b)}</span><strong className="num">{signedPoints(edge.difference)}</strong></button></li>)}
           {web.nodes.filter(node => !linkedEvents.has(node.event)).map(node => <li key={node.event}><button type="button" className="web-list-edge is-plain" onClick={() => setSelection({ kind: 'node', event: node.event })}>
             <span>{labelFor(node.event)}</span><span className="market-caption">Same pool, not priced together yet</span></button></li>)}
         </ol> : <svg viewBox={`0 0 ${WIDTH} ${SIZE}`} className="web-svg" role="group" aria-label="Map of connected questions">
@@ -134,7 +143,7 @@ export default function HybridWeb({ poolId, markets, focus }: { poolId: string; 
               <line x1={SHIFT + p.x} y1={p.y} x2={SHIFT + q.x} y2={q.y} strokeWidth={weight} strokeDasharray={(edge.difference ?? 0) < 0 ? '6 5' : undefined}/>
               <line className="web-hit" x1={SHIFT + p.x} y1={p.y} x2={SHIFT + q.x} y2={q.y}
                 onClick={() => setSelection({ kind: 'edge', a: edge.a, b: edge.b })}>
-                <title>{`${nameOf(edge.a)} and ${nameOf(edge.b)}: ${signedPercent(edge.difference)}`}</title></line>
+                <title>{`${nameOf(edge.a)} and ${nameOf(edge.b)}: ${signedPoints(edge.difference)}`}</title></line>
             </g>;
           })}
           {web.nodes.map(node => {
