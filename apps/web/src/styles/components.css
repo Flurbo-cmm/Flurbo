@@ -195,9 +195,9 @@ main input[type="checkbox"]:disabled, main input[type="radio"]:disabled { opacit
 .choice-list { display: grid; gap: 6px; border: 0; margin: 0; padding: 0; min-width: 0; }
 .choice-list > legend { padding: 0; margin-bottom: 6px; font-size: var(--text-label); font-weight: 500; }
 .choice-search { margin-bottom: 2px; }
-.choice-rows { display: grid; gap: 4px; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
+.choice-rows { display: grid; grid-auto-rows: max-content; gap: 4px; max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
 .choice-row {
-  position: relative; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px;
+  position: relative; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: start; gap: 10px; min-height: 40px;
   padding: 8px 12px; border: 1px solid var(--rule-strong); border-radius: var(--r-control); background: var(--surface);
   font-size: 14px; line-height: 1.35; text-align: left; cursor: pointer; transition: border-color var(--t-fast), background-color var(--t-fast);
 }
@@ -205,7 +205,8 @@ main input[type="checkbox"]:disabled, main input[type="radio"]:disabled { opacit
 .choice-row input[type="radio"], .choice-row input[type="radio"]:disabled { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; border: 0; opacity: 0; cursor: pointer; }
 .choice-row input[type="radio"]:disabled { cursor: not-allowed; }
 @media (pointer: coarse) { .choice-row { min-height: 44px; } }
-.choice-row .choice-mark { width: 8px; height: 8px; border: 1px solid var(--ink); }
+@media (pointer: coarse) { .choice-rows { max-height: none; overflow-y: visible; } }
+.choice-row .choice-mark { width: 8px; height: 8px; border: 1px solid var(--ink); margin-top: calc((1.35em - 8px) / 2); }
 .choice-row:has(input:checked) { background: var(--ink); border-color: var(--ink); color: var(--bg); }
 .choice-row:has(input:checked) .choice-mark { background: var(--lime); border-color: var(--lime); }
 .choice-row:has(input:checked) .choice-meta { color: var(--on-inverse-2); }
