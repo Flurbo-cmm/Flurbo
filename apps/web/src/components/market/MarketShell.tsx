@@ -56,10 +56,11 @@ export default function MarketShell({ kind, question, lead, status, closes, resu
         ?.querySelector<HTMLButtonElement>(`[role="radio"]:not(:disabled)[data-value="${label}"]`);
       const target = action === 'yes' ? option('Your answer', 'yes') : action === 'no' ? option('Your answer', 'no')
         : action === 'buy' ? option('Buy or sell', 'buy') : action === 'sell' ? option('Buy or sell', 'sell')
-        : action === 'refresh' ? [...aside.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')].find((button) => button.textContent?.trim() === 'Refresh price') : null;
+        : action === 'refresh' ? [...aside.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')].find((button) => button.textContent?.trim() === 'Refresh price')
+        : action === 'combine' ? aside.querySelector<HTMLElement>('[data-slip-add]') : null;
       if (!target) return;
       event.preventDefault();
-      target.click();
+      if (action !== 'combine') target.click();
       if (action !== 'refresh') target.focus();
     };
     window.addEventListener('keydown', onKey);

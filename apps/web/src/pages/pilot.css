@@ -3,6 +3,7 @@
 .ticket-head { display: grid; gap: 4px; }
 .ticket-head h2 { font-size: 17px; }
 .consumer-ticket .ticket-wallet, .pilot-form .ticket-wallet { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-control); background: var(--bg); }
+.consumer-ticket .ticket-wallet { padding: 8px 0; border: 0; border-top: var(--hairline); border-bottom: var(--hairline); border-radius: 0; background: none; }
 .ticket-wallet > div { display: grid; gap: 2px; min-width: 0; }
 .ticket-wallet strong { font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 .ticket-wallet strong.mono { font-family: var(--font-num); }
@@ -21,7 +22,7 @@
 .ticket-quote-state p:empty { display: none; }
 .ticket-refresh { justify-self: start; font-size: 14px; }
 .ticket-review { display: grid; gap: var(--s-3); min-width: 0; }
-.consumer-ticket > .ticket-review, .ticket-quote { padding: var(--s-4); border: 1px solid var(--rule-strong); border-radius: var(--r-panel); background: var(--bg); }
+.consumer-ticket > .ticket-review, .ticket-quote { padding: var(--s-4) 0 0; border: 0; border-top: var(--hairline); border-radius: 0; background: none; }
 .ticket-review h3 { font-size: 16px; }
 .ticket-review p { color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
 .review-claim { color: var(--ink) !important; font-weight: 500; }

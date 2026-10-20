@@ -38,7 +38,11 @@ test('every question row shows its whole text, on the ticket and the thesis page
           contentType: relative.endsWith('.js') ? 'text/javascript' : relative.endsWith('.css') ? 'text/css' : relative.endsWith('.woff2') ? 'font/woff2' : 'text/html' });
       });
       await page.goto(`https://flurbo.singu.online${path}`);
-      if (open) { await page.locator('.oracle-combination summary').click(); await page.locator('.choice-row').first().waitFor(); }
+      if (open) {
+        await page.locator('.choice-row, .slip-toggle').first().waitFor();
+        if (await page.locator('.slip-toggle').count()) await page.locator('.slip-toggle').click();
+        await page.locator('.choice-row').first().waitFor();
+      }
       else await page.locator('.choice-row').first().waitFor();
       return await page.$$eval('.choice-row', els => els.map(e => ({ client: e.clientHeight, scroll: e.scrollHeight,
         markTop: e.querySelector('.choice-mark')!.getBoundingClientRect().top - e.getBoundingClientRect().top })));
