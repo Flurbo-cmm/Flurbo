@@ -465,7 +465,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
             : send(res, 503, { error: 'Hybrid holdings are temporarily unavailable. Refresh and retry.' });
         }
       }
-      if (/^\/api\/hybrid\/0x[0-9a-f]{40}-(?:[0-9]|[12][0-9]|3[01])(?:\/(?:market|action|analysis|web|evidence|price-history))?$/i.test(url.pathname)) {
+      if (/^\/api\/hybrid\/0x[0-9a-f]{40}-(?:[0-9]|[12][0-9]|3[01])(?:\/(?:market|action|analysis|web|evidence|price-history|what-if))?$/i.test(url.pathname)) {
         const login = await getLogin();
         if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
         if (!await approval()) return send(res, 403, { error: 'Account approval required.' });
@@ -474,6 +474,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
         // Each comparison reads the pool several times and runs a calculation process.
         if (hosted && op === 'analysis') await limits.take('hybrid-analysis:' + login.address.toLowerCase(), 30);
         if (hosted && op === 'web') await limits.take('hybrid-web:' + login.address.toLowerCase(), 12);
+        if (hosted && op === 'what-if') await limits.take('hybrid-what-if:' + login.address.toLowerCase(), 60);
         try {
           if (op === 'web' && req.method === 'GET' && !url.search)
             return send(res, 200, await hybrid.web(id));
@@ -506,6 +507,7 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
           if (url.search || req.method !== 'POST') return send(res, 405, { error: 'POST without parameters required.' });
           const input = await body(req);
           if (op === 'analysis') return send(res, 200, await hybrid.analysis(id, input));
+          if (op === 'what-if') return send(res, 200, await hybrid.whatIf(id, input));
           if (op === 'evidence') {
             if (!oracleEvidenceStore) return send(res, 503, { error: 'Evidence storage unavailable.' });
             const route = hybrid.routeFor(id);

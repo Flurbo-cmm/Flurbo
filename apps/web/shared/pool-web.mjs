@@ -1,10 +1,9 @@
 // Read-only map of which questions in a pool are priced together.
 // Two questions are linked only when some claim table (factor) names both. Values are display estimates in
 // tenths of a percent and never feed a trade.
-const MAX_ENUMERATED_EVENTS = 18;
 const bits = scope => {
   const out = [];
-  for (let event = 0; scope >> event; event += 1) if (scope >> event & 1) out.push(event);
+  for (let event = 0; event < 32; event += 1) if (Math.floor(scope / 2 ** event) % 2 === 1) out.push(event);
   return out;
 };
 
@@ -37,41 +36,58 @@ export function strongestLinks(web, event, limit = 3) {
     .slice(0, limit);
 }
 
-// Enumerates every truth-table state with the pool's weights exp(-(max - score) / depth). Floating point, so the
-// results are estimates; null when the pool is too wide to enumerate.
-export function estimatePairs({ events, liquidity, factors }, pairs) {
-  if (!Number.isInteger(events) || events < 1 || events > MAX_ENUMERATED_EVENTS) return null;
+const logAdd = (x, y) => x === -Infinity ? y : y === -Infinity ? x : Math.max(x, y) + Math.log1p(Math.exp(-Math.abs(x - y)));
+
+// Eliminates the questions in the pool's order, so no joined table ever names more than three of them.
+function logMass(order, tables, evidence) {
+  let pending = tables;
+  for (const event of order) {
+    const bucket = pending.filter(table => table.members.includes(event)), rest = pending.filter(table => !table.members.includes(event));
+    const joined = [...new Set([event, ...bucket.flatMap(table => table.members)])].sort((x, y) => x - y);
+    const remaining = joined.filter(member => member !== event);
+    const out = new Array(2 ** remaining.length).fill(-Infinity);
+    for (let local = 0; local < 2 ** joined.length; local += 1) {
+      const answer = member => local >> joined.indexOf(member) & 1;
+      if (evidence.has(event) && evidence.get(event) !== Boolean(answer(event))) continue;
+      let value = 0;
+      for (const table of bucket) value += table.values[table.members.reduce((at, member, i) => at | answer(member) << i, 0)];
+      const at = remaining.reduce((index, member, i) => index | answer(member) << i, 0);
+      out[at] = logAdd(out[at], value);
+    }
+    pending = [...rest, { members: remaining, values: out }];
+  }
+  return pending.reduce((sum, table) => sum + table.values[0], 0);
+}
+
+// Estimates from the pool's weights exp(score / depth) by log-domain factor elimination. Floating point, so the
+// results are estimates; null when the order is invalid or a joined table would name more than three questions.
+export function estimatePairs({ events, liquidity, order, factors }, pairs) {
+  if (!Number.isInteger(events) || events < 1 || events > 32) return null;
+  if (!Array.isArray(order) || order.length !== events || new Set(order).size !== events
+    || order.some(event => !Number.isInteger(event) || event < 0 || event >= events)) return null;
   const depth = Number(BigInt(liquidity));
   if (!(depth > 0)) return null;
-  const tables = factors.map(factor => ({ members: bits(factor.scope), values: factor.values.map(value => Number(BigInt(value))) }));
-  const size = 2 ** events, scores = new Float64Array(size);
-  let max = 0;
-  for (let state = 0; state < size; state += 1) {
-    let score = 0;
-    for (const { members, values } of tables) {
-      let local = 0;
-      for (let i = 0; i < members.length; i += 1) if (state >> members[i] & 1) local |= 1 << i;
-      score += values[local];
-    }
-    scores[state] = score;
-    if (score > max) max = score;
+  const tables = [];
+  for (const factor of factors) {
+    const members = Number.isInteger(factor.scope) && factor.scope >= 1 && factor.scope < 2 ** events ? bits(factor.scope) : [];
+    if (!members.length || members.length > 3 || !Array.isArray(factor.values) || factor.values.length !== 2 ** members.length) return null;
+    tables.push({ members, values: factor.values.map(value => Number(BigInt(value)) / depth) });
   }
-  let total = 0;
-  const weights = new Float64Array(size), yes = new Float64Array(events);
-  for (let state = 0; state < size; state += 1) {
-    const weight = Math.exp(-(max - scores[state]) / depth);
-    weights[state] = weight;
-    total += weight;
-    for (let event = 0; event < events; event += 1) if (state >> event & 1) yes[event] += weight;
+  let scopes = tables.map(table => table.members);
+  for (const event of order) {
+    const joined = [...new Set([event, ...scopes.filter(members => members.includes(event)).flat()])];
+    if (joined.length > 3) return null;
+    scopes = scopes.filter(members => !members.includes(event));
+    scopes.push(joined.filter(member => member !== event));
   }
+  const total = logMass(order, tables, new Map());
+  const chance = legs => Math.exp(logMass(order, tables, new Map(legs)) - total);
   const tenths = value => Math.round(value * 1000);
-  const marginals = Array.from(yes, value => tenths(value / total));
+  const yes = Array.from({ length: events }, (_, event) => chance([[event, true]]));
   const result = new Map();
   for (const [a, b] of pairs) {
-    let both = 0;
-    for (let state = 0; state < size; state += 1) if ((state >> a & 1) && (state >> b & 1)) both += weights[state];
-    const jointValue = tenths(both / total), independent = tenths(yes[a] / total * (yes[b] / total));
+    const jointValue = tenths(chance([[a, true], [b, true]])), independent = tenths(yes[a] * yes[b]);
     result.set(`${a}-${b}`, { joint: jointValue, independent, difference: jointValue - independent });
   }
-  return { marginals, pairs: result };
+  return { marginals: yes.map(tenths), pairs: result };
 }

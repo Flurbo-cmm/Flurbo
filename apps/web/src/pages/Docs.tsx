@@ -377,7 +377,7 @@ export default function Docs() {
 
         <section id="agents" aria-labelledby="agents-title">
           <h2 id="agents-title">Agents and SDKs</h2>
-          <p>Agents are for members comfortable running software on their own computer or server. Flurbo provides SDKs in TypeScript, Python, Rust and C++. Registering an agent does not start or host it. Agents can trade every pool. Pools of more than four questions need SDK 0.3.0 or later, and the pool comparison analytics cover pools of up to four questions.</p>
+          <p>Agents are for members comfortable running software on their own computer or server. Flurbo provides SDKs in TypeScript, Python, Rust and C++. Registering an agent does not start or host it. Agents can trade every pool. Pools of more than four questions need SDK 0.3.0 or later, and the pool comparison analytics cover every pool.</p>
           <p className="docs-note"><strong>New to running software?</strong> Follow <a href="#first-bot">Your first trading bot, step by step</a>. It explains every command and why it is needed.</p>
           <ol className="docs-steps">
             <li><strong>Register.</strong> Open <Link href="/agents">Agents</Link>, name your agent and choose the markets it may trade. Permission covers the market's whole pool; your strategy chooses the questions and combinations.<Shot name="agents-register" src={registerShot} alt="Register an agent form with a name field and market checkboxes" caption="Registering an agent: a name and the markets it may trade."/></li>

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import { certifiedScenario } from '../server/pair-math.mjs';
 import { estimatePairs, poolWeb, strongestLinks } from '../shared/pool-web.mjs';
 
 const table = (scope: number, values: string[]) => ({ scope, values });
@@ -59,7 +61,7 @@ test('rejects tables that name questions outside the pool', () => {
 
 test('estimatePairs agrees with a hand calculation', () => {
   // One pair table on questions 0 and 1 that pays only when both are Yes. Depth 1, quantity 1.
-  const result = estimatePairs({ events: 2, liquidity: '1000000000000000000',
+  const result = estimatePairs({ events: 2, liquidity: '1000000000000000000', order: [0, 1],
     factors: [table(3, ['0', '0', '0', '1000000000000000000'])] }, [[0, 1]]);
   const w = [1, 1, 1, Math.exp(-1)].map((x, i) => i === 3 ? 1 : Math.exp(-1));
   const total = w.reduce((s, x) => s + x, 0);
@@ -69,13 +71,53 @@ test('estimatePairs agrees with a hand calculation', () => {
   assert.equal(result.pairs.get('0-1')!.independent, Math.round(expectedA * expectedA * 1000));
 });
 
-test('estimatePairs returns no values for pools too wide to enumerate', () => {
-  const result = estimatePairs({ events: 24, liquidity: '1000000000000000000', factors: [] }, [[0, 1]]);
-  assert.equal(result, null);
+test('estimatePairs serves a 32-question pool and agrees with the closed form of independent blocks', () => {
+  const depth = 1e18, lift = [0.4, 0.9, -0.3, 1.7, 0.1, 2.2, 0, 1.1, 0.6, 0.25, 1.3, 0.8, 1.9, 0.05, 1.5, 0.7];
+  const factors = lift.map((v, k) => table(3 * 2 ** (2 * k), ['0', '0', '0', String(Math.round(Math.abs(v) * depth))]));
+  const result = estimatePairs({ events: 32, liquidity: String(depth), order: Array.from({ length: 32 }, (_, i) => i), factors },
+    [[0, 1], [0, 2], [6, 7], [30, 31], [1, 31]])!;
+  assert.ok(result);
+  const block = (k: number) => {
+    const w = Math.exp(Math.abs(lift[k])), total = 3 + w;
+    return { a: (1 + w) / total, joint: w / total };
+  };
+  for (const k of [0, 3, 7, 15]) {
+    assert.equal(result.marginals[2 * k], Math.round(block(k).a * 1000), `marginal ${2 * k}`);
+    assert.equal(result.marginals[2 * k + 1], Math.round(block(k).a * 1000));
+  }
+  for (const [k, a, b] of [[0, 0, 1], [3, 6, 7], [15, 30, 31]]) {
+    const expected = result.pairs.get(`${a}-${b}`)!;
+    assert.equal(expected.joint, Math.round(block(k).joint * 1000));
+    assert.equal(expected.independent, Math.round(block(k).a * block(k).a * 1000));
+  }
+  assert.equal(result.pairs.get('0-2')!.difference, 0);
+  assert.equal(result.pairs.get('1-31')!.difference, 0);
+});
+
+test('estimatePairs agrees with the certified values on the wide fixtures within one tenth of a point', async () => {
+  const wide = JSON.parse(await readFile(new URL('./fixtures/wide-analytics.json', import.meta.url), 'utf8'));
+  for (const row of wide) {
+    const { events, order, liquidity, factors, a, b } = row.state;
+    const result = estimatePairs({ events, order, liquidity, factors }, [[Math.min(a, b), Math.max(a, b)]])!;
+    assert.ok(result, row.name);
+    const certified = certifiedScenario(row.state, [{ event: 0, yes: true }]);
+    for (const q of certified.questions) assert.ok(Math.abs(result.marginals[q.event] - q.yes) <= 1, `${row.name} marginal ${q.event}`);
+    const pair = result.pairs.get(`${Math.min(a, b)}-${Math.max(a, b)}`)!;
+    for (const key of ['joint', 'independent', 'difference'])
+      assert.ok(Math.abs(pair[key] - row.pair.displayed[key]) <= 1, `${row.name} ${key}`);
+  }
+});
+
+test('estimatePairs refuses an invalid order and a table wider than three questions', () => {
+  const state = { events: 4, liquidity: '1000', factors: [table(3, ['0', '0', '0', '1']), table(5, ['0', '0', '0', '1']), table(9, ['0', '0', '0', '1'])] };
+  assert.equal(estimatePairs({ ...state, order: [0, 1, 2, 3] }, [[0, 1]]), null);
+  assert.equal(estimatePairs({ ...state, order: [0, 0, 2, 3] }, [[0, 1]]), null);
+  assert.equal(estimatePairs({ ...state, order: [3, 2, 1, 0] }, [[0, 1]])?.pairs.size, 1);
+  assert.equal(estimatePairs({ ...state, events: 33, order: [] }, [[0, 1]]), null);
 });
 
 test('independent pools estimate every pair as independent', () => {
-  const result = estimatePairs({ events: 4, liquidity: '1000000000000000000', factors: [] }, [[0, 1], [2, 3]])!;
+  const result = estimatePairs({ events: 4, liquidity: '1000000000000000000', order: [0, 1, 2, 3], factors: [] }, [[0, 1], [2, 3]])!;
   for (const pair of result.pairs.values()) assert.equal(pair.difference, 0);
   assert.deepEqual(result.marginals, [500, 500, 500, 500]);
 });

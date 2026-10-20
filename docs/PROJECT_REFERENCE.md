@@ -52,7 +52,7 @@ The reader types are listed in [SETTLEMENT_READERS.md](SETTLEMENT_READERS.md). R
 
 ## Pool types
 
-- Hybrid (served): `WidePilotPool` + `HybridPilotResolver`. Every hybrid pool is listed in the market directory. Every hybrid pool is also served to agents and the SDKs as `practice-<pool address without 0x>` (protocol v1). Pair and claim analytics are attached only to pools of up to 4 questions; a pool whose deployment anchor cannot be read yet stays pending and is retried by the scheduler.
+- Hybrid (served): `WidePilotPool` + `HybridPilotResolver`. Every hybrid pool is listed in the market directory. Every hybrid pool is also served to agents and the SDKs as `practice-<pool address without 0x>` (protocol v1). Pair and claim analytics are attached to every hybrid agent pool; a pool whose deployment anchor cannot be read yet stays pending and is retried by the scheduler.
 - Oracle (served): `WidePilotPool` + `WidePilotResolver`, answered on Reality.eth and reported to Monad by the trusted relay.
 - Legacy pilot pools (`PilotPool` + `PilotResolver`): deployed on chain, not served. Their evidence (`/api/pilot/evidence/<hash>`) and indexes stay in Redis under the `flurbo:pilot:*` keys, which must not be renamed.
 

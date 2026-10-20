@@ -2,11 +2,11 @@ import { encodeFunctionData, formatUnits, getAddress, parseAbi } from 'viem';
 import { hybridSettlementCatalog, readHybridSnapshot } from './hybrid-settlement-worker.mjs';
 import { proxyAbi, TEST_AUSD } from './oracle-integration.mjs';
 import { hybridRealityAction, hybridRealityAppealAction, hybridRealityClaimAction, hybridRealityReportAction, hybridRealitySnapshot } from './hybrid-reality.mjs';
-import { certifiedClaim, certifiedPair, pairInput } from './pair-math.mjs';
+import { certifiedCells, certifiedClaim, certifiedPair, certifiedScenario, pairInput, scenarioInput, validateFactorSnapshot } from './pair-math.mjs';
 import { runPairModel } from './pair-analytics.mjs';
 import { simulatePairPurchase } from './pair-sensitivity.mjs';
 import { canonical, settlementRuleHash } from './settlement-rules.mjs';
-import { encodeClaim } from '../shared/claims.mjs';
+import { claimEvents, encodeClaim } from '../shared/claims.mjs';
 import { verifiedLsState } from '../shared/ls-lmsr.mjs';
 import { estimatePairs, poolWeb } from '../shared/pool-web.mjs';
 import { isLsPrepared } from '../scripts/prepare-hybrid-pilot.mjs';
@@ -107,6 +107,36 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       blockHash: snapshot.blockHash, funded: true, resolved: snapshot.resolved,
       prices: prices[route.eventIndex] ?? { yes: null, no: null } };
   }
+  const poolStates = new Map();
+  async function poolState(record) {
+    const key = record.pool.toLowerCase(), now = Date.now(), cached = poolStates.get(key);
+    if (cached && cached.until > now) return cached.promise;
+    const promise = (async () => {
+      const count = record.prepared.draft.events.length;
+      const head = await readHybridSnapshot(record, market, { includeStates: false });
+      const at = (functionName, args = []) => market.readContract({ address: getAddress(record.pool),
+        abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
+      const ls = isLsPrepared(record.prepared);
+      const [liquidity, order, factors, depth, commissionBps] = await Promise.all([
+        at('liquidity'), at('eliminationOrder'), at('factors'),
+        ...(ls ? [at('depth'), at('commissionBps')] : []),
+      ]);
+      const sequence = order.map(Number);
+      if (!ls) return { head, at, ls: null, state: { events: count, liquidity: String(liquidity), order: sequence,
+        factors: factors.map(f => ({ scope: Number(f.scope), values: f.values.map(String) })) } };
+      const committed = { initialDepthAtoms: record.prepared.liquidityAtoms, commissionBps: record.prepared.commissionBps };
+      const verified = verifiedLsState(committed, { events: count, a: 0, b: 1, order: sequence,
+        factors, liquidity, commissionBps, depth });
+      if (!verified) return { head, at, ls: null, state: null };
+      return { head, at, ls: verified.ls, state: { events: count, liquidity: verified.state.liquidity,
+        order: sequence, factors: verified.state.factors } };
+    })().catch(err => {
+      poolStates.delete(key);
+      throw err;
+    });
+    poolStates.set(key, { promise, until: now + 6_000 });
+    return promise;
+  }
   async function analysis(id, input) {
     const route = routeFor(id), record = route.record;
     const count = record.prepared.draft.events.length;
@@ -117,21 +147,10 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       || input.rule !== undefined && !['AND', 'OR', 'EXACTLY_ONE'].includes(input.rule)
       || BigInt(input.quantity) > 20_000_000n) throw Error('Choose two questions and up to twenty shares');
     const rule = input.rule || 'AND';
-    const head = await readHybridSnapshot(record, market, { includeStates: false });
-    const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
-      abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
-    const ls = isLsPrepared(record.prepared);
-    const [liquidity, order, factors, depth, commissionBps] = await Promise.all([
-      at('liquidity'), at('eliminationOrder'), at('factors'),
-      ...(ls ? [at('depth'), at('commissionBps')] : []),
-    ]);
-    const committed = { initialDepthAtoms: record.prepared.liquidityAtoms, commissionBps: record.prepared.commissionBps };
-    const verified = ls ? verifiedLsState(committed, { events: count, a: input.a, b: input.b,
-      order: order.map(Number), factors, liquidity, commissionBps, depth }) : null;
-    if (ls && !verified) throw Error('Hybrid comparison unavailable');
-    const state = verified ? verified.state : { events: count, a: input.a, b: input.b, liquidity: String(liquidity),
-      order: order.map(Number), factors: factors.map(f => ({ scope: Number(f.scope),
-        values: f.values.map(String) })) };
+    const pool = await poolState(record);
+    if (!pool.state) throw Error('Hybrid comparison unavailable');
+    const { head, at, ls } = pool;
+    const state = { ...pool.state, a: input.a, b: input.b };
     const encoded = pairInput(state), certified = certifiedPair(state);
     const reference = await pairModel(encoded);
     for (const [key, value] of Object.entries(certified.values)) {
@@ -159,7 +178,7 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
     }));
     const sensitivity = closed ? [] : await Promise.all(['yes', 'no'].map(async answer => {
       try {
-        const simulated = simulatePairPurchase(state, answer, verified?.ls ?? null);
+        const simulated = simulatePairPurchase(state, answer, ls);
         const cost = String(await at('quoteBuy', [simulated.scope, BigInt(simulated.mask), 1_000_000n]));
         return { answer, costAtoms: cost, values: certifiedPair(simulated.after).values };
       } catch { return { answer, costAtoms: null, values: null }; }
@@ -174,23 +193,9 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
   async function web(id) {
     const route = routeFor(id), record = route.record;
     const count = record.prepared.draft.events.length;
-    const head = await readHybridSnapshot(record, market, { includeStates: false });
-    const at = (functionName, args = []) => market.readContract({ address: getAddress(route.pool),
-      abi: poolAbi, functionName, args, blockNumber: head.blockNumber });
-    const ls = isLsPrepared(record.prepared);
-    const [liquidity, order, factors, depth, commissionBps] = await Promise.all([
-      at('liquidity'), at('eliminationOrder'), at('factors'),
-      ...(ls ? [at('depth'), at('commissionBps')] : []),
-    ]);
-    const tables = factors.map(f => ({ scope: Number(f.scope), values: f.values.map(String) }));
-    let state = { events: count, liquidity: String(liquidity), factors: tables };
-    if (ls) {
-      const committed = { initialDepthAtoms: record.prepared.liquidityAtoms, commissionBps: record.prepared.commissionBps };
-      const verified = verifiedLsState(committed, { events: count, a: 0, b: 1, order: order.map(Number),
-        factors, liquidity, commissionBps, depth });
-      if (!verified) throw Error('Hybrid connections unavailable');
-      state = { events: count, liquidity: verified.state.liquidity, factors: verified.state.factors };
-    }
+    const pool = await poolState(record);
+    if (!pool.state) throw Error('Hybrid connections unavailable');
+    const { head, state } = pool, tables = state.factors;
     const shells = poolWeb({ events: count, factors: tables, marginals: [], joint: () => null });
     const estimate = estimatePairs(state, shells.edges.map(edge => [edge.a, edge.b]));
     const { prices } = await poolSummaries(record);
@@ -204,6 +209,84 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       closesAt: record.prepared.draft.closesAt, blockNumber: String(head.blockNumber),
       blockHash: head.blockHash, observedAt: head.now, estimated: estimate !== null,
       questions: record.prepared.draft.events.map(event => event.question), ...web };
+  }
+  const legOf = item => item && typeof item === 'object' && !Array.isArray(item) && Object.keys(item).sort().join() === 'eventIndex,side'
+    && Number.isInteger(item.eventIndex) && ['yes', 'no'].includes(item.side);
+  const legsOf = (value, count, minimum, maximum) => {
+    if (!Array.isArray(value) || value.length < minimum || value.length > maximum || !value.every(item => legOf(item)
+      && item.eventIndex >= 0 && item.eventIndex < count)
+      || new Set(value.map(item => item.eventIndex)).size !== value.length) return null;
+    return value.map(({ eventIndex, side }) => ({ eventIndex, side })).sort((x, y) => x.eventIndex - y.eventIndex);
+  };
+  function whatIfRequest(input, count) {
+    const plain = value => value && typeof value === 'object' && !Array.isArray(value);
+    if (!plain(input) || Object.keys(input).some(key => !['given', 'claim'].includes(key))) throw Error('Invalid what-if input');
+    if (input.claim !== undefined && (!plain(input.claim) || Object.keys(input.claim).some(key => !['legs', 'rule'].includes(key))))
+      throw Error('Invalid what-if input');
+    const empty = input.given === undefined || Array.isArray(input.given) && input.given.length === 0;
+    if (empty && input.claim === undefined) throw Error('Choose an assumption or a combination');
+    const given = empty ? [] : legsOf(input.given, count, 1, 3);
+    if (!given) throw Error('Choose up to three assumptions');
+    if (input.claim === undefined) return { given, claim: null };
+    const legs = legsOf(input.claim.legs, count, 1, 3);
+    if (!legs) throw Error('Choose up to three answers');
+    if (input.claim.rule !== undefined && !['AND', 'OR', 'EXACTLY_ONE'].includes(input.claim.rule))
+      throw Error('Choose a supported combination');
+    return { given, claim: { legs, rule: legs.length === 1 ? 'AND' : input.claim.rule || 'AND' } };
+  }
+  const near = (actual, value) => typeof actual === 'number' && Number.isFinite(actual) && actual >= -1e-9 && actual <= 1 + 1e-9
+    && (value === null || Math.abs(actual * 1000 - value) <= 0.5 + 1e-6);
+  const pricesTogether = (state, scope) => {
+    if (state.factors.some(factor => factor.scope === scope)) return true;
+    if (state.factors.length >= 64) return false;
+    try {
+      validateFactorSnapshot({ ...state, factors: [...state.factors,
+        { scope, values: Array(2 ** claimEvents(scope).length).fill('0') }] });
+      return true;
+    } catch { return false; }
+  };
+  async function whatIf(id, input) {
+    const route = routeFor(id), record = route.record;
+    const count = record.prepared.draft.events.length;
+    const request = whatIfRequest(input, count);
+    const pool = await poolState(record);
+    if (!pool.state) throw Error('Hybrid comparison unavailable');
+    const { head, state } = pool;
+    const reasons = {};
+    let questions = [], givenChance = null, claim = null;
+    if (request.given.length) {
+      const assumptions = request.given.map(item => ({ event: item.eventIndex, yes: item.side === 'yes' }));
+      const certified = certifiedScenario(state, assumptions);
+      const reference = await pairModel(scenarioInput(state, assumptions));
+      if (!near(reference?.given, certified.values.given) || !Array.isArray(reference.yes) || !Array.isArray(reference.givenYes)
+        || reference.yes.length !== count || reference.givenYes.length !== count
+        || certified.questions.some(q => !near(reference.yes[q.event], q.yes) || !near(reference.givenYes[q.event], q.givenYes)))
+        throw Error('Hybrid comparison unavailable');
+      questions = certified.questions.map(q => ({ eventIndex: q.event, yes: q.yes, givenYes: q.givenYes, assumed: q.assumed }));
+      givenChance = certified.values.given;
+      Object.assign(reasons, certified.reasons);
+    }
+    if (request.claim) {
+      const { legs, rule } = request.claim;
+      const encoded = encodeClaim({ events: count, rule, legs: legs.map(item => ({ event: item.eventIndex, yes: item.side === 'yes' })) });
+      const certified = certifiedClaim(state, encoded.scope, encoded.mask);
+      const cells = certifiedCells(state, encoded.scope).map(({ state: local, chance }) => ({ state: local,
+        answers: legs.map((item, i) => ({ eventIndex: item.eventIndex, side: local >> i & 1 ? 'yes' : 'no' })),
+        pays: Boolean(BigInt(encoded.mask) >> BigInt(local) & 1n), chance }));
+      const chosen = new Set(legs.map(item => item.eventIndex));
+      claim = { scope: encoded.scope, mask: encoded.mask, rule, legs, chance: certified.values.market,
+        independent: certified.values.independent, difference: certified.values.difference, cells,
+        priceable: pricesTogether(state, encoded.scope),
+        addable: legs.length >= 3 ? [] : Array.from({ length: count }, (_, event) => event)
+          .filter(event => !chosen.has(event) && pricesTogether(state, encoded.scope + 2 ** event)) };
+      if (Object.keys(certified.reasons).length) reasons.claim = certified.reasons;
+    }
+    const confirmed = await market.getBlock({ blockNumber: head.blockNumber });
+    if (!same(confirmed?.hash, head.blockHash)) throw Error('Hybrid comparison expired');
+    return { schema: 'flurbo.hybrid-what-if.v1', pool: route.pool, blockNumber: String(head.blockNumber),
+      blockHash: head.blockHash, observedAt: head.now,
+      closed: head.resolved || head.now >= record.prepared.draft.closesAt, unit: 'tenths_of_percentage_point',
+      given: request.given, givenChance, questions, claim, reasons };
   }
   async function snapshot(id, owner = null) {
     const route = routeFor(id);
@@ -401,5 +484,5 @@ export function hybridMarketService({ catalog, market, source, evidence, origin,
       if (event.rule && `0x${settlementRuleHash(event.rule)}` === ruleHash) return canonical(event.rule);
     throw Error('Hybrid rule not found');
   }
-  return { list, routeFor, ruleFor, marketSummary, snapshot, analysis, web, prepare };
+  return { list, routeFor, ruleFor, marketSummary, snapshot, analysis, web, whatIf, prepare };
 }
