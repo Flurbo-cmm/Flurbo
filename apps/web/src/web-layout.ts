@@ -25,3 +25,6 @@ export const shortTitle = (question: string, words = 6, maxChars = Infinity) => 
 
 export const signedPercent = (tenths: number | null) =>
   tenths === null ? 'n/a' : `${tenths > 0 ? '+' : tenths < 0 ? '-' : ''}${(Math.abs(tenths) / 10).toFixed(1)}%`;
+
+export const signedPoints = (tenths: number | null) =>
+  tenths === null ? 'n/a' : `${tenths > 0 ? '+' : tenths < 0 ? '-' : ''}${(Math.abs(tenths) / 10).toFixed(1)} pts`;

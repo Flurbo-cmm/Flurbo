@@ -1,18 +1,45 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { APPROVAL_LABEL, balanceLabel, comboHelp, comboSummary, monadTxUrl, quoteErrorMessage, quoteWaitText, ruleHelp, sellBlockedMessage,
-  tradeSummary } from '../src/ticket-copy.ts';
+import * as copy from '../src/ticket-copy.ts';
+import { APPROVAL_LABEL, RULE_OPTIONS, TICKET_INTRO, balanceLabel, monadTxUrl, payoutSentence, positionLine, quoteErrorMessage, quoteWaitText,
+  rulePhrase, ruleWord, sellBlockedMessage, tradeSummary } from '../src/ticket-copy.ts';
 
-test('a failed quote says whether the pool cannot price the combination', () => {
-  assert.match(quoteErrorMessage(true), /cannot price this combination/i);
-  assert.doesNotMatch(quoteErrorMessage(true), /refresh/i);
-  assert.match(quoteErrorMessage(false), /refresh/i);
+test('a failed combined quote says whether the pool cannot price it or the read failed', () => {
+  assert.match(quoteErrorMessage('unpriceable'), /cannot price these questions together/i);
+  assert.match(quoteErrorMessage('unpriceable'), /remove an answer/i);
+  assert.doesNotMatch(quoteErrorMessage('unpriceable'), /refresh/i);
+  assert.match(quoteErrorMessage('unavailable'), /refresh/i);
+  assert.doesNotMatch(quoteErrorMessage('unavailable'), /combination|together|price these/i);
 });
 
-test('each combination rule explains when it pays', () => {
-  assert.match(ruleHelp('AND'), /every selected answer/i);
-  assert.match(ruleHelp('OR'), /one or more/i);
-  assert.match(ruleHelp('EXACTLY_ONE'), /all .* loss/i);
+test('rule labels fit any number of answers', () => {
+  assert.deepEqual(RULE_OPTIONS.map(option => option.label), ['All correct', 'At least one', 'Exactly one']);
+  assert.deepEqual(RULE_OPTIONS.map(option => option.value), ['AND', 'OR', 'EXACTLY_ONE']);
+  assert.ok(RULE_OPTIONS.every(option => !/both/i.test(option.label)));
+  assert.deepEqual((['AND', 'OR', 'EXACTLY_ONE'] as const).map(ruleWord), ['and', 'or', 'exactly one of']);
+  assert.deepEqual((['AND', 'OR', 'EXACTLY_ONE'] as const).map(rulePhrase),
+    ['Pays when all are correct', 'Pays when at least one is correct', 'Pays when exactly one is correct']);
+});
+
+test('the payout sentence names each answer with its question number', () => {
+  const two = [{ number: 1, side: 'yes' as const }, { number: 6, side: 'no' as const }];
+  const three = [{ number: 1, side: 'yes' as const }, { number: 2, side: 'yes' as const }, { number: 6, side: 'no' as const }];
+  assert.equal(payoutSentence('AND', two), 'Pays 1 test AUSD a share if Q1 is Yes and Q6 is No.');
+  assert.equal(payoutSentence('AND', three), 'Pays 1 test AUSD a share if Q1 is Yes, Q2 is Yes and Q6 is No.');
+  assert.equal(payoutSentence('OR', three), 'Pays 1 test AUSD a share if at least one is right: Q1 Yes, Q2 Yes or Q6 No.');
+  assert.equal(payoutSentence('OR', two), 'Pays 1 test AUSD a share if at least one is right: Q1 Yes or Q6 No.');
+  assert.equal(payoutSentence('EXACTLY_ONE', three),
+    'Pays 1 test AUSD a share if exactly one is right: Q1 Yes, Q2 Yes or Q6 No. Two or more right pays nothing.');
+  assert.equal(payoutSentence('AND', [two[0]]), 'Pays 1 test AUSD a share if Q1 is Yes.');
+});
+
+test('a held position reads as one line with its rule', () => {
+  const legs = (...items: [number, 'yes' | 'no'][]) => items.map(([number, side]) => ({ number, side }));
+  assert.equal(positionLine('AND', legs([1, 'yes'])), 'Q1 Yes');
+  assert.equal(positionLine('AND', legs([1, 'yes'], [6, 'no'])), 'Q1 Yes and Q6 No, all correct');
+  assert.equal(positionLine('OR', legs([1, 'yes'], [6, 'no'])), 'Q1 Yes or Q6 No, at least one correct');
+  assert.equal(positionLine('EXACTLY_ONE', legs([1, 'yes'], [2, 'no'], [6, 'no'])), 'Q1 Yes, Q2 No or Q6 No, exactly one correct');
+  assert.equal(positionLine('AND', legs([1, 'yes'], [2, 'no'], [6, 'no'])), 'Q1 Yes, Q2 No and Q6 No, all correct');
 });
 
 test('selling with nothing held explains the position, not a generic error', () => {
@@ -42,11 +69,25 @@ test('the balance line reads, fails and loads in plain words', () => {
   assert.equal(balanceLabel({ owner: '0xabc', snapshotLoaded: true, cashAtoms: '0', error: true }), '0 test AUSD');
 });
 
-test('the combine panel says what a sale of a combined position needs', () => {
-  assert.equal(comboSummary('buy'), 'Combine with another prediction');
-  assert.equal(comboSummary('sell'), 'Sell a combined position');
-  assert.equal(comboHelp('buy'), null);
-  assert.equal(comboHelp('sell'), 'Pick the same questions, answers and rule as the combined position you hold.');
+test('ticket copy uses no banned words, no dashes and no exclamation marks', () => {
+  const banned = /\b(?:bet|bets|betting|odds|parlay|wager|wagers|gambl\w*|jackpot|cash out|win big)\b|\u2014|\u2013|!/i;
+  const strings: string[] = [];
+  const walk = (value: unknown) => {
+    if (typeof value === 'string') strings.push(value);
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === 'object') Object.values(value).forEach(walk);
+  };
+  walk(Object.values(copy).filter(value => typeof value !== 'function'));
+  const legs = [{ number: 1, side: 'yes' as const }, { number: 2, side: 'no' as const }, { number: 6, side: 'yes' as const }];
+  for (const rule of ['AND', 'OR', 'EXACTLY_ONE'] as const) {
+    walk([payoutSentence(rule, legs), payoutSentence(rule, legs.slice(0, 2)), payoutSentence(rule, legs.slice(0, 1)), positionLine(rule, legs),
+      rulePhrase(rule), ruleWord(rule)]);
+  }
+  walk([quoteErrorMessage('unpriceable'), quoteErrorMessage('unavailable'), quoteWaitText(true), quoteWaitText(false), sellBlockedMessage('0'),
+    sellBlockedMessage('2500000'), balanceLabel({ owner: null, snapshotLoaded: false, cashAtoms: null, error: false }), TICKET_INTRO]);
+  assert.ok(strings.length > 20);
+  for (const text of strings) assert.doesNotMatch(text, banned, text);
+  assert.equal(TICKET_INTRO, 'Each share pays 1 test AUSD if your prediction is right. Add up to two linked questions to combine them.');
 });
 
 test('a completed trade links its transaction only for a full hash', () => {

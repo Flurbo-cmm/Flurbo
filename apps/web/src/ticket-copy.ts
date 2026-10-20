@@ -2,13 +2,37 @@ export type Rule = 'AND' | 'OR' | 'EXACTLY_ONE';
 
 export const APPROVAL_LABEL = 'Review AUSD approval (step 1 of 2)';
 
-export const quoteErrorMessage = (combined: boolean) => combined
-  ? 'The pool cannot price this combination right now. Remove one answer or choose different answers.'
+export const TICKET_INTRO = 'Each share pays 1 test AUSD if your prediction is right. Add up to two linked questions to combine them.';
+
+export const quoteErrorMessage = (kind: 'unpriceable' | 'unavailable') => kind === 'unpriceable'
+  ? 'The pool cannot price these questions together. Remove an answer or choose another question.'
   : 'A current quote is unavailable. Refresh and try again.';
 
-export const ruleHelp = (rule: Rule) => rule === 'AND' ? 'Pays only when every selected answer is correct.'
-  : rule === 'OR' ? 'Pays when one or more selected answers are correct.'
-    : 'Pays when exactly one selected answer is correct. If all are correct it is a loss.';
+export const RULE_OPTIONS = [{ value: 'AND' as const, label: 'All correct' }, { value: 'OR' as const, label: 'At least one' },
+  { value: 'EXACTLY_ONE' as const, label: 'Exactly one' }];
+export const ruleWord = (rule: Rule) => rule === 'AND' ? 'and' : rule === 'OR' ? 'or' : 'exactly one of';
+export const rulePhrase = (rule: Rule) => rule === 'AND' ? 'Pays when all are correct'
+  : rule === 'OR' ? 'Pays when at least one is correct' : 'Pays when exactly one is correct';
+
+type Leg = { number: number; side: 'yes' | 'no' };
+const sideText = (side: 'yes' | 'no') => side === 'yes' ? 'Yes' : 'No';
+const listWith = (items: string[], word: string) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} ${word} ${items[items.length - 1]}`;
+
+export const payoutSentence = (rule: Rule, legs: Leg[]) => {
+  const start = 'Pays 1 test AUSD a share if';
+  if (legs.length === 1) return `${start} Q${legs[0].number} is ${sideText(legs[0].side)}.`;
+  const named = legs.map(leg => `Q${leg.number} ${sideText(leg.side)}`);
+  if (rule === 'AND') return `${start} ${listWith(legs.map(leg => `Q${leg.number} is ${sideText(leg.side)}`), 'and')}.`;
+  return rule === 'OR' ? `${start} at least one is right: ${listWith(named, 'or')}.`
+    : `${start} exactly one is right: ${listWith(named, 'or')}. Two or more right pays nothing.`;
+};
+
+export const positionLine = (rule: Rule, legs: Leg[]) => {
+  const named = legs.map(leg => `Q${leg.number} ${sideText(leg.side)}`);
+  if (legs.length === 1) return named[0];
+  return rule === 'AND' ? `${listWith(named, 'and')}, all correct`
+    : rule === 'OR' ? `${listWith(named, 'or')}, at least one correct` : `${listWith(named, 'or')}, exactly one correct`;
+};
 
 const shareText = (atoms: bigint) => {
   const whole = atoms / 1_000_000n, fraction = (atoms % 1_000_000n).toString().padStart(6, '0').replace(/0+$/, '');
@@ -30,10 +54,6 @@ export const balanceLabel = ({ owner, snapshotLoaded, cashAtoms, error }: { owne
   !owner ? 'MetaMask signs each trade and bond you review'
     : snapshotLoaded && cashAtoms !== null ? `${shareText(BigInt(cashAtoms))} test AUSD`
       : error ? 'Balance unavailable. Refresh.' : 'Reading balance...';
-
-export const comboSummary = (mode: 'buy' | 'sell') => mode === 'sell' ? 'Sell a combined position' : 'Combine with another prediction';
-export const comboHelp = (mode: 'buy' | 'sell') => mode === 'sell'
-  ? 'Pick the same questions, answers and rule as the combined position you hold.' : null;
 
 export const monadTxUrl = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash) ? `https://testnet.monadscan.com/tx/${hash}` : null;
 

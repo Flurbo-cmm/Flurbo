@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ringLayout, shortTitle, signedPercent } from '../src/web-layout.ts';
+import { ringLayout, shortTitle, signedPercent, signedPoints } from '../src/web-layout.ts';
 
 const nodes = (count: number, linked: (i: number) => boolean) =>
   Array.from({ length: count }, (_, event) => ({ event, linked: linked(event) }));
@@ -50,4 +50,8 @@ test('short titles keep whole words within the word and character limits', () =>
 
 test('signed percents show direction and one decimal', () => {
   assert.deepEqual([signedPercent(60), signedPercent(-30), signedPercent(0), signedPercent(null)], ['+6.0%', '-3.0%', '0.0%', 'n/a']);
+});
+
+test('signedPoints reads a difference as percentage points, not a relative percent', () => {
+  assert.deepEqual([signedPoints(96), signedPoints(-30), signedPoints(0), signedPoints(null), signedPoints(5)], ['+9.6 pts', '-3.0 pts', '0.0 pts', 'n/a', '+0.5 pts']);
 });

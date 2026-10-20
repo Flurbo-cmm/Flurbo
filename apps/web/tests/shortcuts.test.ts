@@ -13,7 +13,7 @@ test('board keys map to board actions', () => {
 });
 
 test('market keys map to market actions', () => {
-  const map: Record<string, string> = { y: 'yes', n: 'no', b: 'buy', s: 'sell', r: 'refresh' };
+  const map: Record<string, string> = { y: 'yes', n: 'no', b: 'buy', s: 'sell', r: 'refresh', c: 'combine' };
   for (const [k, action] of Object.entries(map)) assert.equal(shortcutFor(key(k), body, 'market', false), action, k);
   assert.equal(shortcutFor(key('?', { shiftKey: true }), body, 'market', false), 'help');
   assert.equal(shortcutFor(key('j'), body, 'market', false), null);

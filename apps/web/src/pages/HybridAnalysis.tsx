@@ -156,7 +156,7 @@ function HybridThesisBody({ market, other, others, onOther, sideA, setSideA, sid
         <dl className="review-figures"><div className="review-cost"><dt>Current quote for this combination</dt><dd>{cost === null ? 'Unavailable' : `${money(cost)} test AUSD`}</dd></div>
           <div><dt>Pool chance of this position paying</dt><dd>{pct(selected?.probability ?? null)}</dd></div>
           <div><dt>Gross payout if it pays</dt><dd>{shares} test AUSD</dd></div>
-          <div><dt>Net if either answer differs</dt><dd>{cost === null ? 'Unavailable' : `−${money(cost)} test AUSD`}</dd></div>
+          <div><dt>Net if it does not pay</dt><dd>{cost === null ? 'Unavailable' : `−${money(cost)} test AUSD`}</dd></div>
           <div><dt>Your expected net at this quote</dt><dd>{expected === null || cost === null ? 'Enter your estimates' : `${expected - cost >= 0n ? '+' : ''}${money(expected - cost)} test AUSD`}</dd></div></dl>
         <p className="market-caption">Expected net uses your estimates, the current buy quote and the binary payout. Gas and any VOID result are excluded. The market ticket checks a fresh quote before you sign.</p>
         {!result.closed && cost !== null && distribution && validShares

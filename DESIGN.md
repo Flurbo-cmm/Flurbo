@@ -250,12 +250,23 @@ Nearly square. Tags have 2px corners; controls and tiles 4px; panels and sheets 
 - **Modal** on desktop (520px, centered) and a bottom sheet on phones, with the wallet step, the exact amounts, the confirm button always in view, and the network tag. It cannot be dismissed while the wallet is open; a sent transaction can be hidden to the pending dock.
 - **Docked** inside the ticket for reviews that prepare themselves as the member edits, with a sticky action bar.
 
+### Combination slip
+- **Anatomy:** the ticket's prediction as one to three lines. This question is always the first line, marked "This market", with its own Yes and No. Each line holds a mono Q tag (the question number, a 2px square tag with an ink outline), the full question text, and a segmented answer control; added lines carry a remove button.
+- **Leader:** a 1px strong rule runs down the left edge through the Q tags. Where two lines join, an 8px lime square with an ink outline sits on the rule, and the rule word ("and", "or", "exactly one of") sits beside it in mono. With one line there is no leader and no joint.
+- **Add area:** "Add a linked question" sits directly under the lines, with the pool's three strongest links as hairline rows (Q tag, full question, signed points, the word Add), a text toggle for the full searchable list, and a plain note once three lines are chosen. No box wraps the slip; the ticket panel is the box and hairlines group the parts.
+- **Below two lines:** the rule control (All correct, At least one, Exactly one), one payout sentence, the outcome map, and the pool figures as dotted leaders (pool chance, chance if unrelated, difference in points), labelled as pool estimates.
+- **Motion:** a new line slides in over 160ms and the lime joint scales in once; both are skipped under reduced motion.
+
+### Outcome map
+- **Two lines:** a 2x2 grid with the first line on the rows. **Three lines:** eight cells in two rows of four, each headed by Y or N for every line in question order. Each cell shows the pool's chance for that outcome.
+- **Marks:** outcomes that pay take the lime fill with an ink outline (what is true if the prediction pays); the rest are dashed and quiet. Without a pool reading the cells say Pays or No payout.
+
 ### Inputs
 - **Style:** 1px control-stroke border, raised paper, 4px corners, 44px tall, 16px text on phones.
 - **Focus:** ink outline with the lime ring.
 
 ### Linked questions callout
-Hairline lines with lime squares connect a question to the outcomes it is priced from, as on an engraved banknote: on the market page's Linked tab, on the board when hovering a pool, and in the landing example.
+Hairline lines with lime squares connect a question to the outcomes it is priced from, as on an engraved banknote: on the market page's Linked tab, on the board when hovering a pool, and in the landing example. The combination slip in the ticket uses the same leader and joint square.
 
 ## Do's and Don'ts
 

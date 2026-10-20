@@ -16,13 +16,21 @@ import TransactionSheet from '../components/ui/TransactionSheet';
 import MarketShell, { type MarketTab } from '../components/market/MarketShell';
 import ContractList from '../components/market/ContractList';
 import ComboPicker from '../components/market/ComboPicker';
+import CombinationSlip from '../components/market/CombinationSlip';
+import HeldPositions, { describeHoldings, type HeldRow } from '../components/market/HeldPositions';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
 import { useCostBasis } from '../position-basis-client';
 import { positionKey, sellOutcome } from '../position-basis';
 import { encodeClaim } from '../../shared/claims.mjs';
-import { APPROVAL_LABEL, balanceLabel, comboHelp, comboSummary, monadTxUrl, quoteErrorMessage, quoteWaitText, ruleHelp, sellBlockedMessage,
+import { APPROVAL_LABEL, RULE_OPTIONS, TICKET_INTRO, balanceLabel, monadTxUrl, positionLine, quoteErrorMessage, quoteWaitText, rulePhrase, sellBlockedMessage,
   tradeSummary } from '../ticket-copy';
+import { addExtra, claimToCombo, legCount, readComboSearch, writeComboSearch } from '../combo-picker-model';
+import { useWeb } from '../pool-web-client';
+import { useWhatIf } from '../what-if-client';
+import { usePoolHoldings } from '../pool-holdings';
+import { strongestLinks } from '../../shared/pool-web.mjs';
+
 import { awaitingAnswer } from '../settlement-copy';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
@@ -136,9 +144,12 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [completed, setCompleted] = useState('');
   const [completedHash, setCompletedHash] = useState('');
   const [tradeText, setTradeText] = useState('');
-  const [comboOpen, setComboOpen] = useState(() => new URLSearchParams(location.search).has('other'));
+  const [holdingsTick, setHoldingsTick] = useState(0);
+  const [focusLeg, setFocusLeg] = useState<{ event: number; id: number } | null>(null);
+  const addHeading = useRef<HTMLHeadingElement>(null);
+  const [start] = useState(() => readComboSearch(location.search, others));
   const pollCount = useRef(0);
-  const [side, setSide] = useState<'yes' | 'no'>(() => new URLSearchParams(location.search).get('answer') === 'no' ? 'no' : 'yes');
+  const [side, setSide] = useState<'yes' | 'no'>(start.side);
   const [mode, setMode] = useState<'buy' | 'sell'>(() =>
     new URLSearchParams(location.search).get('trade') === 'sell' ? 'sell' : 'buy');
   const [shares, setShares] = useState(() => {
@@ -149,26 +160,11 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const [quoteError, setQuoteError] = useState('');
   const [quoteSlow, setQuoteSlow] = useState(false);
   const [combinedPosition, setCombinedPosition] = useState<PositionRead | null>(null);
-  const [extra1, setExtra1] = useState(() => {
-    const requested = new URLSearchParams(location.search).get('other');
-    if (requested === null) return '';
-    const index = Number(requested);
-    return others.find(item => item.eventIndex === index)?.id || '';
-  });
-  const [extra2, setExtra2] = useState(() => {
-    const requested = new URLSearchParams(location.search).get('third');
-    if (requested === null) return '';
-    const index = Number(requested);
-    return others.find(item => item.eventIndex === index && item.id !== extra1)?.id || '';
-  });
-  const [extra1Side, setExtra1Side] = useState<'yes' | 'no'>(() =>
-    new URLSearchParams(location.search).get('otherAnswer') === 'no' ? 'no' : 'yes');
-  const [extra2Side, setExtra2Side] = useState<'yes' | 'no'>(() =>
-    new URLSearchParams(location.search).get('thirdAnswer') === 'no' ? 'no' : 'yes');
-  const [combinationRule, setCombinationRule] = useState<'AND' | 'OR' | 'EXACTLY_ONE'>(() => {
-    const value = new URLSearchParams(location.search).get('rule');
-    return value === 'OR' || value === 'EXACTLY_ONE' ? value : 'AND';
-  });
+  const [extra1, setExtra1] = useState(start.combo.extra1);
+  const [extra2, setExtra2] = useState(start.combo.extra2);
+  const [extra1Side, setExtra1Side] = useState<'yes' | 'no'>(start.combo.extra1Side);
+  const [extra2Side, setExtra2Side] = useState<'yes' | 'no'>(start.combo.extra2Side);
+  const [combinationRule, setCombinationRule] = useState<'AND' | 'OR' | 'EXACTLY_ONE'>(start.rule);
   const [challenge, setChallenge] = useState({ name: '', description: '', sourceURL: '' });
   const [counter, setCounter] = useState(0);
   const [challengeEvidence, setChallengeEvidence] = useState<{ hash: string; uri: string } | null>(null);
@@ -229,15 +225,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   useEffect(() => {
     if (!market) return;
     const params = new URLSearchParams(location.search);
-    params.set('answer', side); params.set('shares', shares);
+    params.set('shares', shares);
     if (mode === 'sell') params.set('trade', 'sell'); else params.delete('trade');
-    const second = others.find(item => item.id === extra1);
-    const third = others.find(item => item.id === extra2);
-    if (second) { params.set('other', String(second.eventIndex)); params.set('otherAnswer', extra1Side); }
-    else { params.delete('other'); params.delete('otherAnswer'); }
-    if (third) { params.set('third', String(third.eventIndex)); params.set('thirdAnswer', extra2Side); }
-    else { params.delete('third'); params.delete('thirdAnswer'); }
-    if (second) params.set('rule', combinationRule); else params.delete('rule');
+    writeComboSearch(params, { side, combo: { extra1, extra2, extra1Side, extra2Side }, rule: combinationRule }, others);
     history.replaceState(history.state, '', `${location.pathname}?${params}`);
   }, [market, side, shares, mode, extra1, extra1Side, extra2, extra2Side, combinationRule]);
   useEffect(() => {
@@ -270,7 +260,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       void request<Quote>(id, '/action', { action: 'quote', owner,
         input: { side, rule: combinationRule, quantity: parseUnits(shares, 6).toString(), claim } })
         .then(value => { if (live) setQuote({ key: quoteKey, value }); })
-        .catch(() => { if (live) setQuoteError(quoteErrorMessage(!!extra1)); });
+        .catch(() => { if (live) setQuoteError('failed'); });
     }, 300);
     return () => { live = false; clearTimeout(timer); };
   }, [id, market, owner, marketOpen, side, shares,
@@ -287,6 +277,16 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
     return () => { live = false; };
   }, [id, market, owner, snapshot?.resolved, side, extra1, extra2,
     extra1Side, extra2Side, combinationRule, refresh]);
+
+  const web = useWeb(market?.id ?? '');
+  const slipInput = marketOpen && claim.length > 0 && claim.every(item => item.eventIndex >= 0) ? { given: [], claim: { legs: claim, rule: combinationRule } } : null;
+  const whatIf = useWhatIf(market?.id ?? '', market?.pool ?? '', slipInput);
+  const holdings = usePoolHoldings({ market, account: auth.address || null, owner, refresh: holdingsTick });
+  const links = web.web && market ? strongestLinks(web.web, market.eventIndex, 32) : web.error ? [] : null;
+  const unpriceable = legCount({ extra1, extra2, extra1Side, extra2Side }) > 1 && whatIf.result?.claim?.priceable === false;
+  const holdingsEvents = others.length + 1;
+  const heldRows = describeHoldings(holdings.rows, holdingsEvents).rows;
+  const holdsHere = (row: HeldRow) => row.legs.some(leg => leg.eventIndex === market?.eventIndex);
 
   async function connect(wallet = wallets.find(item => item.provider === provider) || wallets[0]) {
     if (!wallet || !auth.address) throw Error('Sign in and select MetaMask.');
@@ -385,6 +385,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         setNotice('Transaction failed. Refresh the market before retrying.');
       }
       setRefresh(value => value + 1);
+      setHoldingsTick(value => value + 1);
     } finally { setBusy(false); }
   }
   useEffect(() => {
@@ -484,9 +485,26 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
   const errorAlert = error ? <p className="state-inline error" role="alert">{error}</p> : null;
   const yesNo = [{ value: 'yes' as const, label: 'Yes' }, { value: 'no' as const, label: 'No' }];
   const rulingOptions = [{ value: '0', label: 'Refuse to rule' }, { value: '1', label: 'No' }, { value: '2', label: 'Yes' }];
-  const ruleOptions = [{ value: 'AND' as const, label: 'Both (AND)' }, { value: 'OR' as const, label: 'At least one (OR)' }, { value: 'EXACTLY_ONE' as const, label: 'Exactly one' }];
   const combo = { extra1, extra2, extra1Side, extra2Side };
   const setCombo = (next: typeof combo) => { setExtra1(next.extra1); setExtra2(next.extra2); setExtra1Side(next.extra1Side); setExtra2Side(next.extra2Side); };
+  const combine = (eventIndex: number) => {
+    const target = others.find(item => item.eventIndex === eventIndex);
+    if (!target || legCount(combo) >= 3 || combo.extra1 === target.id || combo.extra2 === target.id) return;
+    setMode('buy'); setPlan(null);
+    setCombo(addExtra(combo, target.id));
+    setFocusLeg({ event: eventIndex, id: Date.now() });
+    if (window.innerWidth < 1024) document.querySelector('.market-sidebar')?.scrollIntoView({ block: 'start' });
+  };
+  const pickHeld = (row: HeldRow) => {
+    const next = claimToCombo(row.scope, row.mask, holdingsEvents, market.eventIndex, others);
+    if (!next) return;
+    setSide(next.side); setCombo(next.combo); setCombinationRule(next.rule); setPlan(null);
+  };
+  const collectHeld = (row: HeldRow) => {
+    const own = row.legs.find(leg => leg.eventIndex === market.eventIndex);
+    if (own) run(() => prepare('redeem', { side: own.side, rule: row.rule, claim: row.legs, quantity: row.quantity }));
+  };
+  const questionOf = (eventIndex: number) => markets.find(item => item.pool.toLowerCase() === market.pool.toLowerCase() && item.eventIndex === eventIndex)?.question || 'Question';
   const challengeOpen = snapshot?.route === 'mechanical' && snapshot.phase === 1 && snapshot.marketNow < snapshot.challengeUntil;
   const defaultTab: MarketTab = closed || !!snapshot?.resolved || (snapshot?.phase ?? 0) > 0 || canAnswer || canArbitrate || !!reality?.pendingArbitration ? 'timeline' : others.length > 0 ? 'linked' : 'proof';
   const pendingBody = (item: Pending) => <>
@@ -598,33 +616,42 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         { label: 'Question ID', value: reality.questionId }] : []),
     ]}/>
   </div> : <p role="status" className="sr-only">Reading this market...</p>;
-  const linked = others.length > 0 ? <LinkedSummary marketId={market.id} pool={market.pool} event={market.eventIndex}
+  const linked = others.length > 0 ? <LinkedSummary pool={market.pool} event={market.eventIndex} web={web.web} error={web.error} retry={web.retry}
+    onCombine={combine} chosen={[extra1, extra2].flatMap(id => others.filter(item => item.id === id).map(item => item.eventIndex))} full={legCount(combo) >= 3}
     questions={Array.from({ length: others.length + 1 }, (_, i) => markets.find(item => item.pool.toLowerCase() === market.pool.toLowerCase() && item.eventIndex === i)?.question ?? `Question ${i + 1}`)}/> : undefined;
   const ticket = <>
-    <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">Each correct share pays 1 test AUSD. Choose your answer and number of shares below.</p></div>
+    <section className="detail-panel detail-trade" aria-label="Trade this market"><div className="consumer-ticket"><div className="ticket-head"><h2>{snapshot?.resolved ? 'Collect your prediction' : 'Your prediction'}</h2><p className="market-caption">{snapshot?.resolved ? 'Collect what each position pays.' : TICKET_INTRO}</p></div>
       {!sheetOpen && errorAlert}
       {notice && <p className="state-inline" role="status">{notice}</p>}
       <div className="ticket-wallet"><div><strong className="mono">{owner ? `${owner.slice(0, 6)}...${owner.slice(-4)}` : 'Connect a trading wallet'}</strong><small>{balanceLabel({ owner: owner || null, snapshotLoaded: !!snapshot?.user && !!owner && snapshot.user.wallet.toLowerCase() === owner.toLowerCase(), cashAtoms: snapshot?.user?.cashAtoms ?? null, error: balanceFailed })}</small></div>
         <button className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>{owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>
       {!closed && !snapshot?.resolved && !pending && !completed && <><SegmentedControl label="Buy or sell" value={mode} options={[{ value: 'buy', label: 'Buy' }, { value: 'sell', label: 'Sell' }]} onChange={value => { setMode(value); setPlan(null); }} block/>
-        <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>
+        {mode === 'sell' && owner && <HeldPositions mode="sell" rows={holdings.rows} events={holdingsEvents} anchor={market.eventIndex} pool={market.pool}
+          loading={holdings.loading} complete={holdings.complete} error={holdings.error} busy={busy} onPick={pickHeld} onCollect={collectHeld}/>}
+        {others.length > 0 ? <CombinationSlip mode={mode} anchor={{ eventIndex: market.eventIndex, question: market.question }} side={side}
+          onSide={value => { setSide(value); setPlan(null); }} others={others} value={combo} onChange={setCombo} rule={combinationRule} onRule={setCombinationRule}
+          links={links} whatIf={whatIf.result} whatIfError={whatIf.error} whatIfLoading={whatIf.loading} focusRequest={focusLeg} addRef={addHeading}
+          findOpen={mode === 'sell' && (!owner || !holdings.complete && !holdings.loading || heldRows.every(row => !holdsHere(row)))}/>
+          : <SegmentedControl label="Your answer" value={side} options={yesNo} onChange={value => { setSide(value); setPlan(null); }} block/>}
         <QuantityStepper label="Shares" value={shares} onChange={setShares} max={20}/>
-        {others.length > 0 && <details className="oracle-combination" open={comboOpen || !!extra1} onToggle={event => setComboOpen(event.currentTarget.open)}><summary>{comboSummary(mode)}</summary>{comboHelp(mode) && <p className="field-help">{comboHelp(mode)}</p>}<ComboPicker others={others} value={combo} onChange={setCombo}/></details>}
-        {extra1 && <><SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/><p className="field-help">{ruleHelp(combinationRule)}</p></>}
         {owner && <div className="ticket-quote-state" aria-live="polite">
-          {!currentQuote && <p className="ticket-status" role="status">{quoteError || quoteWaitText(quoteSlow)}</p>}
+          {!currentQuote && <p className={`ticket-status${unpriceable || quoteError ? ' ticket-status-error' : ''}`} role="status">{unpriceable ? quoteErrorMessage('unpriceable') : quoteError ? quoteErrorMessage('unavailable') : quoteWaitText(quoteSlow)}</p>}
           <button type="button" className="text-link ticket-refresh" disabled={busy} onClick={() => setRefresh(value => value + 1)}>Refresh price</button>
         </div>}
         {currentQuote && !plan && <div className="ticket-review ticket-quote" aria-label="Current prediction quote">
           <h3>{mode === 'buy' ? 'Review your purchase' : 'Review your sale'}</h3>
-          <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'} · {extra1 ? `${combinationRule.replace('_', ' ')} · ` : ''}{claim.map(item => `${markets.find(question => question.pool.toLowerCase() === market.pool.toLowerCase() && question.eventIndex === item.eventIndex)?.question || 'Question'}: ${item.side === 'yes' ? 'Yes' : 'No'}`).join(' · ')}</p>
+          <p className="review-claim">{shares} {Number(shares) === 1 ? 'share' : 'shares'}</p>
+          <ol className="review-legs" aria-label="Answers in this prediction">{claim.map(item => <li key={item.eventIndex}><span className="slip-q">Q{item.eventIndex + 1}</span>
+            <strong>{item.side === 'yes' ? 'Yes' : 'No'}</strong><span>{questionOf(item.eventIndex)}</span></li>)}</ol>
+          {extra1 && <p className="review-rule">{rulePhrase(combinationRule)}</p>}
           {quotedAtoms && <dl className="review-figures leaders">
             <div className="review-cost"><dt>{mode === 'buy' ? 'Quoted cost' : 'Quoted proceeds'}</dt><dd>{cash(quotedAtoms)} test AUSD</dd></div>
             <div><dt>Average per share</dt><dd>{perShare} test AUSD</dd></div>
-            <div><dt>{mode === 'buy' ? 'Gross payout if correct' : 'Shares leaving your wallet'}</dt><dd>{mode === 'buy' ? `${shares} test AUSD` : `${shares} shares`}</dd></div>
+            <div><dt>{mode === 'buy' ? 'Payout if it pays' : 'Shares leaving your wallet'}</dt><dd>{mode === 'buy' ? `${shares} test AUSD` : `${shares} shares`}</dd></div>
             <div><dt>{mode === 'buy' ? 'Maximum spend' : 'Minimum proceeds'}</dt><dd>{cash((mode === 'buy' ? currentQuote.maxCostAtoms : currentQuote.minProceedsAtoms) || '0')} test AUSD</dd></div>
-            <div><dt>{mode === 'buy' ? 'Possible loss' : 'Shares held'}</dt><dd>{mode === 'buy' ? `Up to ${cash(currentQuote.maxCostAtoms)} test AUSD, plus network gas` : `${cash(currentQuote.holdingsAtoms)} shares`}</dd></div>
+            {mode === 'sell' && <div><dt>Shares held</dt><dd>{cash(currentQuote.holdingsAtoms)} shares</dd></div>}
           </dl>}
+          {mode === 'buy' && quotedAtoms && <p className="market-caption">The most you can lose, plus network gas.</p>}
           {mode === 'sell' && quotedAtoms && (costBasis.status === 'loading' ? <p role="status" className="market-caption">Reading your cost...</p>
             : saleBasis ? <dl className="review-figures leaders" aria-label="Profit or loss on this sale">
               <div><dt>You paid</dt><dd>{cash(saleBasis.paid.toString())} test AUSD</dd></div>
@@ -634,7 +661,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
           <p className="market-caption">0.5% price tolerance. A fresh quote is checked when you review the transaction. A correct share pays 1 test AUSD; a losing share pays 0. VOID may pay a fraction.</p>
           {mode === 'buy' && !canBuy && <p role="status">Your wallet needs at least {cash(currentQuote.maxCostAtoms)} test AUSD. <Link href="/fund" className="text-link">Get test funds</Link></p>}
           {mode === 'sell' && !canSell && <p role="status">{sellBlockedMessage(currentQuote.holdingsAtoms)}</p>}
-          <button className="btn btn-primary btn-block" disabled={!owner || busy || !!pending || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
+          <button className="btn btn-primary btn-block" disabled={!owner || busy || !!pending || unpriceable || (mode === 'buy' ? !canBuy : !canSell)} onClick={() => run(() => prepare(mode === 'sell' ? 'sell' : needsApproval ? 'approve' : 'buy',
             { side, rule: combinationRule, quantity: quantityAtoms.toString(), claim }))}>{mode === 'sell' ? 'Review sale' : needsApproval ? APPROVAL_LABEL : 'Review purchase'}</button>
         </div>}</>}
       <TransactionSheet phase={tradePhase} hash={tradePending?.hash}
@@ -662,11 +689,13 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         {(['yes', 'no'] as const).map(answer => BigInt(answer === 'yes' ? snapshot.user?.yesShares || '0' : snapshot.user?.noShares || '0') > 0n
           && <button key={answer} className="btn btn-secondary" disabled={busy || !!pending} onClick={() => run(() => prepare('redeem',
             { side: answer, quantity: answer === 'yes' ? snapshot.user?.yesShares : snapshot.user?.noShares }))}>Collect {answer} payout</button>)}
-        {others.length > 0 && <details open={combinationLink}><summary>Collect a combined prediction</summary>
+        {others.length > 0 && <HeldPositions mode="collect" rows={holdings.rows} events={holdingsEvents} anchor={market.eventIndex} pool={market.pool}
+          loading={holdings.loading} complete={holdings.complete} error={holdings.error} busy={busy || !!pending} onPick={pickHeld} onCollect={collectHeld}/>}
+        {others.length > 0 && <details open={combinationLink || (!holdings.complete && !holdings.loading)}><summary>Find another combination</summary>
           <p className="market-caption">Select the same questions and answers you bought. Holdings and payout are read from the pool.</p>
           <SegmentedControl label="This answer" value={side} options={yesNo} onChange={value => setSide(value === 'no' ? 'no' : 'yes')} block/>
           <ComboPicker others={others} value={combo} onChange={setCombo} legend="Other questions in the combination"/>
-          <SegmentedControl label="How the answers combine" value={combinationRule} options={ruleOptions} onChange={value => setCombinationRule(value)} block/>
+          <SegmentedControl label="How the answers combine" value={combinationRule} options={RULE_OPTIONS} onChange={value => setCombinationRule(value)} block/>
           {extra1 && <p>{combinedPosition ? `${cash(combinedPosition.holdingsAtoms)} shares held · ${cash(combinedPosition.payoutAtoms || '0')} test AUSD payable` : 'Reading this selection...'}</p>}
           {extra1 && combinedPosition && BigInt(combinedPosition.holdingsAtoms) > 0n
             && BigInt(combinedPosition.payoutAtoms || '0') > 0n
@@ -675,7 +704,8 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
         </details>}</>}
       <details className="disclosure"><summary>How this market works</summary><p>Trades use test AUSD on Monad. Settlement follows the published source route. Challenged results go to Kleros.</p></details></div></section>
     <section className="detail-panel detail-position" aria-label="Your position"><div className="panel-head"><h2>Your position</h2><Link href="/portfolio" className="text-link">Full portfolio <ArrowUpRight size={15}/></Link></div>
-      <dl className="position-rows leaders"><div><dt>Yes</dt><dd>{cash(snapshot?.user?.yesShares || '0')} shares</dd></div><div><dt>No</dt><dd>{cash(snapshot?.user?.noShares || '0')} shares</dd></div></dl></section>
+      <dl className="position-rows leaders"><div><dt>Yes</dt><dd>{cash(snapshot?.user?.yesShares || '0')} shares</dd></div><div><dt>No</dt><dd>{cash(snapshot?.user?.noShares || '0')} shares</dd></div>
+        {heldRows.filter(row => row.legs.length > 1 && holdsHere(row)).map(row => <div key={`${row.scope}:${row.mask}`}><dt>{positionLine(row.rule, row.legs.map(leg => ({ number: leg.eventIndex + 1, side: leg.side })))}</dt><dd>{cash(row.quantity)} {BigInt(row.quantity) === 1_000_000n ? 'share' : 'shares'}</dd></div>)}</dl></section>
   </>;
   return <MarketShell kind="Real event" question={market.question} status={<StatusBadge kind={status}>{statusText}</StatusBadge>} closes={{ at: market.closesAt, closed }} results={market.observationEndsAt}
     prices={summary && !closed ? summary.prices : null} watchKey={`hybrid:${id}`} className="oracle-page"
