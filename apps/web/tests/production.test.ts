@@ -251,3 +251,59 @@ test('company hostname serves the app and API while rejecting the hackathon host
     await rm(directory,{recursive:true,force:true});
   }
 });
+
+test('flurbo.tech is the primary company origin; the old host redirects except for committed evidence and agent paths', async () => {
+  const companyOrigin = 'https://flurbo.tech', legacyOrigin = 'https://flurbopm.singu.online';
+  assert.deepEqual(hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet'}).legacyOrigins,[legacyOrigin]);
+  assert.equal(hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet'}).evidenceOrigin,legacyOrigin);
+  assert.equal(hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet',FLURBO_EVIDENCE_ORIGIN:companyOrigin}).evidenceOrigin,companyOrigin);
+  assert.throws(()=>hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet',FLURBO_EVIDENCE_ORIGIN:'https://evil.example'}));
+  const legacy = hostedConfig({FLURBO_ORIGIN:legacyOrigin,FLURBO_NETWORK:'public_testnet'});
+  assert.deepEqual(legacy.legacyOrigins,[]); assert.equal(legacy.evidenceOrigin,legacyOrigin);
+
+  const directory = await mkdtemp(join(tmpdir(), 'flurbo-tech-host-'));
+  await writeFile(join(directory, 'index.html'), '<html>Flurbo company</html>');
+  const server = productionServer({origin: companyOrigin, legacyOrigins: [legacyOrigin], relatedOrigins: [companyOrigin],
+    rpcUrl: TESTNET.rpc, previewAccess: null}, new SessionStore(), directory);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as {port:number}).port;
+  const request = (host:string, path:string, method='GET') => new Promise<{status:number;headers:Record<string,any>;body:string}>((resolve, reject) => {
+    const req = httpRequest({hostname:'127.0.0.1', port, path, method, headers:{Host:host}}, res => {
+      let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>resolve({status:res.statusCode!,headers:res.headers,body}));
+    });req.on('error',reject);req.end();
+  });
+  try {
+    assert.equal((await request('flurbo.tech', '/')).status, 200);
+    assert.equal((await request('flurbo.tech', '/api/network')).status, 200);
+    assert.equal((await request('flurbo.singu.online', '/')).status, 421);
+    assert.equal((await request('evil.example', '/')).status, 421);
+
+    for (const method of ['GET','POST']) {
+      const moved = await request('flurbopm.singu.online', '/markets?tab=open', method);
+      assert.equal(moved.status, 308, method);
+      assert.equal(moved.headers.location, 'https://flurbo.tech/markets?tab=open');
+    }
+    assert.equal((await request('flurbopm.singu.online', '//evil.example/x')).headers.location, 'https://flurbo.tech//evil.example/x');
+    assert.equal((await request('flurbopm.singu.online', '/api/network')).status, 308);
+
+    const hash = '0x' + 'ab'.repeat(32);
+    for (const path of [`/api/pilot/evidence/${hash}`, `/api/oracle/evidence/${hash}`, `/api/settlement/packets/${'cd'.repeat(32)}`, `/api/hybrid/rules/${hash}`, '/hybrid-meta-evidence.json']) {
+      const direct = await request('flurbopm.singu.online', path);
+      assert.notEqual(direct.status, 308, path); assert.notEqual(direct.status, 421, path); assert.equal(direct.headers.location, undefined, path);
+    }
+    const agent = await request('flurbopm.singu.online', '/api/agent-runtime/v1/status', 'POST');
+    assert.notEqual(agent.status, 308); assert.notEqual(agent.status, 421);
+    assert.equal((await request('flurbopm.singu.online', '/api/pilot/evidence/' + hash, 'POST')).status, 308);
+
+    const related = await request('flurbopm.singu.online', '/.well-known/webauthn');
+    assert.equal(related.status, 200); assert.deepEqual(JSON.parse(related.body), {origins: [companyOrigin]});
+    assert.match(related.headers['content-type'], /^application\/json/); assert.equal(related.headers.location, undefined);
+
+    const health = await request('flurbopm.singu.online', '/healthz');
+    assert.equal(health.status, 200);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(()=>resolve()));
+    await rm(directory,{recursive:true,force:true});
+  }
+});

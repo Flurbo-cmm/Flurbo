@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AuthController } from "../src/auth/controller.ts";
 import { deriveAccount } from "../src/auth/passkey-crypto.ts";
-import { authPolicy, PASSKEY_HOST, COMPANY_PASSKEY_HOST, SESSION_MS } from "../src/auth/policy.ts";
+import { authPolicy, PASSKEY_HOST, COMPANY_PASSKEY_HOST, COMPANY_HOST, SESSION_MS } from "../src/auth/policy.ts";
 import type { WebAuthnClient } from "@category-labs/mera";
 
 const local = authPolicy("http://localhost:18767/signup", true, true, true);
@@ -28,6 +28,13 @@ test("RP policy pins the public host and separates local test accounts", () => {
   assert.equal(local.rpId, "localhost");
   assert.equal(authPolicy(`https://${PASSKEY_HOST}/login`, false, true, true).rpId, PASSKEY_HOST);
   assert.equal(authPolicy(`https://${COMPANY_PASSKEY_HOST}/login`, false, true, true).rpId, COMPANY_PASSKEY_HOST);
+  assert.equal(COMPANY_HOST, "flurbo.tech");
+  // flurbo.tech reuses the passkeys created on the old host through WebAuthn related origins.
+  assert.equal(authPolicy(`https://${COMPANY_HOST}/login`, false, true, true).rpId, COMPANY_PASSKEY_HOST);
+  assert.equal(authPolicy(`https://${COMPANY_HOST}/login`, false, true, true).local, false);
+  for (const url of ["https://www.flurbo.tech", "https://evil.flurbo.tech", "http://flurbo.tech", "https://flurbo.tech.evil.example"]) {
+    assert.equal(authPolicy(url, false, true, true).rpId, null, url);
+  }
   for (const url of ["https://preview.vercel.app", "https://singu.online", `https://evil.${PASSKEY_HOST}`, `http://${PASSKEY_HOST}`, "http://localhost:18767"]) {
     assert.equal(authPolicy(url, false, true, true).rpId, null, url);
   }

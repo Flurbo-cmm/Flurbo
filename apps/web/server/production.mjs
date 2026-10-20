@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { localApi } from './local-api.mjs';
 import { cookieValue } from './session.mjs';
 import { isTestingOperator, testingPages } from './testing-access.mjs';
-import { hostedConfig, readerProvider } from './network.mjs';
+import { COMPANY_ORIGINS, hostedConfig, readerProvider } from './network.mjs';
 import {previewAccess} from './preview-access.mjs';
 import {configureApplications} from './access-applications.mjs';
 import { RedisSessionStore, redisCommand } from './redis-session.mjs';
@@ -50,6 +50,12 @@ const security = {
 
 export function productionServer(config, store, staticRoot = dist) {
   const clientAddress = clientAddressReader(config.clientAddressHeader || 'x-forwarded-for');
+  // The previous company host redirects to the primary origin. It keeps answering what other parties already hold
+  // links to or send credentials to: content addressed evidence and rules recorded on chain, the WebAuthn related
+  // origins file that keeps existing passkeys valid, and agent and prover requests that cannot follow a redirect.
+  const legacyHosts = new Set((config.legacyOrigins ?? []).map(origin => new URL(origin).host));
+  const committedPath = /^(?:\/\.well-known\/webauthn|\/hybrid-meta-evidence\.json|\/api\/(?:pilot\/evidence|oracle\/evidence|settlement\/packets|hybrid\/rules)\/.*)$/;
+  const agentPath = /^\/api\/(?:agent-runtime|settlement\/proof-captures)(?:\/.*)?$/;
   // The first requests after a start log how the hosting proxy forwards addresses (counts only, never addresses),
   // which shows whether FLURBO_CLIENT_IP_HEADER needs to change.
   let forwardingLogs = 0;
@@ -63,12 +69,25 @@ export function productionServer(config, store, staticRoot = dist) {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
     if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(publicStatus({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled' }))); return; }
+    if (legacyHosts.has(req.headers.host)) {
+      if (!req.url || req.url.length > 4096) { res.writeHead(414); res.end(); return; }
+      const path = req.url.split('?')[0], read = ['GET', 'HEAD'].includes(req.method);
+      if (!(read && committedPath.test(path)) && !agentPath.test(path)) {
+        res.writeHead(308, { Location: config.origin + req.url, 'Cache-Control': 'public, max-age=3600' }); res.end(); return;
+      }
+      req.headers.host = new URL(config.origin).host;
+    }
     if (req.headers.host !== new URL(config.origin).host) { res.writeHead(421); res.end(`Use ${config.origin}`); return; }
     if (forwardingLogs < 20 && req.url?.startsWith('/api/')) {
       forwardingLogs++;
       const forwarded = String(req.headers['x-forwarded-for'] ?? '').split(',').filter(x => x.trim()).length;
       console.log(JSON.stringify({ status: 'client_address_headers', forwarded_entries: forwarded,
         cf_connecting_ip: Boolean(req.headers['cf-connecting-ip']), true_client_ip: Boolean(req.headers['true-client-ip']) }));
+    }
+    if (req.url === '/.well-known/webauthn' && ['GET', 'HEAD'].includes(req.method)) {
+      const origins = config.relatedOrigins ?? [];
+      res.writeHead(origins.length ? 200 : 404, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' });
+      res.end(req.method === 'HEAD' ? undefined : JSON.stringify(origins.length ? { origins } : { error: 'No related origins' })); return;
     }
     if (req.url === '/.well-known/assetlinks.json' && ['GET', 'HEAD'].includes(req.method)) {
       const body = config.androidAssetLinks;
@@ -115,7 +134,7 @@ export function productionServer(config, store, staticRoot = dist) {
 
 async function main() {
   const config = hostedConfig();
-  const companySite = config.origin === 'https://flurbopm.singu.online';
+  const companySite = COMPANY_ORIGINS.has(config.origin);
   config.envioGraphqlUrl = process.env.FLURBO_ENVIO_GRAPHQL_URL || null;
   // Which forwarded header carries the visitor address for per-client rate limits (client-address.mjs).
   config.clientAddressHeader = process.env.FLURBO_CLIENT_IP_HEADER || 'x-forwarded-for';
@@ -132,8 +151,8 @@ async function main() {
   // FLURBO_SHARED_LIMITS=true when running more than one instance so they share the budgets again.
   const sharedLimits = config.sharedLimits = process.env.FLURBO_SHARED_LIMITS === 'true';
   installRpcCapacity({command:sharedLimits?store.command:null});
-    config.evidenceArchive = evidenceArchive(store.command, config.origin);
-    const settlementStores = createSettlementStores({command:store.command,origin:config.origin});
+    config.evidenceArchive = evidenceArchive(store.command, config.evidenceOrigin);
+    const settlementStores = createSettlementStores({command:store.command,origin:config.evidenceOrigin});
     config.settlementPackets = settlementStores.packetStore;
   config.starter = starterFunds({ config: starterConfig(), command: store.command, rpcUrl: config.rpcUrl });
   if (companySite && config.starter && config.starter.address.toLowerCase() !== process.env.FLURBO_COMPANY_STARTER_ADDRESS?.toLowerCase())
@@ -151,7 +170,7 @@ async function main() {
       return next;
     };
     const [source, market] = oracleClients(process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com', config.rpcUrl);
-    config.oracleEvidence = oracleEvidence(store.command, config.origin);
+    config.oracleEvidence = oracleEvidence(store.command, config.evidenceOrigin);
     const juror = /^0x[0-9a-fA-F]{40}$/.test(process.env.FLURBO_HYBRID_JUROR_ADDRESS || '') ? process.env.FLURBO_HYBRID_JUROR_ADDRESS : null;
     const hybridIndexes = hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
       fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : poolRpc('https://testnet-rpc.monad.xyz') });
@@ -160,11 +179,11 @@ async function main() {
     config.agentPools = await hybridAgentPools({ catalog: hybrid, rpc: poolRpc(config.rpcUrl), indexes: hybridIndexes });
     if (hybrid.pools.length) config.hybridPortfolio = hybridPortfolioService({ catalog: hybrid, market, indexes: hybridIndexes });
     if (hybrid.pools.length) config.hybrid = hybridMarketService({ catalog: hybrid,
-      market, source, evidence: config.oracleEvidence, origin: config.origin, command: store.command });
+      market, source, evidence: config.oracleEvidence, origin: config.evidenceOrigin, command: store.command });
     const proofRules = proofCaptureRules(hybrid.pools);
     if (proofRules.size && process.env.FLURBO_PROOF_SUBMIT_TOKEN) config.proofCaptures = proofCaptureService({ rules: proofRules,
       captureStore: settlementStores.captureStore, token: process.env.FLURBO_PROOF_SUBMIT_TOKEN });
-    if (catalog.routes.some(route => route.evidenceOrigin !== config.origin)) throw Error('Oracle evidence origin must match this site');
+    if (catalog.routes.some(route => route.evidenceOrigin !== config.evidenceOrigin)) throw Error('Oracle evidence origin must match the evidence origin');
     config.oracle = oracleService({ catalog, source, market, evidence: config.oracleEvidence });
     if (process.env.FLURBO_ORACLE_ANSWER_ENABLED === 'true' && catalog.routes.length) {
       config.oracleAnswerer = oracleAnswerWorker({ routes: catalog.routes, source,
@@ -181,7 +200,7 @@ async function main() {
       config.hybridSettlement = hybridSettlementWorker({ pools: hybrid.pools, source, market,
         command: store.command, archive: config.evidenceArchive,
         captureStore: settlementStores.captureStore, packetStore: settlementStores.packetStore,
-        oracleEvidence: config.oracleEvidence, origin: config.origin, marketRpcUrl: config.rpcUrl,
+        oracleEvidence: config.oracleEvidence, origin: config.evidenceOrigin, marketRpcUrl: config.rpcUrl,
         proposerPrivateKey: process.env.FLURBO_HYBRID_PROPOSER_PRIVATE_KEY,
         relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend,
         answererPrivateKey: process.env.FLURBO_HYBRID_ANSWER_PRIVATE_KEY || null,

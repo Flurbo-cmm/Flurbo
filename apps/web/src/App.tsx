@@ -14,6 +14,7 @@ import WalletLinkSheet from './components/WalletLinkSheet';
 import { useLoadGate } from './loading/gates';
 import { rememberReturnPath } from './return-path';
 import { preloadRoutes, useRoutePage, type RouteKey } from './routes';
+import { COMPANY_HOSTS } from './auth/policy';
 
 export const brand = "flurbo";
 
@@ -225,7 +226,7 @@ function pageTitle(location: string) {
 
 export default function App() {
   const [location] = useLocation();
-  const companySite = window.location.hostname === 'flurbopm.singu.online';
+  const companySite = COMPANY_HOSTS.includes(window.location.hostname);
   const previousLocation = useRef(location);
   useEffect(() => {
     document.title = pageTitle(location);

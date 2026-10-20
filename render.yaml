@@ -8,6 +8,8 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: FLURBO_ORIGIN
+        value: https://flurbo.tech
+      - key: FLURBO_EVIDENCE_ORIGIN
         value: https://flurbopm.singu.online
       - key: FLURBO_NETWORK
         value: public_testnet

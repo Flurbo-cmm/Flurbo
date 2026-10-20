@@ -211,7 +211,7 @@ function Credentials({ id, credentials, busy, act }: { id: string; credentials: 
 function Setup({ profile, hasWallet }: { profile: ProfileJSON; hasWallet: boolean }) {
   const [language, setLanguage] = useState<'typescript' | 'python' | 'rust' | 'cpp'>('typescript');
   const [copyStatus,setCopyStatus]=useState('');
-  const origin = typeof window === 'undefined' ? 'https://flurbopm.singu.online' : window.location.origin;
+  const origin = typeof window === 'undefined' ? 'https://flurbo.tech' : window.location.origin;
   // init writes this agent's registered markets into the file, so it trades exactly what Flurbo allows.
   const markets = (profile.markets ?? []).join(',');
   const review = [
