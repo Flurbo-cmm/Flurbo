@@ -56,3 +56,8 @@ test('the guide explains use, not how Flurbo is built', () => {
 test('the guide has no em dashes', () => {
   assert.doesNotMatch(both, /—/);
 });
+
+test('the guide explains conditional predictions', () => {
+  for (const text of ['Conditional predictions', 'refunded', 'If a question is Void'])
+    assert.ok(docs.includes(text), `expected "${text}"`);
+});

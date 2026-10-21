@@ -80,7 +80,7 @@ export async function verifyHybridDeployment({ id, prepared, unverified, adapter
   return record;
 }
 
-function pacedHttp(url, { minIntervalMs = 80, retryAttempts = 5, retryDelayMs = 1200, ...options } = {}) {
+export function pacedHttp(url, { minIntervalMs = 80, retryAttempts = 5, retryDelayMs = 1200, ...options } = {}) {
   const base = http(url, options);
   let lastCall = 0;
   return config => {

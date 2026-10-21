@@ -143,6 +143,31 @@ export function certifiedScenario(s,given) {
   }
   return {values,questions,reasons};
 }
+// Chance of a condition, of a target, and of the target with and without the condition. Both are lists of one or two
+// answers on different questions, read as "all of these". The negated condition sums every other answer combination,
+// so no interval is ever subtracted. Conditional chances are withheld when what they condition on is too unlikely.
+export function certifiedConditional(s,condition,target) {
+  validateFactorSnapshot(s);
+  const legs=[...(Array.isArray(condition)?condition:[]),...(Array.isArray(target)?target:[])];
+  if(!Array.isArray(condition)||!Array.isArray(target)||condition.length<1||condition.length>2||target.length<1||target.length>2||legs.length>3
+    ||legs.some(l=>!Number.isInteger(l?.event)||l.event<0||l.event>=s.events||typeof l.yes!=='boolean')||new Set(legs.map(l=>l.event)).size!==legs.length)
+    throw new Error('Invalid conditional');
+  const tabs=tables(s),m=items=>mass(s,tabs,evidenceOf(items.map(l=>[l.event,l.yes]))),total=m([]);
+  const chosen=condition.reduce((at,l,j)=>at|(l.yes?1<<j:0),0);
+  const negations=Array.from({length:2**condition.length},(_,state)=>state).filter(state=>state!==chosen)
+    .map(state=>condition.map((l,j)=>({event:l.event,yes:Boolean(state>>j&1)})));
+  const c=m(condition),notC=sum(negations.map(m));
+  const usable=x=>ratio(x,total)[0]>=S/1_000_000_000n;
+  const intervals={condition:ratio(c,total),target:ratio(m(target),total),
+    given:usable(c)?ratio(m(legs),c):null,
+    givenNot:usable(notC)?ratio(sum(negations.map(n=>m([...n,...target]))),notC):null};
+  const values={},reasons={};
+  for(const [key,bounds] of Object.entries(intervals)){
+    values[key]=display(bounds);
+    if(values[key]===null)reasons[key]=bounds?'rounding_uncertain':'rare_condition';
+  }
+  return {values,reasons};
+}
 // Every outcome of a claim's events, in the claim's own bit order (ascending event index).
 export function certifiedCells(s,scope) {
   validateFactorSnapshot(s);

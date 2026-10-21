@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { m } from 'framer-motion';
-import { readHybridPending, readOraclePending } from '../../pending-readers';
+import { readConditionalPending, readHybridPending, readOraclePending } from '../../pending-readers';
 
 type Tracked = { href: string; waiting: boolean };
 
@@ -13,6 +13,8 @@ function readTracked(): Tracked[] {
   const hybrid = readHybridPending();
   const hybridId = hybrid?.id.match(/^(0x[0-9a-f]{40})-(\d{1,2})$/i);
   if (hybrid && hybridId) found.push({ href: `/markets/hybrid/${hybridId[1]}/${Number(hybridId[2])}`, waiting: hybrid.hash === null });
+  const conditional = readConditionalPending();
+  if (conditional) found.push({ href: `/conditionals/${conditional.pool}`, waiting: conditional.hash === null });
   return found;
 }
 

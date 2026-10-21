@@ -20,6 +20,7 @@ export const brand = "flurbo";
 
 const APP_LINKS = [
   { href: '/markets', label: 'Markets', match: (path: string) => path === '/markets' || path.startsWith('/markets/') },
+  { href: '/conditionals', label: 'Conditionals', match: (path: string) => path === '/conditionals' || path.startsWith('/conditionals/') },
   { href: '/agents', label: 'Agents', match: (path: string) => path === '/agents' || path.startsWith('/agents/') },
   { href: '/portfolio', label: 'Portfolio', match: (path: string) => path === '/portfolio' },
   { href: '/access', label: 'Your account', match: (path: string) => path === '/access' },
@@ -157,6 +158,7 @@ function AccountRoute() {
   const locationKey: RouteKey | null = location==='/access' ? 'access' : location==='/fund' ? 'fund'
     : operatorPath ? (checking || !testingAccess ? null : location==='/metrics' ? 'metrics' : 'workspace')
     : location==='/agents'||location.startsWith('/agents/') ? 'agents'
+    : location==='/conditionals'||location.startsWith('/conditionals/') ? 'conditionals'
     : location.startsWith('/markets/')||['/markets','/portfolio'].includes(location) ? 'markets' : 'workspace';
   const approved = !!preview.access?.approved;
   const key: RouteKey | null = !authenticated ? null : checking ? locationKey : !approved ? 'access' : locationKey;
@@ -170,7 +172,7 @@ function AccountRoute() {
     retry: route.error ? route.retry : checking ? preview.refresh : undefined,
   });
 
-  useEffect(() => { if (approved) preloadRoutes(['markets', 'agents', 'access', 'fund']); }, [approved]);
+  useEffect(() => { if (approved) preloadRoutes(['markets', 'conditionals', 'agents', 'access', 'fund']); }, [approved]);
 
   useEffect(() => {
     if (!state.restoring && !authenticated) {
@@ -213,6 +215,7 @@ function pageTitle(location: string) {
     : /^\/markets\/(?:hybrid\/0x[0-9a-f]{40}\/\d+|[^/]+\/[0-3])\/thesis$/i.test(location) ? "Build your thesis | flurbo"
     : /^\/markets\/hybrid\/0x[0-9a-f]{40}\/web$/i.test(location) ? "How questions connect | flurbo"
     : location.startsWith("/markets") ? "Markets | flurbo"
+    : location === "/conditionals" || location.startsWith("/conditionals/") ? "Conditional predictions | flurbo"
     : location === "/access" ? "Your account | flurbo"
     : location === "/fund" ? "Get test funds | flurbo"
     : location === "/docs" ? "Documentation | flurbo"
@@ -247,6 +250,8 @@ export default function App() {
       <Route path="/login" component={LoginRoute} />
       <Route path="/signup" component={SignupRoute} />
       <Route path="/markets" component={AccountRoute} />
+      <Route path="/conditionals" component={AccountRoute} />
+      <Route path="/conditionals/:pool" component={AccountRoute} />
       <Route path="/oracle" component={LegacyOracleRoute} />
       <Route path="/oracle/:id" component={LegacyOracleRoute} />
       <Route path="/markets/oracle/:id" component={AccountRoute} />

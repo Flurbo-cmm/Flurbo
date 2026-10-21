@@ -281,6 +281,64 @@ cd /c/Users/anany/Flurbo-company && git add -- apps/web/server/oracle-integratio
 
 The CI pin edit to `.github/workflows/checks.yml` is a separate commit made after the contracts pull request merges. The contracts side stages only `test/HybridPilotLifecycle.t.sol`.
 
+## Conditional pools
+
+Conditional pools (`CondPilotPool`, listed in `config/conditional-markets.json`) use the same resolver, settlement worker, arbitration worker, court keeper, alerts and proof captures as hybrid pools. They are shown only at `https://flurbo.tech/conditionals` and are not served to agents. All their quotes go through one shared `LsPricer`, deployed once. Use the shell variables of the owner procedure above (`DEPLOYER`, `KEEPER`, `ANSWERER`, keystore account `flurbo-testnet`); keys stay in the keystore.
+
+1. Deploy the shared pricer once:
+
+```bash
+cd /c/Users/anany/Flurbo-contracts && FOUNDRY_PROFILE=demo FLURBO_DEPLOYER=$DEPLOYER forge script script/DeployLsPricer.s.sol:DeployLsPricer --rpc-url "$FLURBO_TESTNET_RPC_URL" --account flurbo-testnet --sender $DEPLOYER --broadcast --slow
+```
+
+It writes `target/deployments/ls-pricer.json`. Register it into a candidate file, review the printed code hash, then copy the candidate:
+
+```bash
+cd /c/Users/anany/Flurbo-company && node apps/web/scripts/register-ls-pricer.mjs ../Flurbo-contracts/target/deployments/ls-pricer.json ../Flurbo-contracts/target/deployments/conditional-catalog-candidate.json
+```
+
+```bash
+cp ../Flurbo-contracts/target/deployments/conditional-catalog-candidate.json config/conditional-markets.json
+```
+
+2. Draft the pool with the existing creation scripts (two to four related questions suit the page best) and prepare it with the output path `../../../Flurbo-contracts/target/deployments/conditional-pilot-prepared.json`.
+
+3. Deploy the resolver and the conditional pool:
+
+```bash
+cd /c/Users/anany/Flurbo-contracts && FOUNDRY_PROFILE=demo FLURBO_DEPLOYER=$DEPLOYER forge script script/DeployConditionalPilot.s.sol:DeployConditionalPilot --rpc-url "$FLURBO_TESTNET_RPC_URL" --account flurbo-testnet --sender $DEPLOYER --broadcast --slow
+```
+
+It writes `target/deployments/conditional-pilot-unverified.json` with `pool`, `resolver`, `pricer` and `conditionalVersion`. The hybrid deployment files are never touched.
+
+4. Register the pool into a new candidate and copy it after review:
+
+```bash
+cd /c/Users/anany/Flurbo-company && node apps/web/scripts/register-conditional-pool.mjs cond-1 ../Flurbo-contracts/target/deployments/conditional-pilot-prepared.json ../Flurbo-contracts/target/deployments/conditional-pilot-unverified.json ../Flurbo-contracts/target/deployments/conditional-catalog-candidate-2.json --keeper $KEEPER --answerer $ANSWERER
+```
+
+```bash
+cp ../Flurbo-contracts/target/deployments/conditional-catalog-candidate-2.json config/conditional-markets.json
+```
+
+Neither script writes under `config/`, and `config/hybrid-markets.json` stays unchanged. Commit the registry change in its own pull request, merge and deploy.
+
+5. Check that `curl -s https://flurbo.tech/healthz` shows `conditionals` as `available` and `hybrid_settlement` lists the new pool, open `https://flurbo.tech/conditionals`, and trade one share of a conditional from a test wallet.
+
+### conditionals.flurbo.tech
+
+`conditionals.flurbo.tech` is an address only: it answers 308 to `https://flurbo.tech/conditionals`, or to `/conditionals/0x<pool>` for a path that is a pool address. No cookie, WebAuthn or origin setting changes.
+
+1. Render dashboard, service `flurbopm-testnet`, Settings, Custom Domains: add `conditionals.flurbo.tech`.
+2. At the registrar for flurbo.tech, add the `CNAME` record Render shows and wait for the certificate to show Verified.
+3. Check:
+
+```bash
+curl -sI https://conditionals.flurbo.tech/
+```
+
+It returns `308` with `location: https://flurbo.tech/conditionals`.
+
 ## Manual deployment sequence (historical, mechanical pool)
 
 Run PowerShell 7. First merge and deploy the code with the empty `config/hybrid-markets.json`. Confirm `https://flurbopm.singu.online/hybrid-meta-evidence.json` serves the MetaEvidence JSON. It follows [ERC-1497](https://docs.kleros.io/developer/arbitration-development/erc-1497-evidence-standard). For a durable deployment, pin the exact JSON on IPFS and use its immutable HTTPS gateway URL when deploying the adapter.

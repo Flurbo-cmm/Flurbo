@@ -1,0 +1,21 @@
+import type { Abi } from 'viem';
+import type { ClaimLeg, ClaimRule } from './claims.mjs';
+export type ConditionalShape = { conditionScope: number; conditionMask: bigint; targetScope: number; targetMask: bigint };
+export type ConditionalShapeInput = { conditionScope: number; conditionMask: bigint | string | number; targetScope: number;
+  targetMask: bigint | string | number; scope?: number };
+export const CONDITIONAL_VERSION: 1;
+export const PRICER_VERSION: 1;
+export const MAX_SHAPES: 256;
+export const MAX_CONDITIONAL_SHARES: bigint;
+export const LS_PRICER_CODE_HASH: `0x${string}`;
+export const condPoolAbi: Abi;
+export function validateShape(shape: ConditionalShapeInput, events: number): ConditionalShape & { scope: number };
+export function shapeFromAnswers(input: { events: number; condition: ClaimLeg[]; target: ClaimLeg[]; rule?: ClaimRule }): ConditionalShape;
+export function shapeKey(shape: ConditionalShapeInput): `0x${string}`;
+export function shapeVector(shape: ConditionalShapeInput, shares: bigint, refund: bigint): { scope: number; values: bigint[] };
+export function shapePayout(shape: ConditionalShapeInput, shares: bigint, refund: bigint, yesMask: number, voidMask: number): bigint;
+export function solveConditionalPrice(input: { shares: bigint; fair: number | null; conditionChance: number | null;
+  quote: (price: bigint) => Promise<bigint> }): Promise<{ price: bigint; cost: bigint; reads: number }>;
+export function runtimeCodeHash(code: string): `0x${string}` | null;
+export function conditionalCall(input: { to: string; data: string; pool: string; events: number }):
+  null | { abi: Abi; name: string; args: readonly unknown[] };

@@ -1,0 +1,134 @@
+/* Conditionals: the page reads as a sentence, If ... then ..., and the If question forks into its two answers. */
+.conditionals-page .page-header { margin-bottom: var(--s-6); }
+.cond-pool-header .market-meta { margin-top: var(--s-1); }
+/* One grid: phones read If and Then, both cases, the ticket, then the If question alone. From 1024px the ticket holds the
+   right column beside all three. */
+.cond-columns { display: grid; gap: var(--s-8); align-items: start; }
+.cond-columns > * { min-width: 0; }
+@media (min-width: 1024px) {
+  .cond-columns { grid-template-columns: minmax(0, 8fr) minmax(340px, 4fr); grid-template-rows: auto auto 1fr;
+    grid-template-areas: "build ticket" "decision ticket" "condition ticket"; gap: var(--s-8) var(--s-10); }
+  .cond-columns > [data-conditional-section="build"] { grid-area: build; }
+  .cond-columns > [data-conditional-section="decision"] { grid-area: decision; }
+  .cond-columns > [data-conditional-section="ticket"] { grid-area: ticket; }
+  .cond-columns > [data-conditional-section="condition"] { grid-area: condition; }
+  .cond-own { grid-template-columns: minmax(0, 1fr) minmax(260px, 300px); align-items: start; gap: var(--s-3) var(--s-8); }
+}
+.cond-section-head { display: grid; gap: 4px; }
+.cond-section-head h2 { font-size: var(--text-h2); }
+
+/* If and Then: the pixel word and its Yes or No lead each clause; the question rows sit beside them. */
+.cond-build { display: grid; gap: var(--s-5); }
+.cond-clause { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: var(--s-3) var(--s-5); align-items: start; }
+.cond-clause + .cond-clause { padding-top: var(--s-5); border-top: var(--hairline-strong); }
+.cond-lead { display: grid; gap: var(--s-3); align-content: start; }
+.cond-word { padding-top: 2px; font-family: var(--font-display); font-kerning: none; font-size: clamp(32px, 3.4vw, 44px); font-weight: 400; line-height: 1; letter-spacing: 0; }
+.cond-clause > .cond-limit { grid-column: 2; }
+.cond-choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; min-width: 0; }
+.cond-choice > span:last-child { overflow-wrap: anywhere; }
+.cond-choices .choice-rows { max-height: none; overflow-y: visible; }
+@media (min-width: 1024px) and (pointer: fine) { .cond-choices .choice-rows { max-height: 380px; overflow-y: auto; } }
+.cond-choice-note { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+.cond-choices .choice-meta { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.choice-row:has(input:checked) .slip-q { border-color: var(--on-inverse); background: transparent; color: var(--on-inverse); }
+.choice-row:has(input:disabled) .slip-q { border-color: var(--rule-strong); color: var(--ink-disabled); }
+.cond-answer { display: flex; align-items: center; gap: var(--s-3); }
+.cond-answer > span { font: 500 14px/1 var(--font-num); color: var(--ink-2); }
+.cond-answer .segmented-field { flex: 1 1 auto; }
+.cond-answer .segmented button { min-height: 36px; }
+.cond-limit { margin: 0; color: var(--ink-3); font-size: 12px; line-height: 1.45; }
+@media (max-width: 639px) {
+  .cond-clause { grid-template-columns: minmax(0, 1fr); }
+  .cond-lead { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--s-4); }
+  .cond-clause > .cond-limit { grid-column: 1; }
+}
+
+/* The fork: a trunk from the If question's tag, one branch per answer. The chosen branch is ink and ends in the lime joint. */
+.cond-fork { display: grid; gap: var(--s-4); padding-top: var(--s-6); border-top: var(--hairline-strong); min-width: 0; }
+.cond-fork-root { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 6px 12px; align-items: baseline; }
+.cond-fork-root > .slip-q { position: relative; z-index: 1; }
+.cond-fork-root::after { content: ""; position: absolute; left: 11px; top: 20px; bottom: calc(-1 * var(--s-4)); width: 1px; background: var(--rule-strong); }
+.cond-fork-question { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ink); font-size: 15px; line-height: 1.4; overflow-wrap: anywhere;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.cond-fork-chance { display: grid; justify-items: end; gap: 3px; margin: 0; }
+.cond-fork-chance dt { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.cond-fork-chance dd { margin: 0; font: 500 var(--text-figure)/1 var(--font-num); font-variant-numeric: tabular-nums; }
+.cond-fork-reason { grid-column: 2 / -1; color: var(--ink-3); font-size: 12px; }
+@media (max-width: 639px) {
+  .cond-fork-root { grid-template-columns: 24px minmax(0, 1fr); }
+  .cond-fork-chance { grid-column: 2; display: flex; align-items: baseline; gap: var(--s-2); justify-items: start; }
+}
+.cond-branches { display: grid; margin: 0; padding: 0; list-style: none; }
+.cond-branch { position: relative; display: grid; grid-template-columns: 24px auto minmax(24px, 1fr) minmax(0, max-content) auto auto;
+  grid-template-areas: "joint if rule then chance predict" ". reason reason reason reason reason"; align-items: center; gap: 4px 12px; padding: 12px 0; }
+.cond-branch::before { content: ""; position: absolute; left: 11px; top: 0; bottom: 0; width: 1px; background: var(--rule-strong); }
+.cond-branch:last-child::before { bottom: auto; height: 28px; }
+.cond-branch-joint { grid-area: joint; justify-self: end; width: 13px; height: 1px; background: var(--rule-strong); }
+.cond-branch-if { grid-area: if; color: var(--ink-2); font: 500 13px/1 var(--font-num); white-space: nowrap; }
+.cond-branch-rule { grid-area: rule; position: relative; height: 0; border-top: 1px dotted var(--rule-strong); }
+.cond-branch-rule::after { content: ""; position: absolute; right: -1px; top: -5px; width: 9px; height: 9px; border: 1px solid var(--rule-strong); background: var(--surface); }
+.cond-branch-then { grid-area: then; color: var(--ink-2); font-size: 14px; white-space: nowrap; }
+.cond-branch-chance { grid-area: chance; color: var(--ink-2); font: 500 var(--text-figure-lg)/1.05 var(--font-num); font-variant-numeric: tabular-nums; text-align: right; }
+.cond-branch-predict { grid-area: predict; min-width: 104px; }
+.cond-branch-predict[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-sunken); }
+.cond-branch-reason { grid-area: reason; color: var(--ink-3); font-size: 12px; }
+.cond-branch[data-selected="true"] .cond-branch-joint { height: 1.5px; background: var(--ink); }
+.cond-branch[data-selected="true"] .cond-branch-if, .cond-branch[data-selected="true"] .cond-branch-then, .cond-branch[data-selected="true"] .cond-branch-chance { color: var(--ink); }
+.cond-branch[data-selected="true"] .cond-branch-rule { border-top: 1.5px solid var(--ink); }
+.cond-branch[data-selected="true"] .cond-branch-rule::after { border-color: var(--ink); background: var(--lime); }
+.cond-fork-gap { margin: 0; color: var(--ink-2); font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) {
+  .cond-branch[data-selected="true"] .cond-branch-rule::after { animation: cond-joint 220ms var(--ease-out); }
+}
+@keyframes cond-joint { from { transform: scale(0.2); } }
+@media (max-width: 639px) {
+  .cond-branch { grid-template-columns: 24px auto minmax(16px, 1fr) auto; grid-template-areas: "joint if rule chance" ". then then then" ". predict predict predict" ". reason reason reason"; }
+  .cond-branch-then { white-space: normal; }
+  .cond-branch-predict { width: 100%; }
+  .cond-branch:last-child::before { height: 30px; }
+}
+
+/* The ticket's slip joins If to Then with the same leader and joint as combinations. */
+.cond-ticket .cond-slip .slip-join { color: var(--ink-2); }
+.cond-ticket .slip-this { color: var(--ink); font-weight: 500; }
+.cond-spread { margin-top: calc(-1 * var(--s-1)); }
+.cond-payoffs { display: grid; gap: var(--s-2); min-width: 0; }
+.cond-payoffs h3 { margin: 0; font-size: 15px; }
+.cond-payoffs ul, .cond-payoffs-plain { display: grid; margin: 0; padding: 0; list-style: none; }
+.cond-payoffs li, .cond-payoffs-plain li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 8px 0; border-top: var(--hairline); font-size: 13px; line-height: 1.4; }
+.cond-payoffs-plain li { grid-template-columns: 12px minmax(0, 1fr); font-size: 15px; }
+.cond-payoff-mark { align-self: center; width: 9px; height: 9px; border: 1px solid var(--ink); background: var(--surface); }
+[data-key="both"] > .cond-payoff-mark { background: var(--lime); }
+[data-key="conditionOnly"] > .cond-payoff-mark { border-style: dashed; border-color: var(--ink-3); background: transparent; }
+.cond-payoff-when { color: var(--ink-2); overflow-wrap: anywhere; }
+.cond-payoff-amount { font: 500 13px/1.3 var(--font-num); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.cond-void { color: var(--ink-3); font-size: 12px; line-height: 1.45; }
+@media (max-width: 379px) { .cond-payoff-amount { grid-column: 2; text-align: left; white-space: normal; } }
+
+.cond-own { gap: var(--s-3); padding: var(--s-4); }
+.cond-own-about, .cond-own-trade { display: grid; gap: var(--s-3); align-content: start; min-width: 0; }
+.cond-own-question { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; margin: 0; color: var(--ink) !important; font-size: 14px; }
+.cond-own-question > span:last-child { overflow-wrap: anywhere; }
+
+.cond-holdings { display: grid; gap: var(--s-3); margin-top: var(--s-10); padding-top: var(--s-6); border-top: var(--hairline-strong); }
+.cond-holding-rows { display: grid; margin: 0; padding: 0; list-style: none; }
+.cond-holding { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px) auto; gap: var(--s-3) var(--s-6); align-items: center; padding: var(--s-4) 0; border-top: var(--hairline); }
+.cond-holding-line { margin: 0; color: var(--ink); font-size: 15px; overflow-wrap: anywhere; }
+@media (max-width: 767px) { .cond-holding { grid-template-columns: minmax(0, 1fr); } .cond-holding > .btn { justify-self: start; } }
+.cond-refresh { margin-top: var(--s-6); }
+
+/* Directory: one hairline row per pool, its questions listed in full with their tags. */
+.cond-explainer { display: grid; gap: var(--s-3); max-width: 720px; margin-bottom: var(--s-10); }
+.cond-explainer h2 { font-size: var(--text-h2); }
+.cond-explainer-sentence { color: var(--ink-2); max-width: 64ch; }
+.cond-pool-list { display: grid; margin: 0; padding: 0; list-style: none; border-bottom: var(--hairline); }
+.cond-pool { display: grid; grid-template-columns: minmax(220px, 4fr) minmax(0, 7fr) auto; gap: var(--s-3) var(--s-8); align-items: start; padding: var(--s-6) 0; border-top: var(--hairline-strong); }
+.cond-pool-head { display: grid; gap: var(--s-2); }
+.cond-pool-head h2 { font-size: 20px; font-weight: 500; }
+.cond-pool-head h2 a { text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 4px; }
+.cond-pool-head h2 a:hover { text-decoration-color: var(--ink); }
+.cond-pool-meta { display: flex; flex-wrap: wrap; gap: 4px var(--s-4); color: var(--ink-2); font: 400 12px/1.4 var(--font-num); }
+.cond-pool-questions { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cond-pool-questions li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: 14px; line-height: 1.4; }
+.cond-pool-questions li > span:last-child { overflow-wrap: anywhere; }
+@media (max-width: 1023px) { .cond-pool { grid-template-columns: minmax(0, 1fr); } .cond-pool-open { justify-self: start; } }

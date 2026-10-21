@@ -40,6 +40,8 @@ Each pool has one cost function over the joint answer space. Let `L(x)` be the p
 
 A claim is a scope bitmap plus a truth-table mask. It can express YES, NO, AND, OR and other supported Boolean claims. A VOID question gives equal weight to YES and NO in payouts; it is not a refund. A pool pays only after all its questions are final. This makes long-running question clusters slower to pay than short ones. Early redemption requires new contracts.
 
+Conditional predictions: `CondPilotPool` (protocol 5, `conditionalVersion()` 1) prices claims exactly like `LsPilotPool` and also sells "if C, then T" claims, with C and T on one or two questions each and at most three together. A purchase of `q` shares at a total price `r` adds `q` to the states where C and T hold, 0 where C holds and T does not, and `r` where C fails, so the holder is paid `q`, nothing, or refunded `r`; a Void question averages its two answers as for every claim. The trader names `r` and the pool accepts it when `cost(r) <= r <= q`; the server finds `r` with at most five quote reads. Every quote of the pool goes through one shared, stateless `LsPricer` contract, which keeps the pool under the 24,576 byte limit. Conditional pools are listed in `config/conditional-markets.json`, shown only at `/conditionals` (`conditionals.flurbo.tech` redirects there), not served to agents, and settled by the same workers as hybrid pools.
+
 `HybridPilotResolver` commits each question to one route before trading. There is no operator reviewer panel:
 
 1. The hybrid settlement worker captures a question's committed source inside the rule's observation window. The first complete valid capture is retained, and missing data is never interpreted as No.

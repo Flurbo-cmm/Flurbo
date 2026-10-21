@@ -44,5 +44,6 @@ export function hostedConfig(env = process.env) {
   const testingOperatorAccount = env.FLURBO_TESTING_OPERATOR_ACCOUNT?.toLowerCase();
   for (const address of [testFaucet, testingOperatorAccount]) if (address && (!/^0x[0-9a-f]{40}$/.test(address) || /^0x0{40}$/.test(address))) throw Error('Invalid faucet or testing operator address');
   return { origin: env.FLURBO_ORIGIN, evidenceOrigin, legacyOrigins: primary ? [COMPANY_LEGACY_ORIGIN] : [],
-    relatedOrigins: primary ? [COMPANY_ORIGIN] : [], rpcUrl: rpc.href, port, testFaucet, testingOperatorAccount, previewAccess:previewAccess(env) };
+    relatedOrigins: primary ? [COMPANY_ORIGIN] : [], aliasHosts: primary ? { 'conditionals.flurbo.tech': '/conditionals' } : {},
+    rpcUrl: rpc.href, port, testFaucet, testingOperatorAccount, previewAccess:previewAccess(env) };
 }
