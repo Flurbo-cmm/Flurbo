@@ -307,3 +307,149 @@ test('flurbo.tech is the primary company origin; the old host redirects except f
     await rm(directory,{recursive:true,force:true});
   }
 });
+
+test('settlement workers receive hybrid and conditional pools; directory, agents and notices receive hybrid pools only', async () => {
+  const { companyMarkets } = await import('../server/production.mjs');
+  const { catalog: fixtureCatalog, hybridRecord } = await import('./hybrid-catalog-fixture.ts');
+  const hybridPool = { ...hybridRecord({ commissionBps: 500, pool: '0x' + 'a1'.repeat(20) }), id: 'hybrid-one' };
+  const realityPool = { ...fixtureCatalog(['reality', 'mechanical'], {}, { commissionBps: 500 }).pools[0], id: 'cond-one',
+    pool: '0x' + 'b2'.repeat(20), conditionalVersion: 1 };
+  const files: Record<string, unknown> = {
+    'config/oracle-markets.json': { routes: [] },
+    'config/hybrid-markets.json': { schema: 'flurbo.hybrid-catalog.v1', pools: [hybridPool] },
+    'config/conditional-markets.json': { schema: 'flurbo.conditional-catalog.v1', pricer: '0x' + 'cc'.repeat(20), pools: [realityPool] },
+  };
+  const seen: Record<string, any> = {};
+  const capture = (name: string, value: unknown = { status: () => 'running' }) => (args: any) => { seen[name] = args; return value; };
+  const source = { kind: 'source' }, market = { kind: 'market' };
+  const factories = {
+    oracleCatalog: (value: any) => value, oracleClients: () => [source, market], oracleEvidence: () => ({ kind: 'evidence' }),
+    oracleService: () => ({ kind: 'oracle' }), poolRpc: () => 'rpc',
+    hybridPoolIndexes: capture('indexes', new Map()), hybridNoticePools: capture('notices', []),
+    hybridAgentPools: async (args: any) => { seen.agents = args; return { services: new Map(), pending: () => 0 }; },
+    hybridPortfolioService: capture('portfolio'), hybridMarketService: capture('market'),
+    conditionalMarketService: capture('conditionals', { status: () => 'unchecked' }),
+    proofCaptureRules: (pools: any) => { seen.proofRules = pools; return new Map([['rule', {}]]); },
+    proofCaptureService: capture('proofCaptures', { size: 1 }),
+    hybridSettlementWorker: capture('settlement'), hybridArbitrationWorker: capture('arbitration'),
+    hybridCourtKeeper: capture('court'), hybridOperatorAlerts: capture('alerts'),
+    readPoolForAlerts: () => null, walletBalances: (...args: unknown[]) => { seen.balances = args; return []; },
+    emailConfig: () => ({ from: 'from@example.org', to: 'to@example.org' }), resendDelivery: () => () => {},
+  };
+  const config: any = { origin: 'https://flurbo.tech', evidenceOrigin: 'https://flurbopm.singu.online', rpcUrl: TESTNET.rpc };
+  await companyMarkets({ config, store: { command: async () => null }, settlementStores: { captureStore: {}, packetStore: {} },
+    env: { FLURBO_HYBRID_SETTLEMENT_ENABLED: 'true', FLURBO_HYBRID_ARBITRATION_ENABLED: 'true', FLURBO_HYBRID_ALERTS_ENABLED: 'true',
+      FLURBO_PROOF_SUBMIT_TOKEN: 'token' }, readConfig: async (name: string) => structuredClone(files[name]), factories });
+  const ids = (pools: any[]) => pools.map(p => p.id);
+  assert.deepEqual(ids(seen.indexes.pools), ['hybrid-one']);
+  assert.deepEqual(ids(seen.notices.pools), ['hybrid-one']);
+  assert.deepEqual(ids(seen.agents.catalog.pools), ['hybrid-one']);
+  assert.deepEqual(ids(seen.portfolio.catalog.pools), ['hybrid-one']);
+  assert.deepEqual(ids(seen.market.catalog.pools), ['hybrid-one']);
+  assert.deepEqual(ids(seen.conditionals.catalog.pools), ['cond-one']);
+  assert.deepEqual(ids(seen.proofRules), ['hybrid-one', 'cond-one']);
+  assert.deepEqual(ids(seen.settlement.pools), ['hybrid-one', 'cond-one']);
+  assert.deepEqual(seen.arbitration.routes.map((r: any) => r.id), ['hybrid-one-0', 'hybrid-one-1', 'cond-one-1']);
+  assert.deepEqual(ids(seen.court.pools), ['cond-one']);
+  assert.deepEqual(ids(seen.alerts.pools), ['hybrid-one', 'cond-one']);
+  seen.alerts.balances();
+  assert.equal(seen.balances[0], source);
+  assert.deepEqual(ids(seen.balances[1]), ['hybrid-one', 'cond-one']);
+  assert.equal(config.conditionals.status(), 'unchecked');
+
+  delete files['config/conditional-markets.json'];
+  files['config/conditional-markets.json'] = { schema: 'flurbo.conditional-catalog.v1', pricer: null, pools: [] };
+  const plain: any = { origin: 'https://flurbo.tech', evidenceOrigin: 'https://flurbopm.singu.online', rpcUrl: TESTNET.rpc };
+  await companyMarkets({ config: plain, store: { command: async () => null }, settlementStores: { captureStore: {}, packetStore: {} },
+    env: { FLURBO_HYBRID_SETTLEMENT_ENABLED: 'true' }, readConfig: async (name: string) => structuredClone(files[name]), factories });
+  assert.equal(plain.conditionals, undefined);
+  assert.deepEqual(ids(seen.settlement.pools), ['hybrid-one']);
+});
+
+test('healthz reports conditionals', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'flurbo-conditional-health-'));
+  await writeFile(join(directory, 'index.html'), '<html>Flurbo</html>');
+  const config: any = { origin: 'https://flurbo.tech', rpcUrl: TESTNET.rpc, previewAccess: null };
+  const server = productionServer(config, new SessionStore(), directory);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as {port:number}).port;
+  const health = () => new Promise<any>((resolve, reject) => {
+    const req = httpRequest({ hostname: '127.0.0.1', port, path: '/healthz', headers: { Host: 'flurbo.tech' } }, res => {
+      let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve(JSON.parse(body)));
+    }); req.on('error', reject); req.end();
+  });
+  try {
+    assert.equal((await health()).conditionals, 'disabled');
+    config.conditionals = { status: () => 'available' };
+    assert.equal((await health()).conditionals, 'available');
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('conditional pages serve the app shell; other conditional paths get the shell with 404', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'flurbo-conditional-pages-'));
+  await writeFile(join(directory, 'index.html'), '<html>Flurbo</html>');
+  const server = productionServer({ origin: 'https://flurbo.tech', rpcUrl: TESTNET.rpc, previewAccess: null }, new SessionStore(), directory);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as {port:number}).port;
+  const get = (path: string) => new Promise<{ status: number; body: string; type: string }>((resolve, reject) => {
+    const req = httpRequest({ hostname: '127.0.0.1', port, path, headers: { Host: 'flurbo.tech' } }, res => {
+      let body = ''; res.on('data', chunk => body += chunk); res.on('end', () => resolve({ status: res.statusCode!, body, type: String(res.headers['content-type']) }));
+    }); req.on('error', reject); req.end();
+  });
+  try {
+    for (const path of ['/conditionals', `/conditionals/0x${'ab'.repeat(20)}`, `/conditionals/0x${'AB'.repeat(20)}`]) {
+      const page = await get(path);
+      assert.equal(page.status, 200, path); assert.equal(page.body, '<html>Flurbo</html>'); assert.match(page.type, /text\/html/);
+    }
+    for (const path of ['/conditionals/other', `/conditionals/0x${'ab'.repeat(19)}`, `/conditionals/0x${'ab'.repeat(20)}/1`, '/conditionals/']) {
+      const page = await get(path);
+      assert.equal(page.status, 404, path); assert.equal(page.body, '<html>Flurbo</html>', path);
+    }
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('conditionals.flurbo.tech redirects into /conditionals', async () => {
+  const companyOrigin = 'https://flurbo.tech', legacyOrigin = 'https://flurbopm.singu.online';
+  assert.deepEqual(hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet'}).aliasHosts, {'conditionals.flurbo.tech':'/conditionals'});
+  assert.deepEqual(hostedConfig({FLURBO_ORIGIN:legacyOrigin,FLURBO_NETWORK:'public_testnet'}).aliasHosts, {});
+  assert.deepEqual(hostedConfig({FLURBO_ORIGIN:'https://flurbo.singu.online',FLURBO_NETWORK:'public_testnet'}).aliasHosts, {});
+  const directory = await mkdtemp(join(tmpdir(), 'flurbo-alias-host-'));
+  await writeFile(join(directory, 'index.html'), '<html>Flurbo company</html>');
+  const config = hostedConfig({FLURBO_ORIGIN:companyOrigin,FLURBO_NETWORK:'public_testnet'});
+  const server = productionServer({ ...config, previewAccess: null }, new SessionStore(), directory);
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as {port:number}).port;
+  const request = (host: string, path: string, method = 'GET') => new Promise<{status:number;headers:Record<string,any>}>((resolve, reject) => {
+    const req = httpRequest({hostname:'127.0.0.1', port, path, method, headers:{Host:host}}, res => { res.resume(); res.on('end',()=>resolve({status:res.statusCode!,headers:res.headers})); });
+    req.on('error', reject); req.end();
+  });
+  try {
+    const pool = '0x' + 'ab'.repeat(20);
+    for (const [path, method, location] of [['/', 'GET', '/conditionals'], [`/${pool}`, 'GET', `/conditionals/${pool}`],
+      [`/${pool.toUpperCase().replace('0X', '0x')}`, 'GET', `/conditionals/${pool.toUpperCase().replace('0X', '0x')}`],
+      ['/markets?x=1', 'GET', '/conditionals'], ['/api/network', 'POST', '/conditionals'], [`/${pool}?wallet=1`, 'GET', `/conditionals/${pool}`],
+      [`/${pool}/extra`, 'GET', '/conditionals'], ['//evil.example/x', 'GET', '/conditionals'], ['/0x1234', 'HEAD', '/conditionals']] as const) {
+      const moved = await request('conditionals.flurbo.tech', path, method);
+      assert.equal(moved.status, 308, `${method} ${path}`);
+      assert.equal(moved.headers.location, `https://flurbo.tech${location}`, `${method} ${path}`);
+      assert.equal(moved.headers['cache-control'], 'public, max-age=3600');
+    }
+    assert.equal((await request('conditionals.flurbo.tech', '/' + 'a'.repeat(5000))).status, 414);
+    assert.equal((await request('conditionals.flurbo.tech', '/healthz')).status, 200);
+    assert.equal((await request('flurbo.tech', '/')).status, 200);
+    assert.equal((await request('flurbopm.singu.online', '/markets')).headers.location, 'https://flurbo.tech/markets');
+    assert.equal((await request('other.flurbo.tech', '/')).status, 421);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(()=>resolve()));
+    await rm(directory,{recursive:true,force:true});
+  }
+});

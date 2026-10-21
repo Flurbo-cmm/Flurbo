@@ -33,7 +33,8 @@ const groups: [string, [string, string][]][] = [
   ['Get started', [['overview', 'Overview'], ['getting-started', 'Getting started'], ['accounts', 'Account and access'],
     ['metamask', 'MetaMask and wallets'], ['test-funds', 'Test funds']]],
   ['Trade', [['markets', 'Finding markets'], ['market-page', 'Reading a market'], ['trading', 'Buying and selling'],
-    ['combinations', 'Combined predictions'], ['what-if', 'What if'], ['thesis', 'Build your thesis']]],
+    ['combinations', 'Combined predictions'], ['what-if', 'What if'], ['conditionals', 'Conditional predictions'],
+    ['thesis', 'Build your thesis']]],
   ['Settlement', [['settlement', 'Settlement and payouts'], ['disputes', 'Challenges and Kleros'], ['portfolio', 'Portfolio'],
     ['notices', 'Email notices']]],
   ['For quants', [['pricing', 'How prices behave']]],
@@ -250,6 +251,13 @@ export default function Docs() {
             <div><dt>Very unlikely assumptions</dt><dd>When the assumptions together have less than a one in a billion chance, the pool shows no conditional chances.</dd></div>
           </dl>
           <p>These are the pool's estimates at the block shown, not independent evidence. A relationship between two questions does not mean that one causes the other.</p>
+        </section>
+
+        <section id="conditionals" aria-labelledby="conditionals-title">
+          <h2 id="conditionals-title">Conditional predictions</h2>
+          <p>A conditional prediction counts only if something else happens first. "If the first question is Yes, then the second is Yes" pays 1 test AUSD per share when both happen, pays nothing when the first happens and the second does not, and is refunded in full when the first does not happen.</p>
+          <p>Open Conditionals, choose the If answer and the Then answer, and the page shows the pool's chance of the Then answer in both cases, If Yes and If No, next to the chance of the If answer itself. The price per share sits a little above the chance; on an unlikely If answer it sits further above, because you only pay for the case that counts.</p>
+          <p>If a question is Void, the payout averages its two answers, as for every Flurbo prediction. Conditional pools settle exactly like other pools, through Reality.eth with Kleros for disputes.</p>
         </section>
 
         <section id="thesis" aria-labelledby="thesis-title">

@@ -5,6 +5,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 const loaders = {
   docs: () => import('./pages/Docs'),
   markets: () => import('./pages/Markets'),
+  conditionals: () => import('./pages/Conditionals'),
   agents: () => import('./pages/Agents'),
   access: () => import('./pages/AccessPage'),
   fund: () => import('./pages/FundingPage'),

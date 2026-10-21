@@ -23,7 +23,7 @@ import { MAX_PROOF_SUBMISSION_BYTES, PROOF_CAPTURE_PATH } from './proof-captures
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, agentPools = null, evidence = null, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null,
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, agentPools = null, evidence = null, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null, conditionals = null,
   envioUrl = null, clientAddress = clientAddressReader(), now = Date.now } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
@@ -121,8 +121,12 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
       try {
         limits.localTake('hybrid-public-rules:' + ip, 120);
         limits.localTake('hybrid-public-rules', 1200);
-        if (!hybrid) throw Error('Rule unavailable');
-        const value = hybrid.ruleFor(req.url.slice('/api/hybrid/rules/'.length));
+        const ruleHash = req.url.slice('/api/hybrid/rules/'.length);
+        const value = [hybrid, conditionals].reduce((found, service) => {
+          if (found !== null || !service) return found;
+          try { return service.ruleFor(ruleHash); } catch { return null; }
+        }, null);
+        if (value === null) throw Error('Rule unavailable');
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
         res.end(value);
       } catch { send(res, 404, { error: 'Rule unavailable' }); }
@@ -520,6 +524,51 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
           return send(res, 404, { error: 'Hybrid action unavailable.' });
         } catch (error) {
           return send(res, 400, { error: error instanceof Error && /^(Invalid |Hybrid |Challenge |Enter |Select |Choose |Wallet |Shares |Trading |Fund |Approval |Allow |Insufficient |Reality |Provide |Kleros |Bond |Evidence |Appeal |No |This |Sepolia )/.test(error.message)
+            ? error.message : 'Market request unavailable. Refresh and retry.' });
+        }
+      }
+      // Conditional pools: their own directory, chances, quotes, holdings and actions, plus the single-question routes
+      // of the hybrid service built over the conditional catalog. Same sign-in, approval and error rules as hybrid markets.
+      if (url.pathname === '/api/conditionals' || url.pathname.startsWith('/api/conditionals/')) {
+        const login = await getLogin();
+        if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
+        if (!await approval()) return send(res, 403, { error: 'Account approval required.' });
+        if (!conditionals) return send(res, 503, { error: 'Conditional markets are unavailable.' });
+        const match = url.pathname.match(/^\/api\/conditionals(?:\/(0x[0-9a-f]{40})(?:-([0-9]|[12][0-9]|3[01]))?(?:\/(holdings|chances|quote|action|what-if))?)?$/i);
+        if (!match) return send(res, 404, { error: 'Conditional route unavailable.' });
+        const [, pool, event, op = ''] = match, account = login.address.toLowerCase();
+        try {
+          if (event !== undefined) {
+            const id = `${pool}-${event}`;
+            if (op === '' && req.method === 'GET') {
+              if ([...url.searchParams.keys()].some(key => key !== 'wallet')) return send(res, 400, { error: 'Unexpected parameter.' });
+              return send(res, 200, await conditionals.questions.snapshot(id, url.searchParams.get('wallet')));
+            }
+            if (!['action', 'what-if'].includes(op) || url.search || req.method !== 'POST') return send(res, 405, { error: 'POST without parameters required.' });
+            if (hosted && op === 'what-if') await limits.take('hybrid-what-if:' + account, 60);
+            const input = await body(req);
+            if (op === 'what-if') return send(res, 200, await conditionals.questions.whatIf(id, input));
+            return send(res, 200, await conditionals.questions.prepare(id, input.action, input.input || {}, input.owner));
+          }
+          if (!pool || op === '' || op === 'holdings') {
+            if (req.method !== 'GET' || (op === 'holdings' ? [...url.searchParams.keys()].some(key => key !== 'wallet') : url.search))
+              return send(res, 405, { error: 'GET without other parameters required.' });
+            if (!pool) return send(res, 200, await conditionals.list());
+            if (op === '') return send(res, 200, await conditionals.pool(pool));
+            if (hosted) await limits.take('conditional-holdings:' + account, 60);
+            return send(res, 200, await conditionals.holdings(pool, url.searchParams.get('wallet')));
+          }
+          if (url.search || req.method !== 'POST' || op === 'what-if') return send(res, 405, { error: 'POST without parameters required.' });
+          if (hosted && op === 'chances') await limits.take('conditional-chances:' + account, 60);
+          if (hosted && op === 'quote') await limits.take('conditional-quote:' + account, 30);
+          const input = await body(req);
+          if (op === 'chances') return send(res, 200, await conditionals.chances(pool, input));
+          if (op === 'quote') return send(res, 200, await conditionals.quote(pool, input, input?.owner));
+          return send(res, 200, await conditionals.prepare(pool, input.action, input.input || {}, input.owner));
+        } catch (error) {
+          if (error instanceof CapacityError) throw error;
+          if (error?.message === 'Conditional markets are unavailable.') return send(res, 503, { error: error.message });
+          return send(res, 400, { error: error instanceof Error && /^(Invalid |Hybrid |Conditional |Challenge |Enter |Select |Choose |Wallet |Shares |Trading |Fund |Approval |Allow |Insufficient |Reality |Provide |Kleros |Bond |Evidence |Appeal |No |This |Sepolia )/.test(error.message)
             ? error.message : 'Market request unavailable. Refresh and retry.' });
         }
       }

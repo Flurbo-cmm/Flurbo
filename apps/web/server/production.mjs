@@ -36,6 +36,7 @@ import { hybridPoolIndexes, hybridPortfolioService } from './hybrid-portfolio.mj
 import { hybridMarketService } from './hybrid-market-service.mjs';
 import { proofCaptureRules, proofCaptureService } from './proof-captures.mjs';
 import { hybridAgentPools } from './hybrid-pool-service.mjs';
+import { conditionalCatalog, conditionalMarketService } from './conditional-market-service.mjs';
 import { periodicTasks } from './scheduler.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -62,13 +63,19 @@ export function productionServer(config, store, staticRoot = dist) {
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
     envioUrl: config.envioGraphqlUrl || null, clientAddress,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
-    learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures });
+    learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures, conditionals:config.conditionals });
   config.metrics = api.metrics;
   config.notices = api.notices;
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
     for (const [key, value] of Object.entries(security)) res.setHeader(key, value);
     // Liveness only. This deliberately does not claim contracts or RPC are ready.
-    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(publicStatus({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled' }))); return; }
+    if (req.url === '/healthz' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(publicStatus({ service: 'flurbo', chain_state: 'not_checked', learning_comparison: config.learningReport ? 'ready' : config.learningStatus || 'unavailable', learning_pool: config.learningPool ? 'configured' : 'unavailable', learning_model: config.learningModelStatus || 'unavailable', scheduler: config.scheduler ? config.scheduler.status() : 'disabled', settlement_bot: config.scheduler ? config.scheduler.status() : 'disabled', agent_pools: config.agentPools ? { configured: config.agentPools.services.size, pending: config.agentPools.pending() } : null, oracle_answerer: config.oracleAnswerer ? config.oracleAnswerer.status() : 'disabled', oracle_relay: config.oracleRelay ? config.oracleRelay.status() : 'disabled', hybrid_settlement: config.hybridSettlement ? config.hybridSettlement.status() : 'disabled', hybrid_arbitration: config.hybridArbitration ? config.hybridArbitration.status() : 'disabled', hybrid_court: config.hybridCourt ? config.hybridCourt.status() : 'disabled', hybrid_alerts: config.hybridAlerts ? config.hybridAlerts.status() : 'disabled', proof_captures: config.proofCaptures ? `enabled (${config.proofCaptures.size} rules)` : 'disabled', conditionals: config.conditionals ? config.conditionals.status() : 'disabled' }))); return; }
+    // An alias host is only an address: it redirects into its page on the origin and never serves the app or the API.
+    if (Object.hasOwn(config.aliasHosts ?? {}, req.headers.host ?? '')) {
+      if (!req.url || req.url.length > 4096) { res.writeHead(414); res.end(); return; }
+      const path = req.url.split('?')[0], pool = /^\/0x[0-9a-fA-F]{40}$/.test(path);
+      res.writeHead(308, { Location: config.origin + config.aliasHosts[req.headers.host] + (pool ? path : ''), 'Cache-Control': 'public, max-age=3600' }); res.end(); return;
+    }
     if (legacyHosts.has(req.headers.host)) {
       if (!req.url || req.url.length > 4096) { res.writeHead(414); res.end(); return; }
       const path = req.url.split('?')[0], read = ['GET', 'HEAD'].includes(req.method);
@@ -117,7 +124,7 @@ export function productionServer(config, store, staticRoot = dist) {
         }
         // Serve agent deep links on direct visits too; API session and invite gates still protect data.
         const agentPage = /^\/agents(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/.test(pathname);
-        const page = agentPage || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/oracle\/[a-z0-9-]{1,64}$/.test(pathname) || /^\/markets\/hybrid\/0x[0-9a-f]{40}\/(?:[0-9]|[12][0-9]|3[01])(?:\/thesis)?$/i.test(pathname) || /^\/markets\/practice-[0-9a-f]{40}\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/metrics'].includes(pathname);
+        const page = agentPage || /^\/conditionals(?:\/0x[0-9a-f]{40})?$/i.test(pathname) || /^\/oracle(?:\/[a-z0-9-]{1,64})?$/.test(pathname) || /^\/markets\/oracle\/[a-z0-9-]{1,64}$/.test(pathname) || /^\/markets\/hybrid\/0x[0-9a-f]{40}\/(?:[0-9]|[12][0-9]|3[01])(?:\/thesis)?$/i.test(pathname) || /^\/markets\/practice-[0-9a-f]{40}\/[0-3](?:\/thesis)?$/.test(pathname) || ['/', '/docs', '/markets', '/fund', '/access', '/login', '/signup', '/account', '/portfolio', '/history', '/events', '/metrics'].includes(pathname);
         const brandAsset=/^\/brand\/(?:flurbo-icon-512\.png|flurbo-profile-2026\.png|flurbo-logo\.svg|flurbo-social-(?:landscape|portrait|banner|banner-v2)\.png)$/.test(pathname);
         const publicationAsset=pathname==='/hybrid-meta-evidence.json';
         if (!page && !brandAsset && !publicationAsset && !/^\/(?:assets\/[a-zA-Z0-9_.-]+|favicon(?:-contour)?\.svg|robots\.txt)$/.test(pathname)) { await notFound(pathname); return; }
@@ -130,6 +137,96 @@ export function productionServer(config, store, staticRoot = dist) {
       } catch { if (!res.headersSent) res.writeHead(404); res.end('Not found'); }
     });
   });
+}
+
+const companyFactories = { oracleCatalog, oracleClients, oracleEvidence, oracleService, oracleAnswerWorker, oracleRelayWorker,
+  hybridSettlementCatalog, hybridSettlementWorker, hybridArbitrationWorker, hybridCourtKeeper, hybridOperatorAlerts,
+  readPoolForAlerts, walletBalances, emailConfig, resendDelivery, hybridNoticePools, hybridPoolIndexes, hybridPortfolioService,
+  hybridMarketService, proofCaptureRules, proofCaptureService, hybridAgentPools, poolRpc, conditionalCatalog, conditionalMarketService };
+
+// Company-site markets and workers. Members, agents, notices and Portfolio see hybrid pools; conditional pools are served
+// on their own routes, and the settlement, arbitration, court, alert and proof workers settle both alike.
+export async function companyMarkets({ config, store, settlementStores, readConfig, env = process.env, factories = {} }) {
+  const f = { ...companyFactories, ...factories };
+  const catalog = f.oracleCatalog(await readConfig('config/oracle-markets.json'));
+  const hybrid = f.hybridSettlementCatalog(await readConfig('config/hybrid-markets.json'));
+  const conditional = f.conditionalCatalog(await readConfig('config/conditional-markets.json'));
+  const settled = f.hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools: [...hybrid.pools, ...conditional.pools] });
+  let hybridRelayTail = Promise.resolve();
+  const hybridRelaySend = task => {
+    const next = hybridRelayTail.then(task, task);
+    hybridRelayTail = next.catch(() => {});
+    return next;
+  };
+  const sepoliaRpc = env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
+  const [source, market] = f.oracleClients(sepoliaRpc, config.rpcUrl);
+  config.oracleEvidence = f.oracleEvidence(store.command, config.evidenceOrigin);
+  const juror = /^0x[0-9a-fA-F]{40}$/.test(env.FLURBO_HYBRID_JUROR_ADDRESS || '') ? env.FLURBO_HYBRID_JUROR_ADDRESS : null;
+  const hybridIndexes = f.hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
+    fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : f.poolRpc('https://testnet-rpc.monad.xyz') });
+  config.hybridNotices = f.hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command, indexes: hybridIndexes });
+  // The same index Map as notices and Portfolio, so each persisted index keeps a single writer.
+  config.agentPools = await f.hybridAgentPools({ catalog: hybrid, rpc: f.poolRpc(config.rpcUrl), indexes: hybridIndexes });
+  if (hybrid.pools.length) config.hybridPortfolio = f.hybridPortfolioService({ catalog: hybrid, market, indexes: hybridIndexes });
+  if (hybrid.pools.length) config.hybrid = f.hybridMarketService({ catalog: hybrid,
+    market, source, evidence: config.oracleEvidence, origin: config.evidenceOrigin, command: store.command });
+  if (conditional.pools.length) config.conditionals = f.conditionalMarketService({ catalog: conditional,
+    market, source, evidence: config.oracleEvidence, origin: config.evidenceOrigin, command: store.command });
+  const proofRules = f.proofCaptureRules(settled.pools);
+  if (proofRules.size && env.FLURBO_PROOF_SUBMIT_TOKEN) config.proofCaptures = f.proofCaptureService({ rules: proofRules,
+    captureStore: settlementStores.captureStore, token: env.FLURBO_PROOF_SUBMIT_TOKEN });
+  if (catalog.routes.some(route => route.evidenceOrigin !== config.evidenceOrigin)) throw Error('Oracle evidence origin must match the evidence origin');
+  config.oracle = f.oracleService({ catalog, source, market, evidence: config.oracleEvidence });
+  if (env.FLURBO_ORACLE_ANSWER_ENABLED === 'true' && catalog.routes.length) {
+    config.oracleAnswerer = f.oracleAnswerWorker({ routes: catalog.routes, source,
+      command: store.command, rpcUrl: sepoliaRpc,
+      privateKey: env.FLURBO_ORACLE_ANSWER_PRIVATE_KEY,
+      beaconUrl: env.FLURBO_SEPOLIA_BEACON_URL || null });
+  }
+  if (env.FLURBO_ORACLE_RELAY_ENABLED === 'true' && catalog.routes.length) {
+    config.oracleRelay = f.oracleRelayWorker({ routes: catalog.routes, source, market,
+      command: store.command, evidence: config.oracleEvidence, rpcUrl: config.rpcUrl,
+      privateKey: env.FLURBO_ORACLE_RELAY_PRIVATE_KEY });
+  }
+  if (env.FLURBO_HYBRID_SETTLEMENT_ENABLED === 'true' && settled.pools.length) {
+    config.hybridSettlement = f.hybridSettlementWorker({ pools: settled.pools, source, market,
+      command: store.command, archive: config.evidenceArchive,
+      captureStore: settlementStores.captureStore, packetStore: settlementStores.packetStore,
+      oracleEvidence: config.oracleEvidence, origin: config.evidenceOrigin, marketRpcUrl: config.rpcUrl,
+      proposerPrivateKey: env.FLURBO_HYBRID_PROPOSER_PRIVATE_KEY,
+      relayPrivateKey: env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend,
+      answererPrivateKey: env.FLURBO_HYBRID_ANSWER_PRIVATE_KEY || null,
+      sourceRpcUrl: sepoliaRpc });
+  }
+  if (env.FLURBO_HYBRID_ARBITRATION_ENABLED === 'true' && settled.pools.length) {
+    const routes = settled.pools.flatMap(pool => pool.prepared.draft.events.map((event, eventIndex) =>
+      event.route === 'mechanical' ? { id: `${pool.id}-${eventIndex}`, pool: pool.pool,
+        resolver: pool.resolver, adapter: pool.adapter, manager: pool.manager,
+        relay: pool.prepared.relay, rulesHash: pool.rulesHash,
+        eventHash: pool.prepared.eventHashes[eventIndex], eventIndex,
+        deploymentBlock: pool.deploymentBlock, question: event.question } : null).filter(Boolean));
+    if (routes.length) config.hybridArbitration = f.hybridArbitrationWorker({ routes, source, market,
+      command: store.command, evidence: config.oracleEvidence, marketRpcUrl: config.rpcUrl,
+      sourceRpcUrl: sepoliaRpc,
+      managerPrivateKey: env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
+      relayPrivateKey: env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend });
+    const courtPools = settled.pools.filter(pool => pool.prepared.draft.events.some(event => event.route === 'reality'));
+    if (courtPools.length) config.hybridCourt = f.hybridCourtKeeper({ pools: courtPools, source, command: store.command,
+      evidence: config.oracleEvidence, rpcUrl: sepoliaRpc,
+      privateKey: env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
+      maxDisputeFeeWei: BigInt(env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000'), juror });
+  }
+  if (env.FLURBO_HYBRID_ALERTS_ENABLED === 'true' && settled.pools.length) {
+    try {
+      const mail = f.emailConfig(env);
+      config.hybridAlerts = f.hybridOperatorAlerts({ pools: settled.pools, command: store.command,
+        readPool: record => f.readPoolForAlerts(record, market, source, juror), deliver: f.resendDelivery(mail),
+        from: mail.from, to: mail.to, origin: config.origin,
+        workers: () => ({ hybrid_settlement: config.hybridSettlement?.status(),
+          hybrid_arbitration: config.hybridArbitration?.status(), hybrid_court: config.hybridCourt?.status() }),
+        balances: () => f.walletBalances(source, settled.pools, market) });
+    } catch { console.error('Hybrid alerts disabled: set FLURBO_MONITOR_EMAIL_TO, FLURBO_MONITOR_EMAIL_FROM and FLURBO_MONITOR_RESEND_KEY'); }
+  }
 }
 
 async function main() {
@@ -160,82 +257,8 @@ async function main() {
   // Low-balance email for the AUSD dispenser and the starter MON wallet, checked by the scheduler.
   config.fundingAlerts = fundingAlerts({ rpcUrl: config.rpcUrl, command: store.command, dispenser: config.testFaucet,
     starter: config.starter ? { address: config.starter.address, amount: config.starter.amountWei } : null });
-  if (companySite) {
-    const catalog = oracleCatalog(JSON.parse(await readFile(resolve(root, 'config/oracle-markets.json'), 'utf8')));
-    const hybrid = hybridSettlementCatalog(JSON.parse(await readFile(resolve(root, 'config/hybrid-markets.json'), 'utf8')));
-    let hybridRelayTail = Promise.resolve();
-    const hybridRelaySend = task => {
-      const next = hybridRelayTail.then(task, task);
-      hybridRelayTail = next.catch(() => {});
-      return next;
-    };
-    const [source, market] = oracleClients(process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com', config.rpcUrl);
-    config.oracleEvidence = oracleEvidence(store.command, config.evidenceOrigin);
-    const juror = /^0x[0-9a-fA-F]{40}$/.test(process.env.FLURBO_HYBRID_JUROR_ADDRESS || '') ? process.env.FLURBO_HYBRID_JUROR_ADDRESS : null;
-    const hybridIndexes = hybridPoolIndexes({ pools: hybrid.pools, market, command: store.command,
-      fallbackRpc: new URL(config.rpcUrl).hostname === 'testnet-rpc.monad.xyz' ? null : poolRpc('https://testnet-rpc.monad.xyz') });
-    config.hybridNotices = hybridNoticePools({ pools: hybrid.pools, market, source, command: store.command, indexes: hybridIndexes });
-    // The same index Map as notices and Portfolio, so each persisted index keeps a single writer.
-    config.agentPools = await hybridAgentPools({ catalog: hybrid, rpc: poolRpc(config.rpcUrl), indexes: hybridIndexes });
-    if (hybrid.pools.length) config.hybridPortfolio = hybridPortfolioService({ catalog: hybrid, market, indexes: hybridIndexes });
-    if (hybrid.pools.length) config.hybrid = hybridMarketService({ catalog: hybrid,
-      market, source, evidence: config.oracleEvidence, origin: config.evidenceOrigin, command: store.command });
-    const proofRules = proofCaptureRules(hybrid.pools);
-    if (proofRules.size && process.env.FLURBO_PROOF_SUBMIT_TOKEN) config.proofCaptures = proofCaptureService({ rules: proofRules,
-      captureStore: settlementStores.captureStore, token: process.env.FLURBO_PROOF_SUBMIT_TOKEN });
-    if (catalog.routes.some(route => route.evidenceOrigin !== config.evidenceOrigin)) throw Error('Oracle evidence origin must match the evidence origin');
-    config.oracle = oracleService({ catalog, source, market, evidence: config.oracleEvidence });
-    if (process.env.FLURBO_ORACLE_ANSWER_ENABLED === 'true' && catalog.routes.length) {
-      config.oracleAnswerer = oracleAnswerWorker({ routes: catalog.routes, source,
-        command: store.command, rpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-        privateKey: process.env.FLURBO_ORACLE_ANSWER_PRIVATE_KEY,
-        beaconUrl: process.env.FLURBO_SEPOLIA_BEACON_URL || null });
-    }
-    if (process.env.FLURBO_ORACLE_RELAY_ENABLED === 'true' && catalog.routes.length) {
-      config.oracleRelay = oracleRelayWorker({ routes: catalog.routes, source, market,
-        command: store.command, evidence: config.oracleEvidence, rpcUrl: config.rpcUrl,
-        privateKey: process.env.FLURBO_ORACLE_RELAY_PRIVATE_KEY });
-    }
-    if (process.env.FLURBO_HYBRID_SETTLEMENT_ENABLED === 'true' && hybrid.pools.length) {
-      config.hybridSettlement = hybridSettlementWorker({ pools: hybrid.pools, source, market,
-        command: store.command, archive: config.evidenceArchive,
-        captureStore: settlementStores.captureStore, packetStore: settlementStores.packetStore,
-        oracleEvidence: config.oracleEvidence, origin: config.evidenceOrigin, marketRpcUrl: config.rpcUrl,
-        proposerPrivateKey: process.env.FLURBO_HYBRID_PROPOSER_PRIVATE_KEY,
-        relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend,
-        answererPrivateKey: process.env.FLURBO_HYBRID_ANSWER_PRIVATE_KEY || null,
-        sourceRpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com' });
-    }
-    if (process.env.FLURBO_HYBRID_ARBITRATION_ENABLED === 'true' && hybrid.pools.length) {
-      const routes = hybrid.pools.flatMap(pool => pool.prepared.draft.events.map((event, eventIndex) =>
-        event.route === 'mechanical' ? { id: `${pool.id}-${eventIndex}`, pool: pool.pool,
-          resolver: pool.resolver, adapter: pool.adapter, manager: pool.manager,
-          relay: pool.prepared.relay, rulesHash: pool.rulesHash,
-          eventHash: pool.prepared.eventHashes[eventIndex], eventIndex,
-          deploymentBlock: pool.deploymentBlock, question: event.question } : null).filter(Boolean));
-      if (routes.length) config.hybridArbitration = hybridArbitrationWorker({ routes, source, market,
-        command: store.command, evidence: config.oracleEvidence, marketRpcUrl: config.rpcUrl,
-        sourceRpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-        managerPrivateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
-        relayPrivateKey: process.env.FLURBO_HYBRID_RELAY_PRIVATE_KEY, relaySend: hybridRelaySend });
-      const courtPools = hybrid.pools.filter(pool => pool.prepared.draft.events.some(event => event.route === 'reality'));
-      if (courtPools.length) config.hybridCourt = hybridCourtKeeper({ pools: courtPools, source, command: store.command,
-        evidence: config.oracleEvidence, rpcUrl: process.env.FLURBO_SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com',
-        privateKey: process.env.FLURBO_HYBRID_CASE_MANAGER_PRIVATE_KEY,
-        maxDisputeFeeWei: BigInt(process.env.FLURBO_HYBRID_MAX_DISPUTE_FEE_WEI || '20000000000000000'), juror });
-    }
-    if (process.env.FLURBO_HYBRID_ALERTS_ENABLED === 'true' && hybrid.pools.length) {
-      try {
-        const mail = emailConfig(process.env);
-        config.hybridAlerts = hybridOperatorAlerts({ pools: hybrid.pools, command: store.command,
-          readPool: record => readPoolForAlerts(record, market, source, juror), deliver: resendDelivery(mail),
-          from: mail.from, to: mail.to, origin: config.origin,
-          workers: () => ({ hybrid_settlement: config.hybridSettlement?.status(),
-            hybrid_arbitration: config.hybridArbitration?.status(), hybrid_court: config.hybridCourt?.status() }),
-          balances: () => walletBalances(source, hybrid.pools, market) });
-      } catch { console.error('Hybrid alerts disabled: set FLURBO_MONITOR_EMAIL_TO, FLURBO_MONITOR_EMAIL_FROM and FLURBO_MONITOR_RESEND_KEY'); }
-    }
-  }
+  if (companySite) await companyMarkets({ config, store, settlementStores,
+    readConfig: name => readFile(resolve(root, name), 'utf8').then(JSON.parse) });
   // Invalid semantic configuration fails the deploy here instead of failing purchases later.
   const semantics = loadSemanticConfig();
   const semanticStatus = semanticDiagnostics(semantics, [...(config.agentPools?.services ?? [])]
