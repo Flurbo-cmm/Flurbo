@@ -12,12 +12,16 @@ const record = (n: number, extra: Record<string, unknown> = {}) => ({ ...hybridR
 const catalog = (pools: unknown[], extra: Record<string, unknown> = {}) =>
   ({ schema: 'flurbo.conditional-catalog.v1', pricer, pools, ...extra });
 
-test('an empty conditional catalog is valid and changes nothing', async () => {
+test('an empty conditional catalog is valid and the committed catalog verifies', async () => {
   const empty = { schema: 'flurbo.conditional-catalog.v1', pricer: null, pools: [] };
   assert.equal(conditionalCatalog(empty), empty);
   assert.deepEqual(conditionalCatalog(catalog([])).pools, []);
   const committed = JSON.parse(await readFile(new URL('../../../config/conditional-markets.json', import.meta.url), 'utf8'));
-  assert.deepEqual(committed, empty);
+  const hybrid = JSON.parse(await readFile(new URL('../../../config/hybrid-markets.json', import.meta.url), 'utf8'));
+  const verified = conditionalCatalog(committed);
+  assert.equal(verified.pools.length, committed.pools.length);
+  const taken = new Set(hybrid.pools.flatMap((p: any) => [p.id, p.pool.toLowerCase()]));
+  for (const pool of verified.pools) assert.ok(!taken.has(pool.id) && !taken.has(pool.pool.toLowerCase()), pool.id);
   for (const bad of [null, {}, { ...empty, schema: 'flurbo.hybrid-catalog.v1' }, { ...empty, pricer: 'nope' },
     { ...empty, pools: {} }, { ...empty, extra: true }])
     assert.throws(() => conditionalCatalog(bad), /Invalid conditional catalog/);
