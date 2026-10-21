@@ -1,5 +1,105 @@
 {
   "schema": "flurbo.conditional-catalog.v1",
-  "pricer": null,
-  "pools": []
+  "pricer": "0x1853535d8a9832Ae36CE3d0FEe1214A23Bb68488",
+  "pools": [
+    {
+      "id": "cond-1",
+      "pool": "0x2D98C995D5cD2Beb259a02452B2247A7dC4C48DF",
+      "resolver": "0x020C719685f002d436b35d4A8245F37299fEb667",
+      "rulesHash": "0x1ebecd0c5dbeef6ae958f048065b016bf5db74f1e109214ecceec0c8f5212161",
+      "deploymentBlock": 73047865,
+      "keeper": "0x771fE7003FA20737C933c39B89386d78cbc36370",
+      "prepared": {
+        "schema": "flurbo.hybrid-prepared.v5",
+        "chainId": 10143,
+        "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+        "proposer": "0xa45c95f673580132F2E6f75372808162Ea069d49",
+        "relay": "0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1",
+        "draft": {
+          "schema": "flurbo.hybrid-publication.v5",
+          "chainId": 10143,
+          "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+          "title": "cond.1 Fed decision, 28 October 2026",
+          "closesAt": 1793188800,
+          "assertionPeriod": 3600,
+          "challengePeriod": 3600,
+          "reportPeriod": 604800,
+          "arbitrationPeriod": 7776000,
+          "bondAtoms": "1000000",
+          "liquidityAtoms": "10000000",
+          "commissionBps": 500,
+          "events": [
+            {
+              "id": "fomc-cut-2026-10-28",
+              "question": "Will the Federal Reserve announce a cut to the federal funds target range at the FOMC meeting that concludes on 28 October 2026?",
+              "observationEndsAt": 1793217600,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will the Federal Reserve announce a cut to the federal funds target range at the FOMC meeting that concludes on 28 October 2026?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1793217600,
+                "questionId": "0x96d5c5733cccabe9c8147c071d6f265a8699801e177297f36ec3e10dc6259663",
+                "contentHash": "0x2de2ca6b839dd27c093bcf9c27846e7e72466741e316b40e9ef9fa30bbe3b016",
+                "questionTxHash": "0x0bd174f021fbb17aace83a44b9c936cb6e518db98a3c38b4b950946bfb3fdeac"
+              }
+            },
+            {
+              "id": "spx-up-2026-10-28",
+              "question": "Will the S&P 500 index close on 28 October 2026 above its close on 27 October 2026?",
+              "observationEndsAt": 1793224800,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will the S&P 500 index close on 28 October 2026 above its close on 27 October 2026?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1793224800,
+                "questionId": "0x957c98f56ec6055cbe575bc42f8599ec1b09aa57d499b1c6f296b9398d720d66",
+                "contentHash": "0x5b112418a43a6118f218e10b30a12abf6381e2bdef3cdbb00bf1b0b41473dc16",
+                "questionTxHash": "0x147bdd57899a840077bdd36370e76afaac426ecc94b17f92db848592118ecc8c"
+              }
+            },
+            {
+              "id": "ust-2y-down-2026-10-28",
+              "question": "Will the 2-year rate in the US Treasury daily par yield curve for 28 October 2026 be lower than its value for 27 October 2026?",
+              "observationEndsAt": 1793275200,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will the 2-year rate in the US Treasury daily par yield curve for 28 October 2026 be lower than its value for 27 October 2026?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1793275200,
+                "questionId": "0x0632e9cc1374f58183c8034021d7f59e15a0ee59dcc601adeff686270a8a686d",
+                "contentHash": "0xd68f8f6b70dc5f5f0b3a62abd2fef6f2547fe7cb3b403f5e5f980103909d84b8",
+                "questionTxHash": "0x9017fb80d57907439dcb12f38eb2210501a3ffa4317aaa6e7f2e24032150b6bb"
+              }
+            }
+          ]
+        },
+        "draftHash": "0xdbe51f07bb8b5c2e9412a8c1a1c9a9e12bc4eac5712ef6f71b47f26a7c0ff8e9",
+        "eventHashes": [
+          "0x5022ab620403f66b8c7ceecd0c0cab2565828498c01fa92d2c5b9cac4deebce6",
+          "0xb50fa3f105512616d9d2b4ea6079224304010db83f7c578b37ce6743bf1d0ff4",
+          "0x430e6b75b75d771fb27f4244bda2e44e0d86252a0d5ad780740245761bcafdc4"
+        ],
+        "configHash": "0x3384794eee986fbb21c7421e37afd27efa7ddc88ec1ed7c176b330967b6ffb7d",
+        "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dcdbe51f07bb8b5c2e9412a8c1a1c9a9e12bc4eac5712ef6f71b47f26a7c0ff8e9000000000000000000000000000000000000000000000000000000006ae1e3c000000000000000000000000000000000000000000000000000000000000001a0000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000093a80000000000000000000000000000000000000000000000000000000000076a70000000000000000000000000000000000000000000000000000000000000000035022ab620403f66b8c7ceecd0c0cab2565828498c01fa92d2c5b9cac4deebce6b50fa3f105512616d9d2b4ea6079224304010db83f7c578b37ce6743bf1d0ff4430e6b75b75d771fb27f4244bda2e44e0d86252a0d5ad780740245761bcafdc40000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000006ae25440000000000000000000000000000000000000000000000000000000006ae27060000000000000000000000000000000000000000000000000000000006ae335400000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "liquidityAtoms": "10000000",
+        "commissionBps": 500
+      },
+      "conditionalVersion": 1
+    }
+  ]
 }
