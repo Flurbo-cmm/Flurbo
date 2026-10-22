@@ -16,16 +16,18 @@ import ConditionalDirectory from '../components/conditionals/ConditionalDirector
 import DecisionView from '../components/conditionals/DecisionView';
 import ConditionalTicket from '../components/conditionals/ConditionalTicket';
 import ConditionalHoldings from '../components/conditionals/ConditionalHoldings';
+import SettlementSummary, { type SummarySnapshot } from '../components/market/SettlementSummary';
+import { settlementView } from '../settlement-timeline';
 import { useLoadGate } from '../loading/gates';
 import { sheetPhase } from '../sheet-state';
 import { walletRejected } from '../wallet-errors';
 import { APPROVAL_LABEL, balanceLabel, monadTxUrl, quoteWaitText } from '../ticket-copy';
-import { exactTime } from '../format';
+import { exactTime, shortTime } from '../format';
 import { CONDITIONAL_COPY, chanceText, legText, pairable, type Leg, type Side } from '../conditional-view';
 import { condPoolAbi, conditionalCall } from '../../shared/conditionals.mjs';
 import { pilotCash, pilotCashAbi } from '../../shared/pilot.mjs';
 import type { ConditionalPending } from '../pending-readers';
-import { ensureMonad, loadChances, loadHoldings, loadPool, loadQuote, prepareConditional, questionAction, readPending, savePending, tradeInput,
+import { ensureMonad, loadChances, loadHoldings, loadPool, loadQuestion, loadQuote, prepareConditional, questionAction, readPending, savePending, tradeInput,
   type ChancesResult, type ConditionalPlan, type ConditionalPool as PoolView, type ConditionalQuote, type Holding, type Holdings,
   type QuestionQuote } from '../conditionals-client';
 import './market-detail.css';
@@ -75,6 +77,9 @@ function ConditionalPoolPage({ pool }: { pool: string }) {
   const [approvalReady, setApprovalReady] = useState<string | null>(null);
   const [holdings, setHoldings] = useState<Holdings | null>(null);
   const [holdingsError, setHoldingsError] = useState(''), [holdingsLoading, setHoldingsLoading] = useState(false), [holdingsTick, setHoldingsTick] = useState(0);
+  const [follow, setFollow] = useState(0);
+  const [followed, setFollowed] = useState<{ eventIndex: number; value: SummarySnapshot } | null>(null);
+  const [followError, setFollowError] = useState('');
   const polls = useRef(0);
   const run = (task: () => Promise<void>) => void task().catch(e => setError(friendly(e)));
 
@@ -99,6 +104,14 @@ function ConditionalPoolPage({ pool }: { pool: string }) {
       setTarget(next ? { eventIndex: next.eventIndex, side: target?.side ?? 'yes' } : null);
     }
   }, [view, condition.eventIndex]);
+
+  useEffect(() => {
+    if (!view) return;
+    let live = true;
+    setFollowError('');
+    loadQuestion(pool, follow).then(value => { if (live) setFollowed({ eventIndex: follow, value }); }, e => { if (live) setFollowError(friendly(e)); });
+    return () => { live = false; };
+  }, [!!view, pool, follow, refresh]);
 
   useEffect(() => discoverWallets(wallet => setWallets(current => current.some(item => item.provider === wallet.provider) ? current : [...current, wallet])), []);
   useEffect(() => {
@@ -297,6 +310,21 @@ function ConditionalPoolPage({ pool }: { pool: string }) {
     <small>{balanceLabel({ owner: owner || null, snapshotLoaded: !!currentQuote?.cashAtoms, cashAtoms: currentQuote?.cashAtoms ?? null, error: false })}</small></div>
     <button type="button" className="btn btn-secondary btn-sm" disabled={busy || walletStatus === 'checking'} onClick={() => run(() => connect())}>
       {owner ? 'Switch wallet' : walletStatus === 'checking' ? 'Checking wallet...' : walletStatus === 'unlinked' ? 'Link selected wallet' : 'Connect MetaMask'}</button></div>;
+  const followedSnapshot = followed?.eventIndex === follow ? followed.value : null;
+  const followedQuestion = view.questions.find(item => item.eventIndex === follow);
+  const settlement = settlementView({ snapshot: followedSnapshot, closesAt: view.closesAt, observationEndsAt: followedQuestion?.observationEndsAt ?? view.closesAt,
+    now: Date.now() / 1000, format: exactTime });
+  const followPicker = <ChoiceList label="Question to follow" value={String(follow)} className="cond-choices"
+    options={view.questions.map(item => ({ value: String(item.eventIndex), text: item.question,
+      label: <span className="cond-choice">{qTag(item.eventIndex)}<span>{item.question}
+        <small className="cond-choice-note">Answers from {shortTime(item.observationEndsAt)}</small></span></span> }))}
+    onChange={value => setFollow(Number(value))} />;
+  const realityLink = followedSnapshot?.reality?.links.reality;
+  const settlementAction = realityLink && (settlement.canArbitrate || settlement.canAnswer) ? <div className="cond-settle-action">
+    <p>{settlement.canArbitrate ? `Anyone can post a different answer with at least double the bond, or request Kleros arbitration, until ${exactTime(followedSnapshot!.reality!.finalizesAt)}.`
+      : 'Anyone can post the first bonded answer. A different answer can then be posted with a larger bond, and Kleros hears a challenge.'} Needs Sepolia ETH for the bond and gas.</p>
+    <a className="btn btn-secondary btn-sm" href={realityLink} target="_blank" rel="noreferrer">{settlement.canArbitrate ? 'Challenge on Reality.eth' : 'Answer on Reality.eth'}<ArrowUpRight size={15} aria-hidden="true" /></a>
+  </div> : null;
   // Beside the ticket, focus stays on the branch and the ticket announces its new price; on phones the ticket comes into view.
   const predict = (side: Side) => {
     setCondition(value => ({ ...value, side }));
@@ -371,6 +399,13 @@ function ConditionalPoolPage({ pool }: { pool: string }) {
     </div>
     <ConditionalHoldings owner={owner} holdings={holdings} loading={holdingsLoading} error={holdingsError} busy={busy || !!pending}
       onSell={sell} onCollect={collect} onRetry={() => setHoldingsTick(value => value + 1)} />
+    <div className="cond-settlement" data-conditional-section="settlement">
+      {followedSnapshot ? <SettlementSummary snapshot={followedSnapshot} view={settlement} format={exactTime} picker={followPicker}>{settlementAction}</SettlementSummary>
+        : <section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2></div>
+          {followPicker}
+          {followError ? <p className="state-inline error" role="alert">{followError} <button type="button" className="text-link" onClick={() => setRefresh(value => value + 1)}>Retry</button></p>
+            : <p role="status" className="market-caption">Reading this question...</p>}</section>}
+    </div>
     <p className="cond-refresh"><button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => { setReload(value => value + 1); setRefresh(value => value + 1); }}>
       <RefreshCw size={15} aria-hidden="true" />Refresh the pool</button></p>
     <TransactionSheet phase={phase} hash={pending?.hash ?? null}
