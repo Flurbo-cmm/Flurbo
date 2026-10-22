@@ -23,6 +23,21 @@ const poolView = { schema: 'flurbo.conditional-pool.v1', id: 'cond-1', pool, tit
   questions: questions.map((question, eventIndex) => ({ eventIndex, question, route: 'reality', observationEndsAt: now + 10800,
     chance: [612, 540, 480][eventIndex], pairable: eventIndex === 0 ? [1] : eventIndex === 1 ? [0, 2] : [1] })) };
 
+const questionIds = ['0x' + '01'.repeat(32), '0x' + '02'.repeat(32), '0x' + '03'.repeat(32)];
+const realityUrl = (id: string) => `https://reality.eth.limo/app/#!/network/11155111/question/0xaf33dcb6e8c5c4d9ddf579f53031b514d19449ca-${id}`;
+const snapshotFor = (eventIndex: number) => ({ schema: 'flurbo.hybrid-market.v1', id: `${pool}-${eventIndex}`, pool, poolTitle: 'cond.1 Decisions', eventIndex,
+  question: questions[eventIndex], route: 'reality', closesAt: now - 60, observationEndsAt: now - 30, resolver: '0x' + '55'.repeat(20),
+  eventHash: '0x' + '66'.repeat(32), rulesHash: '0x' + '67'.repeat(32), adapter: 'reality', ruleAdapter: null, source: {}, marketNow: now,
+  funded: true, resolved: false, delivered: false, assertionDeadline: now + 3600, reportDeadline: now + 604800, bondAtoms: '1000000',
+  phase: 0, proposal: 0, counter: 0, result: 0, challengeUntil: 0, arbitrationUntil: 0, requestId: '0x' + '0'.repeat(64),
+  sourceCaseId: '0x' + '0'.repeat(64), proposalEvidenceURI: null, user: null, ruleURI: null, automaticAnswer: null,
+  reality: { chainId: 11155111, reality: '0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA', arbitrator: '0x9E05da51D17bCd4B796E4505FCEED9135bd99964',
+    questionId: questionIds[eventIndex], sourceNow: now, opensAt: now - 30, finalizesAt: eventIndex === 1 ? now + 3000 : 0,
+    bondWei: eventIndex === 1 ? '100000000000000' : '0', nextBondWei: eventIndex === 1 ? '200000000000000' : '100000000000000',
+    disputeFeeWei: '1000000000000000', pendingArbitration: false, finalized: false, creditedEthWei: '0', answerLabel: eventIndex === 1 ? 'Yes' : null,
+    historyHash: '0x' + '0'.repeat(64), disputeStatus: 0, disputeId: '0', court: null,
+    links: { questionTx: null, reality: realityUrl(questionIds[eventIndex]), courtContract: null } } });
+
 async function session({ allowance = '0', viewport = { width: 1440, height: 900 }, path = `/conditionals/${pool}` } = {}) {
   const { chromium } = await import(pathToFileURL(process.env.FLURBO_TEST_PLAYWRIGHT!).href);
   state.browser ??= await chromium.launch({ headless: true, executablePath: process.env.FLURBO_TEST_BROWSER });
@@ -37,7 +52,7 @@ async function session({ allowance = '0', viewport = { width: 1440, height: 900 
   }, wallet);
   const page = await context.newPage();
   page.setDefaultTimeout(8000);
-  const errors: string[] = [], calls: { chances: any[]; quotes: any[]; actions: any[] } = { chances: [], quotes: [], actions: [] };
+  const errors: string[] = [], calls: { chances: any[]; quotes: any[]; actions: any[]; snapshots: number[] } = { chances: [], quotes: [], actions: [], snapshots: [] };
   page.on('pageerror', (error: Error) => errors.push(error.message));
   await page.route('**/*', async (route: any) => {
     const url = new URL(route.request().url()), path = url.pathname, body = route.request().postDataJSON?.() ?? null;
@@ -80,6 +95,7 @@ async function session({ allowance = '0', viewport = { width: 1440, height: 900 
           data: encodeFunctionData({ abi: condPoolAbi, functionName: 'buyConditional', args: [shapeOf(body.input), BigInt(body.input.shares), BigInt(q.payAtoms), BigInt(now + 120)] } as any) } } });
     }
     const question = path.match(/^\/api\/conditionals\/0x[0-9a-f]{40}-(\d+)(\/action)?$/i);
+    if (question && !question[2]) { calls.snapshots.push(Number(question[1])); return route.fulfill({ json: snapshotFor(Number(question[1])) }); }
     if (question?.[2]) return route.fulfill({ json: { action: 'quote', buyAtoms: '612000', maxCostAtoms: '615060', sellAtoms: null, minProceedsAtoms: null,
       cashAtoms: '42000000', allowanceAtoms: '0', holdingsAtoms: '0' } });
     if (path.startsWith('/api/')) return route.fulfill({ status: 503, json: { error: 'Unavailable fixture' } });
@@ -189,9 +205,30 @@ test('the page fits a phone without sideways scrolling and keeps the plan order'
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     const order = await page.$$eval('[data-conditional-section]', (els: HTMLElement[]) => els.map(e => e.dataset.conditionalSection)
       .filter(Boolean));
-    assert.deepEqual(order, ['build', 'decision', 'ticket', 'condition', 'holdings']);
+    assert.deepEqual(order, ['build', 'decision', 'ticket', 'condition', 'holdings', 'settlement']);
     const tops = await page.$$eval('[data-conditional-section]', (els: HTMLElement[]) => els.map(e => e.getBoundingClientRect().top));
     assert.deepEqual([...tops].sort((a, b) => a - b), tops);
+    assert.deepEqual(errors, []);
+  } finally { await close(); }
+});
+
+test('the settlement timeline follows the chosen question with its Reality.eth answer and links', { skip }, async () => {
+  const { page, errors, calls, close } = await session();
+  try {
+    const timeline = page.getByRole('region', { name: 'Settlement timeline' });
+    await timeline.getByText('Awaiting bonded answer').waitFor();
+    const first = await timeline.innerText();
+    for (const part of ['From prediction to payout', 'Trading', 'Awaiting answer', 'anyone can post the first answer', 'Reported to Monad',
+      'If nobody answers by', 'Each payout needs every question in this shared pool to be final.']) assert.ok(first.includes(part), part);
+    assert.equal(await timeline.getByRole('link', { name: 'Answer on Reality.eth' }).getAttribute('href'), realityUrl(questionIds[0]));
+    assert.equal(calls.snapshots.at(-1), 0);
+    await timeline.getByRole('group', { name: 'Question to follow' }).getByRole('radio', { name: questions[1] }).click();
+    await timeline.getByText('Answer open for challenge').waitFor();
+    const second = await timeline.innerText();
+    assert.ok(second.includes('Current Reality.eth answer: Yes'), second);
+    assert.equal(await timeline.getByRole('link', { name: 'Reality.eth question' }).getAttribute('href'), realityUrl(questionIds[1]));
+    assert.equal(await timeline.getByRole('link', { name: 'Challenge on Reality.eth' }).getAttribute('href'), realityUrl(questionIds[1]));
+    assert.equal(calls.snapshots.at(-1), 1);
     assert.deepEqual(errors, []);
   } finally { await close(); }
 });

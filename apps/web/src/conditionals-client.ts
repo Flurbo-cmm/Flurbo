@@ -3,6 +3,7 @@ import { appFetch } from './platform-fetch';
 import type { BrowserWallet } from './auth/wallet-choice';
 import { conditionalPendingKey, readConditionalPending, type ConditionalPending } from './pending-readers';
 import type { Chances, DecodedLegs, Leg } from './conditional-view';
+import type { SummarySnapshot } from './components/market/SettlementSummary';
 
 export type WireShape = { conditionScope: number; conditionMask: string; targetScope: number; targetMask: string };
 export type ConditionalDirectory = { schema: string; pools: { id: string; pool: string; title: string; questions: string[]; closesAt: number }[] };
@@ -42,6 +43,7 @@ export const loadQuote = (pool: string, condition: Leg, target: Leg, shares: str
 export const prepareConditional = (pool: string, action: string, input: unknown, owner: string) =>
   call<ConditionalPlan>(`/${pool}/action`, { action, input, owner });
 export const loadHoldings = (pool: string, wallet: string) => call<Holdings>(`/${pool}/holdings?wallet=${wallet}`);
+export const loadQuestion = (pool: string, eventIndex: number) => call<SummarySnapshot>(`/${pool}-${eventIndex}`);
 export const questionAction = <T>(pool: string, eventIndex: number, action: string, input: unknown, owner: string) =>
   call<T>(`/${pool}-${eventIndex}/action`, { action, input, owner });
 export const tradeInput = (condition: Leg, target: Leg, shares: string) => ({ condition: legs(condition), target: legs(target), shares });

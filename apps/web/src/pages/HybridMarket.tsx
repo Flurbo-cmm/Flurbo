@@ -10,8 +10,8 @@ import { watchTradingWallet, type TradingConnection } from '../auth/trading-sess
 import { linkedWallets, linkTradingWallet } from '../wallet-links';
 import SegmentedControl from '../components/ui/SegmentedControl';
 import QuantityStepper from '../components/ui/QuantityStepper';
-import StatusBadge, { type StatusKind } from '../components/ui/StatusBadge';
-import Stepper, { type Step } from '../components/ui/Stepper';
+import StatusBadge from '../components/ui/StatusBadge';
+import SettlementSummary from '../components/market/SettlementSummary';
 import TransactionSheet from '../components/ui/TransactionSheet';
 import MarketShell, { type MarketTab } from '../components/market/MarketShell';
 import ContractList from '../components/market/ContractList';
@@ -32,7 +32,7 @@ import { useWhatIf, type WhatIfLeg } from '../what-if-client';
 import { usePoolHoldings } from '../pool-holdings';
 import { strongestLinks } from '../../shared/pool-web.mjs';
 
-import { awaitingAnswer } from '../settlement-copy';
+import { settlementView } from '../settlement-timeline';
 import { forgetPortfolioCachePool } from '../portfolio-cache';
 import { rememberClaimHint } from '../pilot-claims';
 import { credentialedReader, readerName } from '../reader-names';
@@ -404,59 +404,9 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       setNotice('Public evidence saved. Review the challenge transaction next.');
     } finally { setBusy(false); }
   }
-  const closed = snapshot ? snapshot.marketNow >= snapshot.closesAt : !market || Date.now() / 1000 >= market.closesAt;
   const reality = snapshot?.reality;
-  const hasRealityAnswer = reality ? BigInt(reality.bondWei) > 0n : false;
-  const canAnswer = !!reality && !reality.finalized && !reality.pendingArbitration
-    && reality.sourceNow >= reality.opensAt && (!hasRealityAnswer || reality.sourceNow < reality.finalizesAt);
-  const canArbitrate = !!reality && hasRealityAnswer && !reality.finalized
-    && !reality.pendingArbitration && reality.sourceNow < reality.finalizesAt;
-  const status: StatusKind = snapshot?.resolved ? 'collect' : reality?.pendingArbitration ? 'disputed'
-    : canArbitrate ? 'challenge' : snapshot?.phase === 2 ? 'disputed'
-    : snapshot?.phase === 1 ? 'challenge' : closed ? 'closed' : 'open';
-  const statusText = snapshot?.resolved ? 'Collect' : reality?.pendingArbitration ? 'Kleros review'
-    : canArbitrate ? 'Answer open for challenge' : reality?.finalized ? 'Final answer, awaiting relay'
-    : reality && !hasRealityAnswer && reality.sourceNow >= reality.opensAt ? 'Awaiting bonded answer'
-    : snapshot?.phase === 2 ? 'Kleros review'
-    : snapshot?.phase === 1 ? 'Answer open for challenge' : snapshot?.phase === 3 ? 'Result final, awaiting pool'
-      : closed ? 'Trading closed' : 'Open for predictions';
-  const disputed = !!reality && reality.disputeStatus > 0;
-  const courtActive = disputed || snapshot?.phase === 2;
-  const finalIndex = courtActive ? 5 : 4;
-  const relayIndex = finalIndex + 1;
-  const payoutIndex = reality ? finalIndex + 2 : courtActive ? 6 : 5;
-  const stage = reality ? snapshot?.resolved || snapshot?.phase === 3 ? payoutIndex : reality.finalized ? relayIndex
-    : disputed ? 4 : hasRealityAnswer ? 3 : reality.sourceNow >= reality.opensAt ? 2 : closed ? 1 : 0
-    : snapshot?.resolved ? payoutIndex : snapshot?.phase === 3 ? finalIndex
-    : snapshot?.phase === 2 ? 4
-    : snapshot?.phase === 1 ? 3 : snapshot && snapshot.marketNow >= snapshot.observationEndsAt ? 2 : closed ? 1 : 0;
-  const step = (key: string, title: string, meta: string, index: number): Step => ({ key, title, meta,
-    state: index < stage ? 'done' : index === stage ? 'current' : 'upcoming' });
-  const readerLabel = snapshot?.automaticAnswer ? labels[snapshot.automaticAnswer.outcome] : null;
-  const waiting = reality && snapshot ? awaitingAnswer({ automatic: !!snapshot.ruleAdapter, opensAt: reality.opensAt, now: reality.sourceNow,
-    reportDeadline: snapshot.reportDeadline, format: date }) : null;
-  const steps: Step[] = reality ? [
-    step('trading', 'Trading', market ? `Closes ${date(market.closesAt)}` : '', 0),
-    step('source', 'Source observed', market ? `Reader window ends ${date(market.observationEndsAt)}` : '', 1),
-    step('proposal', hasRealityAnswer ? 'Answer posted' : 'Awaiting answer',
-      readerLabel ? `Flurbo reader answered ${readerLabel}` : hasRealityAnswer
-        ? 'A bonded answer was posted on Reality.eth' : waiting!.meta, 2),
-    step('challenge', 'Challenge window', reality.finalizesAt > 0 ? `Until ${date(reality.finalizesAt)}`
-      : 'Opens when the first answer is posted', 3),
-    ...(disputed ? [step('court', 'Kleros review', reality.court
-      ? `Case #${reality.court.disputeId}: ${reality.court.periodLabel}` : 'Jurors review the disputed answer', 4)] : []),
-    step('final', 'Final on Reality.eth', 'Reality.eth finalizes the answer on Sepolia', finalIndex),
-    step('relay', 'Reported to Monad', 'The relay delivers the final answer to this pool', relayIndex),
-    step('payout', 'Payouts', 'Available when every question in this pool is final', payoutIndex),
-  ] : [
-    step('trading', 'Trading', market ? `Closes ${date(market.closesAt)}` : '', 0),
-    step('source', 'Source observed', market ? `Window ends ${date(market.observationEndsAt)}` : '', 1),
-    step('proposal', 'Answer proposed', 'The committed reader posts a bonded source result', 2),
-    step('challenge', 'Challenge window', 'A different answer can be bonded in Flurbo', 3),
-    ...(snapshot?.phase === 2 ? [step('court', 'Kleros review', 'Jurors review both evidence records', 4)] : []),
-    step('final', 'Final answer', 'The result is final after the window or Kleros ruling', finalIndex),
-    step('payout', 'Payouts', 'Available when every question in this pool is final', payoutIndex),
-  ];
+  const settlement = settlementView({ snapshot, closesAt: market?.closesAt ?? 0, observationEndsAt: market?.observationEndsAt ?? 0, now: Date.now() / 1000, format: date });
+  const { closed, hasRealityAnswer, canAnswer, canArbitrate, status, statusText, readerLabel } = settlement;
   const needsApproval = currentQuote && BigInt(currentQuote.allowanceAtoms) < BigInt(currentQuote.maxCostAtoms);
   const quantityAtoms = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(shares) ? parseUnits(shares, 6) : 0n;
   const canBuy = !!currentQuote && BigInt(currentQuote.cashAtoms) >= BigInt(currentQuote.maxCostAtoms);
@@ -533,25 +483,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       pollCount.current = 0; setPollPaused(false); run(checkPending);
     }}>{pollPaused ? 'Check confirmation' : 'Check now'}</button>}
   </>;
-  const timeline = snapshot ? <section className="detail-panel detail-settlement" aria-label="Settlement timeline"><div className="panel-head"><h2>From prediction to payout</h2><StatusBadge kind={status}>{statusText}</StatusBadge></div>
-    <p>{reality ? 'Your shares stay in your wallet while the event runs. Reality.eth accepts bonded answers and Kleros hears disputes.'
-      : 'Your shares stay in your wallet while the event runs. The source rule fixes the answer. Kleros hears a challenged answer.'}</p><Stepper steps={steps} label="Settlement steps"/>
-    {reality?.court && <p className="market-caption">Kleros case #{reality.court.disputeId}: {reality.court.periodLabel}.
-      {reality.court.periodEndsAt ? ` Ends ${date(reality.court.periodEndsAt)}.` : ''}
-      {reality.court.period === 2 && reality.court.votesCast < reality.court.votesNeeded ? ' Waiting for the juror vote.' : ''}</p>}
-    {reality && waiting && !hasRealityAnswer && !reality.finalized && <p className="market-caption">{waiting.caption}</p>}
-    {reality && <p className="market-caption settlement-links">
-      <a className="text-link" href={reality.links.reality} target="_blank" rel="noreferrer">Reality.eth question <ArrowUpRight size={14}/></a>
-      {reality.links.courtContract && <a className="text-link" href={reality.links.courtContract} target="_blank" rel="noreferrer">Court contract on Etherscan <ArrowUpRight size={14}/></a>}
-      {reality.links.questionTx && <a className="text-link" href={reality.links.questionTx} target="_blank" rel="noreferrer">Question transaction <ArrowUpRight size={14}/></a>}</p>}
-    {reality && hasRealityAnswer && <p>Current Reality.eth answer: <strong>{reality.answerLabel}</strong>. {canArbitrate ? `Challenge before ${date(reality.finalizesAt)}.` : ''}</p>}
-    {reality?.pendingArbitration && <p>The answer is under Kleros review. Payout waits for the final Reality.eth result.</p>}
-    {snapshot.phase === 1 && <p>Proposed answer: <strong>{labels[snapshot.proposal]}</strong>. Challenge before {date(snapshot.challengeUntil)}.</p>}
-    {snapshot.phase === 2 && <p>{/^0x0{64}$/i.test(snapshot.sourceCaseId)
-      ? 'Kleros case requested. If a case cannot be linked before the published deadline, this question becomes Void.'
-      : 'Kleros case linked. The result waits for its final ruling.'}</p>}
-    {snapshot.phase === 3 && <p>Final answer: <strong>{labels[snapshot.result]}</strong>.</p>}
-    <p className="market-caption">Each payout needs every question in this shared pool to be final.</p>
+  const timeline = snapshot ? <SettlementSummary snapshot={snapshot} view={settlement} format={date}>
     <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={15}/>Refresh status</button>
     {challengeOpen && <div className="oracle-settlement-action"><h3>Challenge this answer</h3><p>Submit a different answer and a {cash(snapshot.bondAtoms)} test AUSD bond. A challenged answer goes to Kleros.</p>
       <SegmentedControl label="Alternative answer" value={String(counter)} options={[1, 2, 3].filter(value => value !== snapshot.proposal).map(value => ({ value: String(value), label: labels[value] }))} onChange={value => setCounter(Number(value))} block/>
@@ -601,7 +533,7 @@ export default function HybridMarketDetail({ id, markets }: { id: string; market
       actions={settlementPending ? pendingActions(settlementPending) : settlementPlan ? <><button className="btn btn-ghost" disabled={busy} onClick={() => setPlan(null)}>Cancel</button><button className="btn btn-primary" disabled={busy || !provider} onClick={() => run(confirm)}>{settlementPlan.action === 'approveBond' ? 'Allow challenge bond' : 'Confirm in MetaMask'}</button></> : null}>
       {settlementPending ? pendingBody(settlementPending) : settlementPlan ? <><p>{settlementPlan.reason}</p><dl className="leaders"><div><dt>Network</dt><dd>{settlementPlan.transaction.chainId === 10143 ? 'Monad testnet' : 'Sepolia'}</dd></div><div><dt>To</dt><dd className="mono-break">{settlementPlan.transaction.to}</dd></div></dl></> : null}
     </TransactionSheet>
-  </section> : <p role="status">Reading this market...</p>;
+  </SettlementSummary> : <p role="status">Reading this market...</p>;
   const readerAdapter = snapshot?.ruleAdapter ?? snapshot?.source?.adapter;
   const proof = snapshot ? <div className="proof-panel">
     <section className="detail-panel"><h2>What decides the answer?</h2><p>{reality ? 'The published Reality.eth question receives bonded answers. Kleros can rule on a challenged answer.'

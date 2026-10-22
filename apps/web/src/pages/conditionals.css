@@ -115,6 +115,11 @@
 .cond-holding { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px) auto; gap: var(--s-3) var(--s-6); align-items: center; padding: var(--s-4) 0; border-top: var(--hairline); }
 .cond-holding-line { margin: 0; color: var(--ink); font-size: 15px; overflow-wrap: anywhere; }
 @media (max-width: 767px) { .cond-holding { grid-template-columns: minmax(0, 1fr); } .cond-holding > .btn { justify-self: start; } }
+.cond-settlement { margin-top: var(--s-10); }
+.cond-settlement .detail-settlement { display: grid; gap: var(--s-3); }
+.cond-settlement .cond-choices { max-width: 72ch; }
+.cond-settle-action { display: grid; gap: var(--s-3); justify-items: start; border-top: 1px solid var(--rule); padding-top: var(--s-4); }
+.cond-settle-action p { margin: 0; max-width: 72ch; }
 .cond-refresh { margin-top: var(--s-6); }
 
 /* Directory: one hairline row per pool, its questions listed in full with their tags. */
