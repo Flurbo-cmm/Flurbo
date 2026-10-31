@@ -14,6 +14,7 @@ export const CATEGORY_BY_POOL:Readonly<Record<string,CategorySlug>>={
   '0x6da09fa753f97f7078b5a61c332262af93c89a2c':'crypto',
   '0x0fc7a9634f52dd5bf91c252587f912d5e121d528':'crypto',
   '0x015f11c11d5c40cc5b91f99845ccc73f75b19bfb':'economics',
+  '0x729dfb75397af17213cb5c7b799dd0023bd62388':'crypto',
 };
 
 export function categorize({pool,kind,mode}:{pool:string;kind:'pilot'|'oracle'|'hybrid';mode?:string}):CategorySlug{
