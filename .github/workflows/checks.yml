@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: Flurbo-cmm/Flurbo-contracts
-          ref: fb7a5ac53ebf11193d7e6397c3aec7aff098cd32
+          ref: 82417a4cb6d5c55345e1d8afe239a85c787b132d
           path: contracts
           token: ${{ secrets.FLURBO_CONTRACTS_READ_TOKEN }}
           persist-credentials: false
