@@ -64,11 +64,11 @@ export function createHybridRealityPilot({ creator, proposer, relay, closesAt, o
   if (new Set(addresses.map(address => address.toLowerCase())).size !== 3
     || !Number.isSafeInteger(closesAt)
     || closesAt < Math.floor(Date.now() / 1000) + 7200
-    || closesAt > Math.floor(Date.now() / 1000) + 14 * 86400
+    || closesAt > Math.floor(Date.now() / 1000) + 365 * 86400
     || !/^https:\/\/[a-z0-9.-]+$/.test(origin || '')
     || !Number.isSafeInteger(timeout) || timeout < 3600 || timeout > 30 * 86400
     || !/^[1-9]\d*$/.test(minBondWei))
-    throw Error('Choose three distinct wallets, a close time 2 hours to 14 days away and an https origin');
+    throw Error('Choose three distinct wallets, a close time 2 hours to 365 days away and an https origin');
   const [deployer, proposerWallet, relayWallet] = addresses;
   const items = (rules === null ? evmBlockEvents({ closesAt, challengePeriod: timeout }) : ruleEvents(rules, { closesAt, timeout })).map(item => {
     if (!item.rule) return { ...item, questionText: `${item.question}\u241fflurbo\u241fen` };
