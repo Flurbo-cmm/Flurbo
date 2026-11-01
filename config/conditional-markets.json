@@ -100,6 +100,193 @@
         "commissionBps": 500
       },
       "conditionalVersion": 1
+    },
+    {
+      "id": "cond-2",
+      "pool": "0x8C492cC7Be74F4DE2C3FD901D409E58EdadB73De",
+      "resolver": "0x97aD99f982ca9c8d66fe820bB9bB3c417D5C6490",
+      "rulesHash": "0x3e16c9fa8787a0ec66df896ea7708c4b1aaee4dfea691d12b5be522021a2dc60",
+      "deploymentBlock": 75936677,
+      "keeper": "0x771fE7003FA20737C933c39B89386d78cbc36370",
+      "answerer": "0x7CaD88C893b9d28178F4Ae5c6F25171823FC9352",
+      "prepared": {
+        "schema": "flurbo.hybrid-prepared.v5",
+        "chainId": 10143,
+        "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+        "proposer": "0xa45c95f673580132F2E6f75372808162Ea069d49",
+        "relay": "0x51dd3f8eD77e49e8099b79d455F16b0bF8e120E1",
+        "draft": {
+          "schema": "flurbo.hybrid-publication.v5",
+          "chainId": 10143,
+          "creator": "0xF1feA08EbBa92eD342Acc5639dB312C3694Bc391",
+          "title": "cond.2 France 2027: if the RN wins the presidency",
+          "closesAt": 1807984800,
+          "assertionPeriod": 3600,
+          "challengePeriod": 3600,
+          "reportPeriod": 2592000,
+          "arbitrationPeriod": 7776000,
+          "bondAtoms": "1000000",
+          "liquidityAtoms": "50000000",
+          "commissionBps": 500,
+          "events": [
+            {
+              "id": "cond-2-rn",
+              "question": "Will a candidate officially supported by the Rassemblement National be proclaimed elected President of the French Republic by the Conseil constitutionnel after the 2027 presidential election scheduled for 18 April and 2 May 2027?",
+              "observationEndsAt": 1810468800,
+              "route": "reality",
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "questionText": "Will a candidate officially supported by the Rassemblement National be proclaimed elected President of the French Republic by the Conseil constitutionnel after the 2027 presidential election scheduled for 18 April and 2 May 2027?␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1810468800,
+                "questionId": "0x8abeb85441f5e7973b1444e408a94932946c61b0046a5a1060cf346c84cc2f8c",
+                "contentHash": "0x926fe0a8ae2d128415118ef3bf5adce5bc6e7ccb8a4b86b868f7e98cdf034e5f",
+                "questionTxHash": "0x851ae21fccdb51381c40f6d9e274bd07c5a66d378a558a49cd0893872a48dc3e"
+              }
+            },
+            {
+              "id": "cond-2-eurusd",
+              "question": "Will the ECB EUR/USD reference rate published on Frankfurter for 3 May 2027 be at least 1.12 USD per EUR?",
+              "observationEndsAt": 1809388800,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "cond-2-eurusd",
+                "question": "Will the ECB EUR/USD reference rate published on Frankfurter for 3 May 2027 be at least 1.12 USD per EUR?",
+                "source": {
+                  "id": "ecb-frankfurter-eur-usd",
+                  "publisher": "European Central Bank via Frankfurter",
+                  "urls": [
+                    "https://api.frankfurter.dev/v1/2027-05-03?base=EUR&symbols=USD"
+                  ],
+                  "adapter": "json-api.v2",
+                  "reader": {
+                    "select": "/rates/USD",
+                    "aggregate": "value",
+                    "checks": [
+                      {
+                        "path": "/date",
+                        "equals": "2027-05-03"
+                      }
+                    ]
+                  }
+                },
+                "observation": {
+                  "series": "ecb-eur-usd",
+                  "period": "2027-05-03",
+                  "unit": "USD"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "1.12"
+                },
+                "timing": {
+                  "scheduledAt": 1809361800,
+                  "publicationCutoff": 1809388800,
+                  "correctionCutoff": 1809388800,
+                  "observationEndsAt": 1809388800,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbo.tech/api/hybrid/rules/0x2a07971bf496d614793b101a39cef5a87da83315f23fb13a06d01f8bfd8bf1bd",
+                "questionText": "Will the ECB EUR/USD reference rate published on Frankfurter for 3 May 2027 be at least 1.12 USD per EUR? Resolution rule: https://flurbo.tech/api/hybrid/rules/0x2a07971bf496d614793b101a39cef5a87da83315f23fb13a06d01f8bfd8bf1bd. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1809388800,
+                "questionId": "0xe2fda8486f24a245ff4fa921b91f8a96b12bcebee6eb7702b0e9035504bb3279",
+                "contentHash": "0x8dba15d1c4eec46a82dd16955b32707064d77b8a5f38bd1d00c515816c1d8280",
+                "questionTxHash": "0x52ff2bd69f7afa152b7f19e4cac3257347b33f68bd5322af780890b63dc6ad3d"
+              }
+            },
+            {
+              "id": "cond-2-oat",
+              "question": "Will France's 10-year government bond yield for May 2027 in the ECB long-term interest rate statistics be at least 4.4 percent?",
+              "observationEndsAt": 1816992000,
+              "route": "reality",
+              "rule": {
+                "schema": "flurbo.settlement-rule.v1",
+                "eventId": "cond-2-oat",
+                "question": "Will France's 10-year government bond yield for May 2027 in the ECB long-term interest rate statistics be at least 4.4 percent?",
+                "source": {
+                  "id": "ecb-irs-fr-10y",
+                  "publisher": "European Central Bank",
+                  "urls": [
+                    "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=jsondata&startPeriod=2027-05&endPeriod=2027-05"
+                  ],
+                  "adapter": "stat-table.v1",
+                  "reader": {
+                    "format": "sdmx-json",
+                    "select": {
+                      "REF_AREA": "FR"
+                    },
+                    "period": "2027-05"
+                  }
+                },
+                "observation": {
+                  "series": "ecb-irs-fr-10y",
+                  "period": "2027-05",
+                  "unit": "percent"
+                },
+                "decision": {
+                  "type": "number",
+                  "operator": "gte",
+                  "value": "4.4"
+                },
+                "timing": {
+                  "scheduledAt": 1811818800,
+                  "publicationCutoff": 1816992000,
+                  "correctionCutoff": 1816992000,
+                  "observationEndsAt": 1816992000,
+                  "assertionPeriod": 3600,
+                  "challengePeriod": 3600,
+                  "votingPeriod": 86400
+                },
+                "vintage": "first-observed-snapshot",
+                "missingPolicy": "resolver-timeout-void"
+              },
+              "source": {
+                "kind": "reality-sepolia",
+                "chainId": 11155111,
+                "reality": "0xaf33DcB6E8c5c4D9dDF579f53031b514d19449CA",
+                "arbitrator": "0x9E05da51D17bCd4B796E4505FCEED9135bd99964",
+                "ruleURI": "https://flurbo.tech/api/hybrid/rules/0x0ad3d3df50f720c853655845469954101444cc93e29bf9f2b9b13515d3a4221f",
+                "questionText": "Will France's 10-year government bond yield for May 2027 in the ECB long-term interest rate statistics be at least 4.4 percent? Resolution rule: https://flurbo.tech/api/hybrid/rules/0x0ad3d3df50f720c853655845469954101444cc93e29bf9f2b9b13515d3a4221f. Answer Invalid if the rule result is VOID.␟flurbo␟en",
+                "minTimeout": 3600,
+                "minBond": "100000000000000",
+                "openingAt": 1816992000,
+                "questionId": "0xcb05015b05b418d3c499f702b110bcfb0ab994e9301366fb195c970e3d613d0f",
+                "contentHash": "0xca95560e8c9cd80313ef2857f8fda4fefbf7216067ec53f67e0e71979230e476",
+                "questionTxHash": "0x44770f91147d76879e3f21c281141f7fc6df8b0071c5b5dfcabee648d5e4dbba"
+              }
+            }
+          ]
+        },
+        "draftHash": "0xad30907c9da4e420ea69c0f423f29274fb3319fa0568d9e5f0562f98931be035",
+        "eventHashes": [
+          "0x01f1c8605ca72418fd3bb3376befc0bf91e5303b1434cc75da5530eec56d55d2",
+          "0x76cbfc585a50982e3c46fc15a359e51fb4e861881fc7a4d40692189052287893",
+          "0x542eb7c02eb6fdbf99518aabec3e1211b01fd939d3047cc3b7451c0dbce280b1"
+        ],
+        "configHash": "0x70a03dc4c02189bb6eaa378a79741fd83c7b6a94d12cc41b860c2c9d86be8e07",
+        "resolverConfig": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000a9012a055bd4e0edff8ce09f960291c09d5322dcad30907c9da4e420ea69c0f423f29274fb3319fa0568d9e5f0562f98931be035000000000000000000000000000000000000000000000000000000006bc3a8a000000000000000000000000000000000000000000000000000000000000001a0000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000a45c95f673580132f2e6f75372808162ea069d4900000000000000000000000051dd3f8ed77e49e8099b79d455f16b0bf8e120e100000000000000000000000000000000000000000000000000000000000f42400000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000000e100000000000000000000000000000000000000000000000000000000000278d00000000000000000000000000000000000000000000000000000000000076a700000000000000000000000000000000000000000000000000000000000000000301f1c8605ca72418fd3bb3376befc0bf91e5303b1434cc75da5530eec56d55d276cbfc585a50982e3c46fc15a359e51fb4e861881fc7a4d40692189052287893542eb7c02eb6fdbf99518aabec3e1211b01fd939d3047cc3b7451c0dbce280b10000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000006be98fc0000000000000000000000000000000000000000000000000000000006bd91500000000000000000000000000000000000000000000000000000000006c4d19000000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "liquidityAtoms": "50000000",
+        "commissionBps": 500
+      },
+      "conditionalVersion": 1
     }
   ]
 }
