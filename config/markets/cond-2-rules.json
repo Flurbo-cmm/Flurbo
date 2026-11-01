@@ -1,0 +1,93 @@
+[
+  {
+    "schema": "flurbo.human-question.v1",
+    "eventId": "cond-2-rn",
+    "question": "Will a candidate officially supported by the Rassemblement National be proclaimed elected President of the French Republic by the Conseil constitutionnel after the 2027 presidential election scheduled for 18 April and 2 May 2027?",
+    "observationEndsAt": 1810468800
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "cond-2-eurusd",
+    "question": "Will the ECB EUR/USD reference rate published on Frankfurter for 3 May 2027 be at least 1.12 USD per EUR?",
+    "source": {
+      "id": "ecb-frankfurter-eur-usd",
+      "publisher": "European Central Bank via Frankfurter",
+      "urls": [
+        "https://api.frankfurter.dev/v1/2027-05-03?base=EUR&symbols=USD"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/rates/USD",
+        "aggregate": "value",
+        "checks": [
+          {
+            "path": "/date",
+            "equals": "2027-05-03"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "ecb-eur-usd",
+      "period": "2027-05-03",
+      "unit": "USD"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "1.12"
+    },
+    "timing": {
+      "scheduledAt": 1809361800,
+      "publicationCutoff": 1809388800,
+      "correctionCutoff": 1809388800,
+      "observationEndsAt": 1809388800,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "cond-2-oat",
+    "question": "Will France's 10-year government bond yield for May 2027 in the ECB long-term interest rate statistics be at least 4.4 percent?",
+    "source": {
+      "id": "ecb-irs-fr-10y",
+      "publisher": "European Central Bank",
+      "urls": [
+        "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=jsondata&startPeriod=2027-05&endPeriod=2027-05"
+      ],
+      "adapter": "stat-table.v1",
+      "reader": {
+        "format": "sdmx-json",
+        "select": {
+          "REF_AREA": "FR"
+        },
+        "period": "2027-05"
+      }
+    },
+    "observation": {
+      "series": "ecb-irs-fr-10y",
+      "period": "2027-05",
+      "unit": "percent"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "4.4"
+    },
+    "timing": {
+      "scheduledAt": 1811818800,
+      "publicationCutoff": 1816992000,
+      "correctionCutoff": 1816992000,
+      "observationEndsAt": 1816992000,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  }
+]

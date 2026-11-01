@@ -34,6 +34,14 @@ const GOLDEN: Record<string, string> = {
   'hybrid-markets.json /pools/3/prepared/draft/events/11/rule': '53541b90f81bdda66c9355ab4bc042334c1dd5677d53e87f644d1002acd31ffc',
   'hybrid-markets.json /pools/3/prepared/draft/events/12/rule': '37d2bec85fed8775eb780899ae59e5accb29f2cde00c890218bd02c011cac4e9',
   'hybrid-markets.json /pools/3/prepared/draft/events/13/rule': '97e35550beb1a833f26b1c57ae6f516eb3b3d46ca20c6fd4b7bee623f0747295',
+  'hybrid-markets.json /pools/4/prepared/draft/events/0/rule': 'bd28a4a179a555cfaa55dc414a6e4f9b896ccf38bef35bc77816d5df4e9c5c00',
+  'hybrid-markets.json /pools/4/prepared/draft/events/1/rule': '51c1cccc000d78f8ff43b22b47ef6ce15bf10bc59a9b9b1b20e7870ceb066db9',
+  'hybrid-markets.json /pools/4/prepared/draft/events/2/rule': '876a90044ad465aab24fad6f574d7c22cc704dcb14bc6fc0eb2e9b682a205bdf',
+  'hybrid-markets.json /pools/4/prepared/draft/events/3/rule': 'bdf3e8db4a459e1ed7ae71100361ec015f47ec3c694ce8a546a4338c13053cfe',
+  'hybrid-markets.json /pools/4/prepared/draft/events/4/rule': '3c717a7fef4af58716911bb7adfa7d0a82b995affb331197cca215c136672837',
+  'hybrid-markets.json /pools/4/prepared/draft/events/5/rule': 'c3bc2a638c7abce289a0d03f523805d0f0e25516cad82f155215876770b5e66f',
+  'hybrid-markets.json /pools/4/prepared/draft/events/6/rule': '382b108adf544f58c7a332719ffc278e9796ce7bc84b8d98a9b55be90891f645',
+  'hybrid-markets.json /pools/4/prepared/draft/events/7/rule': '94e8a8878dab2e1632954855947db0bd47f18e04527828e56148af42521e9f86',
 };
 
 const jsonRule = (reader: any) => ({ schema: 'flurbo.settlement-rule.v1', eventId: 'event-1', question: 'Will the value be at least the threshold?',

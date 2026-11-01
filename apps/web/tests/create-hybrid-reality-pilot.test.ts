@@ -57,6 +57,18 @@ test('templates default to a 7 day report period and accept 1 to 90 days', () =>
     assert.throws(() => createHybridRealityPilot({ ...base, reportPeriod }), /Report period must be 1 to 90 days/);
 });
 
+test('templates accept a close up to 365 days away for long-dated conditional pools', () => {
+  const now = Math.floor(Date.now() / 1000), base = { creator, proposer, relay, origin };
+  const rules = (closesAt: number) => [0, 1].map(i => ({ schema: 'flurbo.human-question.v1', eventId: `long-dated-${i}`,
+    question: `Will long-dated question ${i} resolve Yes?`, observationEndsAt: closesAt + 14 * 86400 }));
+  for (const days of [168, 365]) {
+    const closesAt = now + days * 86400 - 60;
+    assert.equal(createHybridRealityPilot({ ...base, closesAt, rules: rules(closesAt) }).draft.closesAt, closesAt);
+  }
+  for (const closesAt of [now + 366 * 86400, now + 3600])
+    assert.throws(() => createHybridRealityPilot({ ...base, closesAt, rules: rules(closesAt) }), /a close time 2 hours to 365 days away/);
+});
+
 test('complete draft verifies each creation receipt', async () => {
   const template = created();
   const hashes = txHashes;

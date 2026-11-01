@@ -301,7 +301,7 @@ cd /c/Users/anany/Flurbo-company && node apps/web/scripts/register-ls-pricer.mjs
 cp ../Flurbo-contracts/target/deployments/conditional-catalog-candidate.json config/conditional-markets.json
 ```
 
-2. Draft the pool with the existing creation scripts (two to four related questions suit the page best) and prepare it with the output path `../../../Flurbo-contracts/target/deployments/conditional-pilot-prepared.json`.
+2. Draft the pool with the existing creation scripts (two to four related questions suit the page best) and prepare it with the output path `../../../Flurbo-contracts/target/deployments/conditional-pilot-prepared.json`. A conditional pool may close up to 365 days ahead. `DeployHybridPilot` still requires a close within 30 days, so keep hybrid templates inside that limit before asking their Reality questions.
 
 3. Deploy the resolver and the conditional pool:
 

@@ -1,0 +1,373 @@
+[
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-eth",
+    "question": "Will the Kraken ETHUSD daily candle for 4 November 2026 UTC (timestamp 1793750400) close at or above 2250 USD?",
+    "source": {
+      "id": "kraken-ohlc-xethzusd",
+      "publisher": "Kraken",
+      "urls": [
+        "https://api.kraken.com/0/public/OHLC?pair=ETHUSD&interval=1440&since=1793664000"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/result/XETHZUSD",
+        "aggregate": "only",
+        "field": "/4",
+        "filter": [
+          {
+            "path": "/0",
+            "op": "eq",
+            "value": "1793750400"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "kraken-xethzusd-close",
+      "period": "2026-11-04",
+      "unit": "USD"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "2250"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-btc",
+    "question": "Will the Kraken XBTUSD daily candle for 4 November 2026 UTC (timestamp 1793750400) close at or above 77000 USD?",
+    "source": {
+      "id": "kraken-ohlc-xxbtzusd",
+      "publisher": "Kraken",
+      "urls": [
+        "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440&since=1793664000"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/result/XXBTZUSD",
+        "aggregate": "only",
+        "field": "/4",
+        "filter": [
+          {
+            "path": "/0",
+            "op": "eq",
+            "value": "1793750400"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "kraken-xxbtzusd-close",
+      "period": "2026-11-04",
+      "unit": "USD"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "77000"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-ethbtc",
+    "question": "Will the Kraken ETHXBT daily candle for 4 November 2026 UTC close at or above 0.0290 BTC per ETH?",
+    "source": {
+      "id": "kraken-ohlc-xethxxbt",
+      "publisher": "Kraken",
+      "urls": [
+        "https://api.kraken.com/0/public/OHLC?pair=ETHXBT&interval=1440&since=1793664000"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/result/XETHXXBT",
+        "aggregate": "only",
+        "field": "/4",
+        "filter": [
+          {
+            "path": "/0",
+            "op": "eq",
+            "value": "1793750400"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "kraken-xethxxbt-close",
+      "period": "2026-11-04",
+      "unit": "BTC"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "0.0290"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-tvl",
+    "question": "Will Ethereum chain total value locked on DefiLlama be at least 44000000000 USD when first captured after 5 November 2026 00:10 UTC?",
+    "source": {
+      "id": "defillama-chains-ethereum",
+      "publisher": "DefiLlama",
+      "urls": [
+        "https://api.llama.fi/v2/chains"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "",
+        "aggregate": "only",
+        "field": "/tvl",
+        "filter": [
+          {
+            "path": "/name",
+            "op": "eq",
+            "value": "Ethereum"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "defillama-tvl-ethereum",
+      "period": "2026-11-05T00:10Z",
+      "unit": "USD"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "44000000000"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-basefee",
+    "question": "Will the Ethereum mainnet base fee of the first block at or after 4 November 2026 14:00 UTC be at least 130000000 wei?",
+    "source": {
+      "id": "ethereum-mainnet-base-fee",
+      "publisher": "Ethereum mainnet",
+      "urls": [
+        "https://ethereum-rpc.publicnode.com/",
+        "https://eth.drpc.org/"
+      ],
+      "adapter": "evm-rpc.v1",
+      "reader": {
+        "chainId": 1,
+        "at": 1793800800,
+        "metric": "block-field",
+        "field": "baseFeePerGas",
+        "finalitySeconds": 960
+      }
+    },
+    "observation": {
+      "series": "ethereum-base-fee-per-gas",
+      "period": "2026-11-04T14:00Z",
+      "unit": "wei"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "130000000"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-mumbai-heat",
+    "question": "Will Open-Meteo's daily maximum temperature for Mumbai (19.0760 N, 72.8777 E) on 4 November 2026, Asia/Kolkata time, be at least 33.0 degrees Celsius, as first captured after 5 November 2026 00:10 UTC?",
+    "source": {
+      "id": "open-meteo-mumbai-temperature-max",
+      "publisher": "Open-Meteo",
+      "urls": [
+        "https://api.open-meteo.com/v1/forecast?latitude=19.0760&longitude=72.8777&daily=temperature_2m_max&timezone=Asia%2FKolkata&start_date=2026-11-04&end_date=2026-11-04"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/daily/temperature_2m_max/0",
+        "aggregate": "value",
+        "checks": [
+          {
+            "path": "/daily/time/0",
+            "equals": "2026-11-04"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "open-meteo-mumbai-temperature-2m-max",
+      "period": "2026-11-04",
+      "unit": "celsius"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "33.0"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-mumbai-air",
+    "question": "Will Open-Meteo's US AQI for Mumbai (19.0760 N, 72.8777 E) at 17:00 Asia/Kolkata time on 4 November 2026 be at least 270, as first captured after 5 November 2026 00:10 UTC?",
+    "source": {
+      "id": "open-meteo-mumbai-us-aqi",
+      "publisher": "Open-Meteo",
+      "urls": [
+        "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=19.0760&longitude=72.8777&hourly=us_aqi&timezone=Asia%2FKolkata&start_date=2026-11-04&end_date=2026-11-04"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "/hourly/us_aqi/17",
+        "aggregate": "value",
+        "checks": [
+          {
+            "path": "/hourly/time/17",
+            "equals": "2026-11-04T17:00"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "open-meteo-mumbai-us-aqi",
+      "period": "2026-11-04T17:00+05:30",
+      "unit": "US AQI"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "270"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  },
+  {
+    "schema": "flurbo.settlement-rule.v1",
+    "eventId": "flb-2-geth",
+    "question": "Will the ethereum/go-ethereum GitHub repository publish at least one non-draft release between 2 November 2026 00:00 UTC and 4 November 2026 23:59:59 UTC?",
+    "source": {
+      "id": "github-go-ethereum-releases",
+      "publisher": "GitHub",
+      "urls": [
+        "https://api.github.com/repos/ethereum/go-ethereum/releases?per_page=30"
+      ],
+      "adapter": "json-api.v2",
+      "reader": {
+        "select": "",
+        "aggregate": "count",
+        "filter": [
+          {
+            "path": "/published_at",
+            "op": "gte",
+            "value": "1793577600",
+            "format": "iso-datetime"
+          },
+          {
+            "path": "/published_at",
+            "op": "lte",
+            "value": "1793836799",
+            "format": "iso-datetime"
+          },
+          {
+            "path": "/draft",
+            "op": "eq",
+            "value": "false"
+          }
+        ]
+      }
+    },
+    "observation": {
+      "series": "go-ethereum-non-draft-releases",
+      "period": "2026-11-02/2026-11-04",
+      "unit": "releases"
+    },
+    "decision": {
+      "type": "number",
+      "operator": "gte",
+      "value": "1"
+    },
+    "timing": {
+      "scheduledAt": 1793837400,
+      "publicationCutoff": 1793858400,
+      "correctionCutoff": 1793858400,
+      "observationEndsAt": 1793858400,
+      "assertionPeriod": 3600,
+      "challengePeriod": 3600,
+      "votingPeriod": 86400
+    },
+    "vintage": "first-observed-snapshot",
+    "missingPolicy": "resolver-timeout-void"
+  }
+]
