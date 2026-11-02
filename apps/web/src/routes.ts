@@ -4,6 +4,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 // loading while the session and access checks run, so the loader covers both.
 const loaders = {
   docs: () => import('./pages/Docs'),
+  demo: () => import('./pages/Demo'),
   markets: () => import('./pages/Markets'),
   conditionals: () => import('./pages/Conditionals'),
   agents: () => import('./pages/Agents'),

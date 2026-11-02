@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { appFetch } from './platform-fetch.ts';
+import { useApiBase } from './api-base.ts';
 
 export type WhatIfLeg = { eventIndex: number; side: 'yes' | 'no' };
 export type WhatIfRule = 'AND' | 'OR' | 'EXACTLY_ONE';
@@ -32,14 +33,14 @@ export function echoesRequest(value: WhatIf, pool: string, input: WhatIfInput) {
 }
 
 export async function fetchWhatIf(marketId: string, pool: string, input: WhatIfInput,
-  { signal, fetcher = appFetch, fresh = false, now = Date.now }: { signal?: AbortSignal; fetcher?: typeof fetch; fresh?: boolean; now?: () => number } = {}) {
-  const key = whatIfKey(pool, input), cached = cache.get(key);
+  { signal, fetcher = appFetch, fresh = false, now = Date.now, base = '/api' }: { signal?: AbortSignal; fetcher?: typeof fetch; fresh?: boolean; now?: () => number; base?: string } = {}) {
+  const key = base + whatIfKey(pool, input), cached = cache.get(key);
   if (cached && !fresh && now() - cached.at < FRESH_MS) {
     cache.delete(key);
     cache.set(key, cached);
     return cached.value;
   }
-  const response = await fetcher(`/api/hybrid/${marketId}/what-if`, { method: 'POST', credentials: 'same-origin', cache: 'no-store',
+  const response = await fetcher(`${base}/hybrid/${marketId}/what-if`, { method: 'POST', credentials: 'same-origin', cache: 'no-store',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(normal(input)), signal });
   if (!response.ok) throw Error(FAILURE);
   const value = await response.json() as WhatIf;
@@ -51,7 +52,8 @@ export async function fetchWhatIf(marketId: string, pool: string, input: WhatIfI
 }
 
 export function useWhatIf(marketId: string, pool: string, input: WhatIfInput | null) {
-  const key = input ? whatIfKey(pool, input) : '';
+  const base = useApiBase();
+  const key = input ? base + whatIfKey(pool, input) : '';
   const request = useMemo(() => input, [key]);
   const [state, setState] = useState<{ key: string; result: WhatIf | null; error: string }>({ key: '', result: null, error: '' });
   const [loading, setLoading] = useState(false);
@@ -67,14 +69,14 @@ export function useWhatIf(marketId: string, pool: string, input: WhatIfInput | n
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setLoading(true);
-      fetchWhatIf(marketId, pool, request, { signal: controller.signal, fresh: revision > 0 })
+      fetchWhatIf(marketId, pool, request, { signal: controller.signal, fresh: revision > 0, base })
         .then(result => { if (!controller.signal.aborted) setState({ key, result, error: '' }); })
         .catch(error => { if (!controller.signal.aborted) setState(old => ({ key, result: old.key === key ? old.result : null,
           error: error instanceof Error && error.message === 'Invalid pool comparison.' ? error.message : FAILURE })); })
         .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     }, 350);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [marketId, pool, key, revision]);
+  }, [marketId, pool, key, revision, base]);
   const current = state.key === key ? state : { key, result: null, error: '' };
   return { result: current.result, error: current.error, loading, refresh: () => setRevision(n => n + 1) };
 }
