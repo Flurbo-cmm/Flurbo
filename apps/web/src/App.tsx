@@ -144,6 +144,16 @@ function DocsRoute() {
   </main>}</AppShell>;
 }
 
+// The demo is public and read only; it loads on demand like the guide.
+function DemoRoute() {
+  const route = useRoutePage('demo');
+  const Page = route.Page;
+  const gate = useLoadGate('demo', { pending: !Page && !route.error, error: route.error, label: 'Loading the demo', retry: route.error ? route.retry : undefined });
+  return <AppShell>{Page ? <Page /> : <main id="main" tabIndex={-1} className="page route-pending" aria-busy="true">
+    {!gate.covered && <><span className="progress-line" aria-hidden="true" /><p role="status" className="busy-text">Loading the demo...</p></>}
+  </main>}</AppShell>;
+}
+
 function AccountRoute() {
   const preview = usePreviewAccess();
   const testingAccess = preview.access?.testingTools===true;
@@ -219,6 +229,7 @@ function pageTitle(location: string) {
     : location === "/access" ? "Your account | flurbo"
     : location === "/fund" ? "Get test funds | flurbo"
     : location === "/docs" ? "Documentation | flurbo"
+    : location === "/demo" ? "Live demo | flurbo"
     : location === "/account" ? "Your account | flurbo"
     : location === "/portfolio" ? "Your portfolio | flurbo"
     : location.startsWith("/agents") ? "Agents | flurbo"
@@ -247,6 +258,7 @@ export default function App() {
     <Switch>
       <Route path="/" component={HomeRoute} />
       <Route path="/docs" component={DocsRoute} />
+      <Route path="/demo" component={DemoRoute} />
       <Route path="/login" component={LoginRoute} />
       <Route path="/signup" component={SignupRoute} />
       <Route path="/markets" component={AccountRoute} />

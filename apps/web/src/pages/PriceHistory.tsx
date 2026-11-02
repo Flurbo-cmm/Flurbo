@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useId,useRef,useState} from 'react';
 import {appFetch} from '../platform-fetch';
+import {useApiBase} from '../api-base';
 
 type Point={timestamp:number;blockNumber:string;prices:{event:number;yes:string|null;no:string|null}[]};
 type History={pool:string;sampling:string;points:Point[]};
@@ -8,6 +9,7 @@ const axisStamp=(n:number)=>new Date(n*1000).toLocaleTimeString(undefined,{hour:
 const TOP=20,BOTTOM=206,HEIGHT=240,LEFT=44;
 const square=(cx:number,cy:number,size:number)=>`M${cx-size/2} ${cy-size/2}h${size}v${size}h${-size}Z`;
 export default function PriceHistory({oracleId,hybridId,event,pool,refresh}:{event:number;pool:string;refresh:number}&({oracleId:string;hybridId?:never}|{oracleId?:never;hybridId:string})){
+  const base=useApiBase();
   const [data,setData]=useState<History|null>(null),[error,setError]=useState(false);
   const [range,setRange]=useState<'day'|'all'>('all');
   // The chart draws in real pixels of its column, so labels stay legible from phones to wide screens.
@@ -19,7 +21,7 @@ export default function PriceHistory({oracleId,hybridId,event,pool,refresh}:{eve
   },[]);
   useEffect(()=>()=>observer.current?.disconnect(),[]);
   useEffect(()=>{const abort=new AbortController();setError(false);
-    const load=appFetch(`/api/${oracleId?'oracle':'hybrid'}/${oracleId||hybridId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
+    const load=appFetch(`${base}/${oracleId?'oracle':'hybrid'}/${oracleId||hybridId}/price-history`,{credentials:'same-origin',signal:abort.signal}).then(async response=>{
       if(!response.ok)throw Error('Price history unavailable');
       return response.json() as Promise<History>;
     });
@@ -27,7 +29,7 @@ export default function PriceHistory({oracleId,hybridId,event,pool,refresh}:{eve
       if(value.pool!==pool)throw Error('Different collection');
       if(!abort.signal.aborted)setData(value);
     }).catch(()=>{if(!abort.signal.aborted)setError(true);});return()=>abort.abort();
-  },[oracleId,hybridId,pool,event,refresh]);
+  },[oracleId,hybridId,pool,event,refresh,base]);
   const points=(data?.points||[]).filter(p=>range==='all'||p.timestamp>=Date.now()/1000-86400);
   const start=points[0]?.timestamp||0,end=points.at(-1)?.timestamp||start;
   const ceiling=Math.max(1,...points.flatMap(p=>{const q=p.prices.find(q=>q.event===event);return [Number(q?.yes||0)/1e6,Number(q?.no||0)/1e6];}));
