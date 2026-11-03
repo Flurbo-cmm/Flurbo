@@ -20,11 +20,10 @@ import {handleAlchemyWebhook, getAlchemyActivities} from './alchemy-webhook.mjs'
 import { EVIDENCE_PATH } from './oracle-integration.mjs';
 import { HYBRID_PORTFOLIO_INPUT_ERRORS } from './hybrid-portfolio.mjs';
 import { MAX_PROOF_SUBMISSION_BYTES, PROOF_CAPTURE_PATH } from './proof-captures.mjs';
-import { demoApi } from './demo-api.mjs';
 
 export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store = new SessionStore(), sharedLimits = true,
   publicOrigin = null, rpcUrl = 'http://127.0.0.1:18545', dashboardUrl = 'http://127.0.0.1:18765', getLearningReport = () => null,
-  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, agentPools = null, evidence = null, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null, conditionals = null, demoPools = null,
+  applications = null, previewAccess = null, testingOperatorAccount = DEFAULT_TESTING_OPERATOR, testFaucet = null, learningPool = null, learningOperatorAccount = null, learningDashboardUrl = null, agentPools = null, evidence = null, settlementPackets = null, starter = null, funding = null, oracle = null, oracleEvidenceStore = null, hybridNotices = [], hybrid = null, hybridPortfolio = null, proofCaptures = null, conditionals = null,
   envioUrl = null, clientAddress = clientAddressReader(), now = Date.now } = {}) {
   const hosted = publicOrigin !== null;
   // Agent wallets cannot also be linked for manual MetaMask trading; with Redis the two claims exclude each other atomically.
@@ -43,24 +42,6 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
   }:null;
   const oraclePriceArchives=new Map();
   const hybridPriceArchives=new Map();
-  const hybridPriceHistory=id=>{
-    if (!hybridPriceArchives.has(id)) {
-      const route = hybrid.routeFor(id);
-      const manifest = { chainId: 10143, pool: route.pool, rulesHash: route.eventHash,
-        publication: { draft: { events: [{}] } } };
-      hybridPriceArchives.set(id, priceHistory({ command: store.command,
-        maxQuoteAtoms: 1_000_000_000_000n,
-        service: { manifest, async markets() {
-          const value = await hybrid.marketSummary(id);
-          return { manifest, open: value.funded && !value.resolved
-            && value.marketNow < route.record.prepared.draft.closesAt,
-            snapshot: { timestamp: value.marketNow, blockNumber: value.blockNumber, blockHash: value.blockHash },
-            prices: [{ event: 0, yes: value.prices.yes, no: value.prices.no }] };
-        } } }));
-    }
-    return hybridPriceArchives.get(id).read();
-  };
-  const demo=demoPools?.length?demoApi({pools:demoPools,hybrid,conditionals,priceHistory:store.command&&hybrid?id=>hybridPriceHistory(id):null}):null;
   // Agents: account-isolated profiles, paper trading and user-approved proposals. Never a signer.
   const agents=(()=>{try{return agentApi({command:store.command||null,hosted,links,localCounters:!sharedLimits,rpc:agentRpc(rpcUrl,{hosted}),previewAllows,reservedWallets,
     serviceFor:namespace=>agentServices.get(namespace)??null});}catch{return null;}})();
@@ -459,14 +440,6 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
             ? error.message : 'Oracle request unavailable. Refresh and retry.' });
         }
       }
-      // The public demo: listed pools only, read routes only, no session, no wallet.
-      if (url.pathname === '/api/demo' || url.pathname.startsWith('/api/demo/')) {
-        if (!demo) return send(res, 404, { error: 'Demo route unavailable.' });
-        if (hosted && req.method === 'POST') { limits.localTake('demo-compute:' + ip, 30); limits.localTake('demo-compute', 600); }
-        const result = await demo.handle({ method: req.method, path: url.pathname, search: url.search,
-          input: req.method === 'POST' ? await body(req) : undefined });
-        return send(res, result.status, result.body);
-      }
       if (/^\/api\/hybrid\/pool\/0x[0-9a-f]{40}\/(?:account|positions|history|collected-payouts)$/i.test(url.pathname)) {
         const login = await getLogin();
         if (!login || login.method !== 'passkey') return send(res, 401, { error: 'Sign in first.' });
@@ -513,7 +486,21 @@ export function localApi({ hosts = ['localhost:18767', '127.0.0.1:18767'], store
             return send(res, 200, await hybrid.marketSummary(id));
           if (op === 'price-history' && req.method === 'GET' && !url.search) {
             if (!store.command) return send(res, 503, { error: 'Price history storage is unavailable.' });
-            return send(res, 200, await hybridPriceHistory(id));
+            if (!hybridPriceArchives.has(id)) {
+              const route = hybrid.routeFor(id);
+              const manifest = { chainId: 10143, pool: route.pool, rulesHash: route.eventHash,
+                publication: { draft: { events: [{}] } } };
+              hybridPriceArchives.set(id, priceHistory({ command: store.command,
+                maxQuoteAtoms: 1_000_000_000_000n,
+                service: { manifest, async markets() {
+                  const value = await hybrid.marketSummary(id);
+                  return { manifest, open: value.funded && !value.resolved
+                    && value.marketNow < route.record.prepared.draft.closesAt,
+                    snapshot: { timestamp: value.marketNow, blockNumber: value.blockNumber, blockHash: value.blockHash },
+                    prices: [{ event: 0, yes: value.prices.yes, no: value.prices.no }] };
+                } } }));
+            }
+            return send(res, 200, await hybridPriceArchives.get(id).read());
           }
           if (op === '' && req.method === 'GET') {
             const wallet = url.searchParams.get('wallet');

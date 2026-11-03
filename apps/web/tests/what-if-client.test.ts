@@ -56,16 +56,3 @@ test('the same request is served from the cache', async () => {
   await fetchWhatIf(`${pool}-0`, pool, input, options);
   assert.equal(bodies.length, 29);
 });
-
-test('the demo page reads What if from the public demo routes, cached apart from member reads', async () => {
-  const input: WhatIfInput = { given: [{ eventIndex: 0, side: 'yes' }] };
-  const urls: string[] = [];
-  const fetcher = (async (url: string, init: RequestInit) => {
-    urls.push(url);
-    return { ok: true, json: async () => reply(JSON.parse(String(init.body)) as WhatIfInput) };
-  }) as unknown as typeof fetch;
-  await fetchWhatIf(`${pool}-0`, pool, input, { fetcher });
-  await fetchWhatIf(`${pool}-0`, pool, input, { fetcher, base: '/api/demo' });
-  await fetchWhatIf(`${pool}-0`, pool, input, { fetcher, base: '/api/demo' });
-  assert.deepEqual(urls, [`/api/hybrid/${pool}-0/what-if`, `/api/demo/hybrid/${pool}-0/what-if`]);
-});

@@ -1,8 +1,0 @@
-{
-  "schema": "flurbo.demo-pools.v1",
-  "pools": [
-    { "pool": "0x729dFb75397AF17213cB5C7B799Dd0023BD62388", "kind": "hybrid", "role": "live" },
-    { "pool": "0x8C492cC7Be74F4DE2C3FD901D409E58EdadB73De", "kind": "conditional", "role": "live" },
-    { "pool": "0x0fc7a9634f52DD5bF91c252587f912d5e121d528", "kind": "hybrid", "role": "settled" }
-  ]
-}

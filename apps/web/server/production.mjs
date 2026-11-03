@@ -37,7 +37,6 @@ import { hybridMarketService } from './hybrid-market-service.mjs';
 import { proofCaptureRules, proofCaptureService } from './proof-captures.mjs';
 import { hybridAgentPools } from './hybrid-pool-service.mjs';
 import { conditionalCatalog, conditionalMarketService } from './conditional-market-service.mjs';
-import { demoPoolList } from './demo-api.mjs';
 import { periodicTasks } from './scheduler.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -64,7 +63,7 @@ export function productionServer(config, store, staticRoot = dist) {
   const api = localApi({ publicOrigin: config.origin, rpcUrl: config.rpcUrl, store, sharedLimits: config.sharedLimits !== false, getLearningReport: () => config.learningReport,
     envioUrl: config.envioGraphqlUrl || null, clientAddress,
     applications:config.applications, previewAccess:config.previewAccess===undefined?previewAccess():config.previewAccess, testingOperatorAccount:config.testingOperatorAccount, testFaucet:config.testFaucet, learningPool: config.learningPool, learningOperatorAccount: config.learningOperatorAccount,
-    learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures, conditionals:config.conditionals, demoPools:config.demoPools });
+    learningDashboardUrl: config.learningDashboardUrl, agentPools: config.agentPools, evidence: config.evidenceArchive, settlementPackets:config.settlementPackets, starter:config.starter, funding:config.fundingAlerts, oracle:config.oracle, oracleEvidenceStore:config.oracleEvidence, hybridNotices:config.hybridNotices, hybrid:config.hybrid, hybridPortfolio:config.hybridPortfolio, proofCaptures:config.proofCaptures, conditionals:config.conditionals });
   config.metrics = api.metrics;
   config.notices = api.notices;
   return createServer({ requestTimeout: 30_000, headersTimeout: 10_000, maxHeaderSize: 16_384 }, async (req, res) => {
@@ -153,9 +152,6 @@ export async function companyMarkets({ config, store, settlementStores, readConf
   const hybrid = f.hybridSettlementCatalog(await readConfig('config/hybrid-markets.json'));
   const conditional = f.conditionalCatalog(await readConfig('config/conditional-markets.json'));
   const settled = f.hybridSettlementCatalog({ schema: 'flurbo.hybrid-catalog.v1', pools: [...hybrid.pools, ...conditional.pools] });
-  // The public demo lists only pools that are in these catalogs; a missing file turns the demo off.
-  config.demoPools = demoPoolList(await Promise.resolve(readConfig('config/demo-pools.json'))
-    .catch(error => error?.code === 'ENOENT' ? null : Promise.reject(error)), { hybrid: hybrid.pools, conditional: conditional.pools });
   let hybridRelayTail = Promise.resolve();
   const hybridRelaySend = task => {
     const next = hybridRelayTail.then(task, task);
