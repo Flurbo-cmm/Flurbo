@@ -80,7 +80,7 @@ export default function Home(){
         <div className="home-hero-copy">
           <h1>Price how events connect.</h1>
           <p className="home-lede">Trade single questions or linked outcomes from one shared pool. Every price, rule and result is public.</p>
-          <div className="home-actions">{primary()}<Link href="/demo" className="text-link">See the live demo</Link></div>
+          <div className="home-actions">{primary()}<a className="text-link" href="#the-idea">See the example</a></div>
         </div>
         <div className="home-demo"><LinkedMarketDemo proofHref="#the-proof" onProof={()=>setProof(true)}/></div>
       </div>
